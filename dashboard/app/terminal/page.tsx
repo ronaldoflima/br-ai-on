@@ -139,7 +139,6 @@ export default function TerminalPage() {
       setError("Erro de conexão");
     }
     setSending(false);
-    inputRef.current?.focus();
   }, [selected, sending, fetchOutput]);
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -150,9 +149,10 @@ export default function TerminalPage() {
       } else {
         sendKey("Enter");
       }
-      return;
     }
+  };
 
+  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLPreElement>) => {
     const arrowMap: Record<string, string> = {
       ArrowUp: "Up", ArrowDown: "Down",
       ArrowLeft: "Left", ArrowRight: "Right",
@@ -169,8 +169,20 @@ export default function TerminalPage() {
       return;
     }
 
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendKey("Enter");
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      sendKey("Escape");
+      return;
+    }
+
     if (e.ctrlKey) {
-      const ctrlMap: Record<string, string> = { c: "C-c", e: "C-e", t: "C-t" };
+      const ctrlMap: Record<string, string> = { b: "C-b", c: "C-c", e: "C-e", t: "C-t" };
       const tmuxKey = ctrlMap[e.key.toLowerCase()];
       if (tmuxKey) {
         e.preventDefault();
@@ -363,6 +375,8 @@ export default function TerminalPage() {
 
       <pre
         ref={outputRef}
+        tabIndex={0}
+        onKeyDown={handleTerminalKeyDown}
         style={{
           flex: 1,
           background: "#0d0d0d",
@@ -377,6 +391,8 @@ export default function TerminalPage() {
           color: "#d4d4d4",
           whiteSpace: "pre",
           minHeight: 0,
+          outline: "none",
+          cursor: "default",
         }}
         dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
       >
@@ -407,7 +423,7 @@ export default function TerminalPage() {
           ref={inputRef}
           className="input"
           style={{ flex: 1, fontFamily: "monospace", fontSize: 12 }}
-          placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter (setas/Tab/Ctrl+C funcionam aqui)..."}
+          placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleInputKeyDown}
