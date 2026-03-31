@@ -2,6 +2,51 @@
 
 Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui identidade persistente (IDENTITY), estado entre sessões, memória de longo prazo e integração opcional com serviços externos via MCP.
 
+## Quickstart
+
+### 1. Clonar e configurar
+
+```bash
+git clone <repo> hawkai && cd hawkai
+cp .env.example .env
+```
+
+### 2. Configurar TOTP (autenticação do dashboard)
+
+```bash
+node scripts/setup-totp.js
+# Escaneie o QR code com Google Authenticator ou 1Password
+```
+
+### 3. Instalar dependências do dashboard
+
+```bash
+cd dashboard && npm install && cd ..
+```
+
+### 4. Iniciar o dashboard
+
+```bash
+cd dashboard && npm run dev
+# Acessível em http://localhost:3040
+```
+
+### 5. (Opcional) Criar um agente
+
+```bash
+./create-agent.sh meu-agente
+# Edite agents/meu-agente/IDENTITY.md e config.yaml
+```
+
+### 6. (Opcional) Configurar cron de orquestração
+
+```bash
+./setup-cron.sh
+# Roda lib/agent-scheduler.py a cada 5 minutos
+```
+
+---
+
 ## Arquitetura
 
 ```
