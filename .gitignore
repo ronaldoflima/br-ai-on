@@ -25,3 +25,5 @@ metrics/
 nohup.out
 *.log
 .paused
+.mcp.json
+nohup.out
