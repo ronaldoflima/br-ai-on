@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Sidebar } from "./components/Sidebar";
-import { ErrorBanner } from "./components/ErrorBanner";
+import { AppShell } from "./components/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,13 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body>
-        <div className="app-layout">
-          <Sidebar />
-          <main className="app-main">
-            <ErrorBanner />
-            {children}
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
