@@ -20,6 +20,14 @@
   border-bottom: 1px solid var(--border);
   margin-bottom: 8px;
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandIcon {
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .nav {
