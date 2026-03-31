@@ -60,8 +60,8 @@ export function Sidebar() {
       </button>
       <nav className={`${styles.sidebar} ${open ? styles.open : ""}`}>
         <div className={styles.brand}>
-          <img src="/hawk-icon.png" alt="HawkAI" width={40} height={40} className={styles.brandIcon} />
-          HawkAI
+          <img src="/braion-icon.png" alt="BR.AI.ON" width={40} height={40} className={styles.brandIcon} />
+          BR.AI.ON
         </div>
         <ul className={styles.nav}>
           {NAV.map((item) => (

@@ -3,7 +3,7 @@ import { AppShell } from "./components/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HawkAI Dashboard",
+  title: "BR.AI.ON Dashboard",
   description: "Painel de controle dos agentes AI pessoais",
 };
 
