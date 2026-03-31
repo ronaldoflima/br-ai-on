@@ -5,13 +5,24 @@ import { parse } from "yaml";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
+const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
 
-function getAgentDirs(): string[] {
-  return readdirSync(AGENTS_DIR).filter((name) => {
-    if (name === "shared") return false;
-    const dir = join(AGENTS_DIR, name);
-    return statSync(dir).isDirectory() && existsSync(join(dir, "config.yaml"));
-  });
+function listAgentsIn(baseDir: string): { name: string; dir: string }[] {
+  if (!existsSync(baseDir)) return [];
+  return readdirSync(baseDir)
+    .filter((name) => {
+      if (name === "shared" || name === "_defaults") return false;
+      const d = join(baseDir, name);
+      return statSync(d).isDirectory() && existsSync(join(d, "config.yaml"));
+    })
+    .map((name) => ({ name, dir: join(baseDir, name) }));
+}
+
+function getAgentEntries(): { name: string; dir: string }[] {
+  const userAgents = listAgentsIn(AGENTS_DIR);
+  const defaultAgents = listAgentsIn(DEFAULTS_DIR);
+  const seen = new Set(userAgents.map((a) => a.name));
+  return [...userAgents, ...defaultAgents.filter((a) => !seen.has(a.name))];
 }
 
 function parseInterval(interval: string): number {
@@ -29,9 +40,8 @@ function parseInterval(interval: string): number {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const agentNames = getAgentDirs();
-  const statuses = agentNames.map((name) => {
-    const agentDir = join(AGENTS_DIR, name);
+  const entries = getAgentEntries();
+  const statuses = entries.map(({ name, dir: agentDir }) => {
     const stateDir = join(agentDir, "state");
 
     let displayName = name;
