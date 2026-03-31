@@ -47,6 +47,9 @@ export default function TerminalPage() {
   const [sending, setSending] = useState(false);
   const [killing, setKilling] = useState(false);
   const [error, setError] = useState("");
+  const [newSessionName, setNewSessionName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [showNewSession, setShowNewSession] = useState(false);
   const outputRef = useRef<HTMLPreElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -175,6 +178,32 @@ export default function TerminalPage() {
     }
   };
 
+  const createSession = async () => {
+    const name = newSessionName.trim();
+    if (!name) return;
+    setCreating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/terminal", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        setNewSessionName("");
+        setShowNewSession(false);
+        fetchSessions();
+        setSelected(name);
+      } else {
+        const d = await res.json();
+        setError(d.error || "Erro ao criar sessão");
+      }
+    } catch {
+      setError("Erro de conexão");
+    }
+    setCreating(false);
+  };
+
   const killSession = async () => {
     if (!selected) return;
     setKilling(true);
@@ -214,9 +243,40 @@ export default function TerminalPage() {
       overflowY: "auto",
       maxHeight: isMobile ? 180 : undefined,
     }}>
-      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", padding: "4px 8px 8px" }}>
-        Sessões tmux
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 8px 8px" }}>
+        <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
+          Sessões tmux
+        </span>
+        <button
+          className="btn"
+          onClick={() => setShowNewSession((v) => !v)}
+          style={{ fontSize: 10, padding: "2px 6px" }}
+          title="Nova sessão"
+        >
+          +
+        </button>
       </div>
+      {showNewSession && (
+        <div style={{ display: "flex", gap: 4, padding: "0 8px 8px", flexShrink: 0 }}>
+          <input
+            className="input"
+            style={{ flex: 1, fontSize: 11, padding: "4px 6px" }}
+            placeholder="Nome da sessão"
+            value={newSessionName}
+            onChange={(e) => setNewSessionName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }}
+            autoFocus
+          />
+          <button
+            className="btn btn-primary"
+            onClick={createSession}
+            disabled={creating || !newSessionName.trim()}
+            style={{ fontSize: 11, padding: "4px 8px" }}
+          >
+            {creating ? "..." : "Criar"}
+          </button>
+        </div>
+      )}
       {loadingSessions ? (
         <div style={{ padding: "8px", fontSize: 12, color: "var(--text-muted)" }}>Carregando...</div>
       ) : sessions.length === 0 ? (
@@ -281,14 +341,23 @@ export default function TerminalPage() {
           </button>
         )}
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{selected}</span>
-        <button
-          className="btn"
-          onClick={killSession}
-          disabled={killing}
-          style={{ fontSize: 11, color: "var(--error)", borderColor: "var(--error)40", marginLeft: "auto" }}
-        >
-          {killing ? "Matando..." : "Matar"}
-        </button>
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          <button
+            className="btn"
+            onClick={() => { setLoadingSessions(true); fetchSessions(); fetchOutput(); }}
+            style={{ fontSize: 11 }}
+          >
+            Atualizar
+          </button>
+          <button
+            className="btn"
+            onClick={() => { if (window.confirm(`Matar a sessão "${selected}"?`)) killSession(); }}
+            disabled={killing}
+            style={{ fontSize: 11, color: "var(--error)", borderColor: "var(--error)40" }}
+          >
+            {killing ? "Matando..." : "Matar"}
+          </button>
+        </div>
       </div>
 
       <pre
@@ -362,9 +431,6 @@ export default function TerminalPage() {
     <div style={{ marginLeft: -24, marginRight: -24, marginTop: -24, padding: "16px 24px", display: "flex", flexDirection: "column", height: "100dvh", boxSizing: "border-box" }}>
       <div className="page-header" style={{ marginBottom: 12, flexShrink: 0 }}>
         <h1 className="page-title">Terminais</h1>
-        <button className="btn" onClick={() => { setLoadingSessions(true); fetchSessions(); }} style={{ fontSize: 12 }}>
-          Atualizar
-        </button>
       </div>
 
       {isMobile ? (

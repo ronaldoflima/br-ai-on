@@ -222,6 +222,6 @@ lib/handoff.sh next_id
 
 ## Orquestrador
 
-- Skill: `.claude/skills/orchestrator/SKILL.md`
+- Skill: `skills/orchestrator/SKILL.md`
 - Responsável por rodar o scheduler, rotear inbox Obsidian e spawnar subagentes
 - Único com permissão de escrita em `agents/shared/`

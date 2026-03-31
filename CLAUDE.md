@@ -8,7 +8,7 @@ Ecossistema de agentes AI pessoais orquestrado pelo Claude Code. Cada agente tem
 
 ```
 agents/<nome>/         — Agente com IDENTITY.md, config.yaml e state/
-.claude/skills/        — Skills do Claude Code (init, wrapup, etc.)
+skills/                — Skills do Claude Code (init, wrapup, etc.)
 lib/                   — Scripts utilitários (logger.sh)
 logs/                  — Logs estruturados JSONL por agente/dia
 USER.md                — Perfil do usuário (compartilhado entre agentes)
