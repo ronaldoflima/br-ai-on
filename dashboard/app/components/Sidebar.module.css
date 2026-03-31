@@ -96,6 +96,24 @@
   display: none;
 }
 
+.logoutBtn {
+  margin: 0 12px 8px;
+  padding: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  width: calc(100% - 24px);
+  text-align: center;
+}
+
+.logoutBtn:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
 .healthStrip {
   padding: 12px 16px;
   border-top: 1px solid var(--border);
