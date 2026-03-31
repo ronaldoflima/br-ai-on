@@ -5,10 +5,7 @@
 *.tsbuildinfo
 package-lock.json
 dashboard/.next/
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
-.claude/worktrees/
-.claude/memory/
+.claude/
 .playwright-mcp/
 .mcp.json
 agents/*
