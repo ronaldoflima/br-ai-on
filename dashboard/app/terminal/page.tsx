@@ -71,15 +71,16 @@ export default function TerminalPage() {
       .then((data) => {
         if (data.output !== undefined) {
           setOutput(data.output);
-          setTimeout(() => {
-            if (outputRef.current) {
-              outputRef.current.scrollTop = outputRef.current.scrollHeight;
-            }
-          }, 0);
         }
       })
       .catch(() => {});
   }, [selected]);
+
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
 
   useEffect(() => {
     fetchSessions();
