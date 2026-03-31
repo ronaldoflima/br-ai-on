@@ -4,6 +4,8 @@ const SESSION_COOKIE = "hawkai_session";
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
 export function middleware(req: NextRequest) {
+  if (process.env.DISABLE_AUTH === "true") return NextResponse.next();
+
   const { pathname } = req.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));

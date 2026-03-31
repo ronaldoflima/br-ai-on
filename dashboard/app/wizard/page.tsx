@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const STEPS = ["Básico", "Personalidade", "Configuração", "Integrações", "Revisão & Envio"];
-const INTEGRATIONS = ["Telegram", "Notion", "Obsidian", "GitHub", "Calendar"];
+const STEPS = ["Básico", "Personalidade", "Configuração", "Revisão & Envio"];
 
 export default function WizardPage() {
   const router = useRouter();
@@ -24,25 +23,13 @@ export default function WizardPage() {
   const [maxSessions, setMaxSessions] = useState(10);
   const [maxTokens, setMaxTokens] = useState(50000);
 
-  const [integrations, setIntegrations] = useState<Record<string, boolean>>(
-    Object.fromEntries(INTEGRATIONS.map((i) => [i, false]))
-  );
-
   const nameValid = /^[a-z0-9-]+$/.test(name);
   const canNext = () => {
     if (step === 0) return name.length > 0 && nameValid && displayName.trim().length > 0;
     return true;
   };
 
-  function toggleIntegration(key: string) {
-    setIntegrations((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
   function buildSpec() {
-    const enabledIntegrations = Object.entries(integrations)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
-
     return `# Especificação do Agente: ${displayName}
 
 ## Identidade
@@ -60,10 +47,7 @@ ${scope}
 - Schedule Mode: ${scheduleMode}
 ${scheduleMode === "alive" ? `- Interval: ${interval}\n` : ""}- Model: ${model}
 - Max Sessions/Dia: ${maxSessions}
-- Max Tokens/Sessão: ${maxTokens}
-
-## Integrações
-${enabledIntegrations.length > 0 ? enabledIntegrations.map((i) => `- ${i}`).join("\n") : "Nenhuma"}`;
+- Max Tokens/Sessão: ${maxTokens}`;
   }
 
   async function submit() {
@@ -212,21 +196,6 @@ ${enabledIntegrations.length > 0 ? enabledIntegrations.map((i) => `- ${i}`).join
 
         {step === 3 && (
           <div>
-            <h2 className="subsection-title">Integrações</h2>
-            <p className="text-secondary-sm" style={{ marginBottom: 16 }}>Selecione os serviços que este agente terá acesso.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {INTEGRATIONS.map((key) => (
-                <label key={key} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <input type="checkbox" checked={integrations[key]} onChange={() => toggleIntegration(key)} />
-                  <span>{key}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div>
             <h2 className="subsection-title">Revisão</h2>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div>
@@ -252,15 +221,6 @@ ${enabledIntegrations.length > 0 ? enabledIntegrations.map((i) => `- ${i}`).join
               <div>
                 <div className="text-muted-xs">Limites</div>
                 <div className="mono-sm">{maxSessions} sessões/dia, {maxTokens} tokens/sessão</div>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div className="text-muted-xs">Integrações</div>
-                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  {Object.entries(integrations).filter(([, v]) => v).map(([k]) => (
-                    <span key={k} className="badge badge-info">{k}</span>
-                  ))}
-                  {Object.values(integrations).every((v) => !v) && <span className="text-muted-xs">Nenhuma</span>}
-                </div>
               </div>
             </div>
             <div>

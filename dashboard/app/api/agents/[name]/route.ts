@@ -6,6 +6,15 @@ import { validateAgentConfig } from "../../../lib/config-validator";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
+const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
+
+function resolveAgentDir(name: string): string | null {
+  const userDir = join(AGENTS_DIR, name);
+  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return userDir;
+  const defaultDir = join(DEFAULTS_DIR, name);
+  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return defaultDir;
+  return null;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +23,9 @@ export async function GET(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = join(AGENTS_DIR, name);
+  const agentDir = resolveAgentDir(name);
 
-  if (!existsSync(agentDir)) {
+  if (!agentDir) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
@@ -100,9 +109,9 @@ export async function PUT(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = join(AGENTS_DIR, name);
+  const agentDir = resolveAgentDir(name);
 
-  if (!existsSync(agentDir)) {
+  if (!agentDir) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
@@ -134,9 +143,9 @@ export async function DELETE(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = join(AGENTS_DIR, name);
+  const agentDir = resolveAgentDir(name);
 
-  if (!existsSync(agentDir)) {
+  if (!agentDir) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
