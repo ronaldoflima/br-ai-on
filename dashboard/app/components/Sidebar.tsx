@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
 import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconMenu, IconClose } from "./icons";
@@ -29,6 +29,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth", { method: "DELETE" });
+    router.push("/login");
+  }
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -81,6 +87,7 @@ export function Sidebar() {
             </li>
           ))}
         </ul>
+        <button onClick={handleLogout} className={styles.logoutBtn}>Sair</button>
         {health && (
           <div className={styles.healthStrip}>
             <div className={styles.healthRow}>
