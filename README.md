@@ -1,4 +1,4 @@
-# HawkAI — Ecossistema de Agentes AI Pessoais
+# BR.AI.ON — Ecossistema de Agentes AI Pessoais
 
 Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui identidade persistente (IDENTITY), estado entre sessões, memória de longo prazo e integração opcional com serviços externos via MCP.
 
@@ -201,11 +201,11 @@ lib/handoff.sh next_id
 
 ## Acesso Remoto via Tailscale
 
-O HawkAI pode ser acessado remotamente de qualquer dispositivo na sua rede Tailscale, permitindo monitorar o dashboard e acessar os agentes de qualquer lugar.
+O BR.AI.ON pode ser acessado remotamente de qualquer dispositivo na sua rede Tailscale, permitindo monitorar o dashboard e acessar os agentes de qualquer lugar.
 
 ### Setup
 
-1. **Instalar Tailscale** no host que roda o HawkAI (VPS ou desktop):
+1. **Instalar Tailscale** no host que roda o BR.AI.ON (VPS ou desktop):
    ```bash
    curl -fsSL https://tailscale.com/install.sh | sh
    sudo tailscale up

@@ -44,8 +44,8 @@ export default function LoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <img src="/hawk-icon.png" alt="HawkAI" width={64} height={64} style={styles.icon} />
-        <h1 style={styles.title}>HawkAI</h1>
+        <img src="/braion-icon.png" alt="BR.AI.ON" width={64} height={64} style={styles.icon} />
+        <h1 style={styles.title}>BR.AI.ON</h1>
         <p style={styles.subtitle}>Digite o código do autenticador</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
