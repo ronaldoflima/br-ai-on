@@ -31,14 +31,7 @@ cd dashboard && npm run dev
 # Acessível em http://localhost:3040
 ```
 
-### 5. (Opcional) Criar um agente
-
-```bash
-./create-agent.sh meu-agente
-# Edite agents/meu-agente/IDENTITY.md e config.yaml
-```
-
-### 6. (Opcional) Configurar cron de orquestração
+### 5. (Opcional) Configurar cron de orquestração
 
 ```bash
 ./setup-cron.sh
