@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
@@ -61,7 +60,7 @@ export function Sidebar() {
       </button>
       <nav className={`${styles.sidebar} ${open ? styles.open : ""}`}>
         <div className={styles.brand}>
-          <Image src="/hawk-icon.png" alt="HawkAI" width={40} height={40} className={styles.brandIcon} />
+          <img src="/hawk-icon.png" alt="HawkAI" width={40} height={40} className={styles.brandIcon} />
           HawkAI
         </div>
         <ul className={styles.nav}>

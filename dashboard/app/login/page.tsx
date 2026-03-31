@@ -44,7 +44,7 @@ export default function LoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={styles.icon}>🦅</div>
+        <img src="/hawk-icon.png" alt="HawkAI" width={64} height={64} style={styles.icon} />
         <h1 style={styles.title}>HawkAI</h1>
         <p style={styles.subtitle}>Digite o código do autenticador</p>
 
@@ -90,7 +90,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
   },
   icon: {
-    fontSize: "40px",
+    borderRadius: "12px",
     marginBottom: "12px",
   },
   title: {
