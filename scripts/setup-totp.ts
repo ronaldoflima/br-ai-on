@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import readline from "readline";
+import qrcode from "qrcode";
+
+const ENV_PATH = path.resolve(__dirname, "../.env");
+const BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const SERVICE_NAME = "HawkAI";
+
+function base32Encode(buf: Buffer): string {
+  let bits = 0, value = 0, output = "";
+  for (const byte of buf) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_CHARS[(value >>> (bits - 5)) & 0x1f];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += BASE32_CHARS[(value << (5 - bits)) & 0x1f];
+  return output;
+}
+
+function generateSecret(): string {
+  return base32Encode(crypto.randomBytes(20));
+}
+
+function keyUri(account: string, issuer: string, secret: string): string {
+  return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+}
+
+function readEnv(): Record<string, string> {
+  if (!fs.existsSync(ENV_PATH)) return {};
+  const result: Record<string, string> = {};
+  for (const line of fs.readFileSync(ENV_PATH, "utf-8").split("\n")) {
+    const match = line.match(/^([^=]+)=(.*)$/);
+    if (match) result[match[1].trim()] = match[2].trim();
+  }
+  return result;
+}
+
+function writeEnv(vars: Record<string, string>): void {
+  fs.writeFileSync(ENV_PATH, Object.entries(vars).map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
+}
+
+async function confirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question + " [s/N] ", (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === "s");
+    });
+  });
+}
+
+async function main() {
+  const env = readEnv();
+
+  if (env.TOTP_SECRET) {
+    console.log("\n⚠️  TOTP já configurado.");
+    const overwrite = await confirm("Deseja gerar um novo secret? (invalidará o QR code atual)");
+    if (!overwrite) { console.log("Cancelado."); process.exit(0); }
+  }
+
+  const secret = generateSecret();
+  const otpauth = keyUri("admin", SERVICE_NAME, secret);
+
+  console.log("\n🔐 HawkAI TOTP Setup\n");
+  console.log("Escaneie o QR code com Google Authenticator, 1Password ou similar:\n");
+
+  const qr = await qrcode.toString(otpauth, { type: "terminal", small: true });
+  console.log(qr);
+
+  console.log(`Ou adicione manualmente:`);
+  console.log(`  Service: ${SERVICE_NAME}`);
+  console.log(`  Secret:  ${secret}\n`);
+
+  env.TOTP_SECRET = secret;
+  writeEnv(env);
+
+  console.log("✅ Secret salvo no .env\n");
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

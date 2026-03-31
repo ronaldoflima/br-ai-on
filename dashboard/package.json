@@ -8,8 +8,10 @@
     "start": "next start --port 3040 --hostname 0.0.0.0"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "ansi-to-html": "^0.7.2",
     "next": "^15.0.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "yaml": "^2.8.3"
