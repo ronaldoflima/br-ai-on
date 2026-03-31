@@ -111,4 +111,8 @@ bash "$HAWKAI/lib/logger.sh" "<nome>" "Inbox roteado" \
   '{"notas_processadas": N, "handoffs_criados": N}'
 ```
 
-Encerre a sessão normalmente após rotear todas as notas.
+Após o log, mate a sessão tmux para liberar o slot:
+
+```bash
+tmux kill-session -t "$(tmux display-message -p '#S')" 2>/dev/null || true
+```

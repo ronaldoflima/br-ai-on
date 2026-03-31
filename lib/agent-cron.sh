@@ -35,6 +35,46 @@ session_running() {
   tmux has-session -t "$1" 2>/dev/null
 }
 
+session_is_idle() {
+  local session=$1
+  tmux has-session -t "$session" 2>/dev/null || return 1
+
+  tmux capture-pane -t "$session" -p 2>/dev/null \
+    | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
+    | grep -v 'auto mode' | tail -1 | grep -q '^❯'
+}
+
+session_is_stale() {
+  local session=$1
+  tmux has-session -t "$session" 2>/dev/null || return 1
+
+  local activity now elapsed
+  activity=$(tmux display-message -t "$session" -p '#{window_activity}' 2>/dev/null || echo 0)
+  [ "${activity:-0}" -le 0 ] && return 1
+
+  now=$(date -u +%s)
+  elapsed=$(( now - activity ))
+  [ "$elapsed" -gt "$STALE_THRESHOLD" ]
+}
+
+kill_stale_session() {
+  local session=$1
+  if session_is_idle "$session"; then
+    log "KILL $session — claude em prompt idle, sessão concluída"
+    tmux kill-session -t "$session" 2>/dev/null
+    return 0
+  fi
+  if session_is_stale "$session"; then
+    local activity elapsed
+    activity=$(tmux display-message -t "$session" -p '#{window_activity}' 2>/dev/null || echo 0)
+    elapsed=$(( $(date -u +%s) - activity ))
+    log "KILL $session — sem atividade há ${elapsed}s (> ${STALE_THRESHOLD}s)"
+    tmux kill-session -t "$session" 2>/dev/null
+    return 0
+  fi
+  return 1
+}
+
 heartbeat_is_processing() {
   local heartbeat_file=$1
   [ -f "$heartbeat_file" ] || return 0
@@ -64,8 +104,7 @@ start_session() {
   local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL}
 
   if session_running "$session"; then
-    log "SKIP $session — sessão tmux ativa"
-    return 0
+    kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
   fi
 
   tmux new-session -d -s "$session" -c "$working_dir"
@@ -151,8 +190,7 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
     session="hawkai-${agent}-${ho_id}"
 
     if session_running "$session"; then
-      log "SKIP $session — sessão ativa"
-      continue
+      kill_stale_session "$session" || { log "SKIP $session — sessão ativa"; continue; }
     fi
 
     # if [ -f "$agent_dir/handoffs/in_progress/$filename" ]; then
@@ -162,8 +200,7 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
 
     # Se o agente tem sessão alive ativa, aguarda ela terminar para evitar escrita concorrente em state/
     if session_running "hawkai-${agent}"; then
-      log "SKIP $session — sessão alive hawkai-${agent} ativa, handoff será processado no próximo ciclo"
-      continue
+      kill_stale_session "hawkai-${agent}" || { log "SKIP $session — sessão alive hawkai-${agent} ativa, handoff será processado no próximo ciclo"; continue; }
     fi
 
     log "Handoff: iniciando $session para $handoff_file"
