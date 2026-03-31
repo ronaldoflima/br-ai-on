@@ -205,6 +205,64 @@ lib/handoff.sh next_id
 - Cada agente é dono exclusivo do seu `state/` para escrita
 - `lib/check_concurrency.sh` impede sessões duplicadas
 
+## Acesso Remoto via Tailscale
+
+O HawkAI pode ser acessado remotamente de qualquer dispositivo na sua rede Tailscale, permitindo monitorar o dashboard e acessar os agentes de qualquer lugar.
+
+### Setup
+
+1. **Instalar Tailscale** no host que roda o HawkAI (VPS ou desktop):
+   ```bash
+   curl -fsSL https://tailscale.com/install.sh | sh
+   sudo tailscale up
+   ```
+
+2. **Autenticar** com sua conta Tailscale e copiar o IP da máquina:
+   ```bash
+   tailscale ip -4   # ex: 100.x.x.x
+   ```
+
+3. **Instalar Tailscale** no dispositivo cliente (laptop, celular) e fazer login com a mesma conta.
+
+### Acessar o Dashboard
+
+Com ambos os dispositivos na mesma rede Tailscale:
+
+```
+http://<tailscale-ip>:3040
+```
+
+O dashboard Next.js precisa estar rodando no host:
+```bash
+cd dashboard && npm run dev -- --hostname 0.0.0.0 --port 3040
+```
+
+### Acessar os Agentes via SSH
+
+```bash
+ssh <user>@<tailscale-ip>
+```
+
+Para atalho, adicione ao `~/.ssh/config`:
+```
+Host hawkai
+  HostName <tailscale-ip>
+  User <user>
+```
+
+Depois: `ssh hawkai`
+
+### Executar Sessões Remotas com Claude Code
+
+```bash
+ssh hawkai "cd ~/hawkai && claude --dangerously-skip-permissions -p '/agent-init'"
+```
+
+Ou interativamente:
+```bash
+ssh -t hawkai "cd ~/hawkai && claude"
+```
+
 ## Stack
 
 - **Orquestração**: Claude Code + Bash/Python
@@ -212,4 +270,5 @@ lib/handoff.sh next_id
 - **Estado**: Markdown + YAML + JSON no filesystem
 - **Logs**: JSONL estruturado
 - **Integrações**: MCP (opcionais)
+- **Acesso remoto**: Tailscale
 - **Hosting**: VPS
