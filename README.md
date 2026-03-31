@@ -34,7 +34,7 @@ cd dashboard && npm run dev
 ### 5. (Opcional) Configurar cron de orquestração
 
 ```bash
-./setup-cron.sh
+./scripts/setup-cron.sh
 # Roda lib/agent-scheduler.py a cada 5 minutos
 ```
 
@@ -56,7 +56,7 @@ cd dashboard && npm run dev
      ┌─────▼──────────────────────────────▼─────┐
      │              Agentes                      │
      │  (definidos em agents/_defaults/ ou       │
-     │   criados com create-agent.sh)            │
+     │   criados com scripts/create-agent.sh)    │
      └─────┬──────────────┬──────────────┬──────┘
            │              │              │
     ┌──────▼───┐   ┌──────▼───┐   ┌─────▼─────┐
@@ -74,7 +74,7 @@ Agentes base em `agents/_defaults/`:
 | **task-manager** | Produtividade, gestão de tarefas |
 | **agent-builder** | Meta/Infraestrutura — criação de novos agentes |
 
-Novos agentes são criados com `./create-agent.sh`. Cada agente define schedule, budget e integrações no seu `config.yaml`.
+Novos agentes são criados com `./scripts/create-agent.sh`. Cada agente define schedule, budget e integrações no seu `config.yaml`.
 
 ## Estrutura
 
@@ -130,8 +130,9 @@ hawkai/
 ├── logs/                        # <agente>_YYYY-MM-DD.jsonl
 ├── metrics/                     # YYYY-MM-DD.jsonl
 ├── dashboard/                   # Next.js 15 (porta 3040)
-├── create-agent.sh              # scaffolding de novos agentes
-├── setup-cron.sh                # configuração do cron
+├── scripts/                     # scripts utilitários
+│   ├── create-agent.sh          # scaffolding de novos agentes
+│   └── setup-cron.sh            # configuração do cron
 ├── AGENTS.md                    # regras operacionais
 ├── USER.md                      # perfil do usuário
 └── CLAUDE.md                    # instruções do projeto
@@ -172,7 +173,7 @@ python3 lib/agent-scheduler.py --mark-ran task-manager
 
 Classifica agentes em: `due` | `waiting` | `inactive` | `budget_blocked`
 
-O cron é configurado via `./setup-cron.sh`.
+O cron é configurado via `./scripts/setup-cron.sh`.
 
 ## Comunicação entre Agentes
 

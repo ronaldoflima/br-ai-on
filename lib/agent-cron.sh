@@ -68,9 +68,9 @@ start_session() {
     return 0
   fi
 
-  tmux new-session -d -s "$session" -c "$working_dir" \
-    "$CLAUDE --model $model --permission-mode auto --allowedTools '*'"
-  sleep 3
+  tmux new-session -d -s "$session" -c "$working_dir"
+  tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+  sleep 5
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
   log "START $session em $working_dir (model=$model)"
@@ -94,7 +94,7 @@ if [ "${inbox_count:-0}" -gt 0 ]; then
   tarefas_model=$(get_agent_model "$HAWKAI/agents/_defaults/task-manager/config.yaml")
   if heartbeat_is_processing "$heartbeat"; then
     start_session "hawkai-task-manager" "$HAWKAI" \
-      "Read $HAWKAI/.claude/skills/agent-inbox-router/SKILL.md and follow the instructions exactly." \
+      "Read $HAWKAI/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. Agent: task-manager. HawkAI base: $HAWKAI." \
       "${tarefas_model:-$DEFAULT_MODEL}"
   else
     log "SKIP hawkai-task-manager — heartbeat processing recente"
@@ -168,7 +168,7 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
 
     log "Handoff: iniciando $session para $handoff_file"
 
-    prompt="Read $HAWKAI/.claude/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. HawkAI base: $HAWKAI. Working directory: $working_dir."
+    prompt="Read $HAWKAI/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. HawkAI base: $HAWKAI. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
 
     start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
@@ -216,7 +216,7 @@ for a in data.get('due', []):
 
     [ -z "$agent_dir" ] && agent_dir="$HAWKAI"
 
-    prompt="Read $HAWKAI/.claude/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. HawkAI base: $HAWKAI. Working directory: $agent_dir."
+    prompt="Read $HAWKAI/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. HawkAI base: $HAWKAI. Working directory: $agent_dir."
 
     start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
 

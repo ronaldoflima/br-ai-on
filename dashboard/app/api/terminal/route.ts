@@ -86,6 +86,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const body = await req.json();
+  const name = safeSession(body.name);
+  if (!name) return NextResponse.json({ error: "Nome de sessão inválido" }, { status: 400 });
+
+  try {
+    execSync(`tmux new-session -d -s '${name}' 2>/dev/null`, { timeout: 5000 });
+    return NextResponse.json({ ok: true, name });
+  } catch {
+    return NextResponse.json({ error: "Falha ao criar sessão" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const session = safeSession(req.nextUrl.searchParams.get("session"));
   if (!session) return NextResponse.json({ error: "Sessão inválida" }, { status: 400 });
