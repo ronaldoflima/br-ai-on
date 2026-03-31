@@ -61,7 +61,7 @@ async function printQr(text) {
     const qr = await qrcode.toString(text, { type: "terminal", small: true });
     console.log(qr);
   } catch {
-    console.log("URL para QR code:", text, "\n");
+    console.log("(QR code indisponível — instale dependências em dashboard/ com npm install)\n");
   }
 }
 
@@ -82,9 +82,7 @@ async function main() {
 
   await printQr(otpauth);
 
-  console.log(`Ou adicione manualmente:`);
-  console.log(`  Service: ${SERVICE_NAME}`);
-  console.log(`  Secret:  ${secret}\n`);
+  console.log(`Escaneie o QR code acima com o app autenticador.\n`);
 
   env.TOTP_SECRET = secret;
   writeEnv(env);
