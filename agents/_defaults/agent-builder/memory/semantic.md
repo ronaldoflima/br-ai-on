@@ -1,0 +1,3 @@
+# Memoria Semantica
+
+(vazio)

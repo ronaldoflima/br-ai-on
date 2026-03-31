@@ -1,0 +1,22 @@
+{
+  "name": "agents-dashboard",
+  "version": "0.5.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3040 --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --port 3040 --hostname 0.0.0.0"
+  },
+  "dependencies": {
+    "ansi-to-html": "^0.7.2",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

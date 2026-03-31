@@ -1,0 +1,17 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "3040:3040"
+    environment:
+      - NODE_ENV=production
+      - PORT=3040
+      - AGENTS_DIR=/data/agents
+      - METRICS_DIR=/data/metrics
+      - LOGS_DIR=/data/logs
+    volumes:
+      - ../agents:/data/agents:ro
+      - ../metrics:/data/metrics:ro
+      - ../logs:/data/logs:ro
+      - ~/.claude/projects:/home/nextjs/.claude/projects:ro
+    restart: unless-stopped
