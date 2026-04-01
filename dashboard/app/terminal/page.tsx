@@ -51,10 +51,13 @@ export default function TerminalPage() {
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
   const [directMode, setDirectMode] = useState(true);
+  const [captureLines, setCaptureLines] = useState(() => {
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
+    return 100;
+  });
   const outputRef = useRef<HTMLPreElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -66,21 +69,62 @@ export default function TerminalPage() {
       .catch(() => setLoadingSessions(false));
   };
 
-  const fetchOutput = useCallback(() => {
-    if (!selected) return;
-    fetch(`/api/terminal?session=${encodeURIComponent(selected)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.output !== undefined) setOutput(data.output);
-      })
-      .catch(() => {});
-  }, [selected]);
+  const connectSSE = useCallback((session: string, lines: number) => {
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}`);
+    es.addEventListener("output", (e) => {
+      try { setOutput(JSON.parse(e.data)); } catch {}
+    });
+    es.onerror = () => {
+      es.close();
+      sseRef.current = null;
+    };
+    sseRef.current = es;
+  }, []);
 
   useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
+    const el = outputRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottom) el.scrollTop = el.scrollHeight;
   }, [output]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [vpHeight, setVpHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      setVpHeight(vv.height);
+      window.scrollTo(0, 0);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !selected) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const saved = { html: html.style.overflow, body: body.style.overflow };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = saved.html;
+      body.style.overflow = saved.body;
+    };
+  }, [isMobile, selected]);
 
   useEffect(() => {
     fetchSessions();
@@ -89,16 +133,24 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (!selected) { setOutput(""); return; }
-    fetchOutput();
-    pollRef.current = setInterval(fetchOutput, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [selected, fetchOutput]);
+    if (!selected) {
+      setOutput("");
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+      return;
+    }
+    connectSSE(selected, captureLines);
+    return () => {
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+    };
+  }, [selected, captureLines, connectSSE]);
+
+  useEffect(() => {
+    if (isMobile && directMode) setDirectMode(false);
+  }, [isMobile]);
 
   useEffect(() => {
     if (directMode && selected) {
-      hiddenInputRef.current?.focus();
+      outputRef.current?.focus();
     } else if (!directMode && selected) {
       inputRef.current?.focus();
     }
@@ -112,9 +164,8 @@ export default function TerminalPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session: selected, key, ctrl, meta, shift }),
       });
-      setTimeout(fetchOutput, 150);
     } catch {}
-  }, [selected, fetchOutput]);
+  }, [selected]);
 
   const sendText = async (text: string) => {
     if (!selected || !text.trim()) return;
@@ -128,7 +179,6 @@ export default function TerminalPage() {
       });
       if (res.ok) {
         setInput("");
-        setTimeout(fetchOutput, 500);
       } else {
         const d = await res.json();
         setError(d.error || "Erro ao enviar");
@@ -140,6 +190,8 @@ export default function TerminalPage() {
   };
 
   const handleDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+
     // AltGr no Windows/Linux = Ctrl+Alt juntos — não é modificador real
     const isAltGr = e.ctrlKey && e.altKey;
     // No Mac, Command (metaKey) é mapeado para Ctrl no contexto de terminal
@@ -332,9 +384,23 @@ export default function TerminalPage() {
         )}
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{selected}</span>
         <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          <input
+            type="number"
+            min={10}
+            max={2000}
+            value={captureLines}
+            onChange={(e) => {
+              const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
+              setCaptureLines(v);
+              localStorage.setItem("termCaptureLines", String(v));
+            }}
+            title="Linhas de scrollback capturadas"
+            className="input"
+            style={{ width: 60, fontSize: 11, padding: "3px 6px", textAlign: "center" }}
+          />
           <button
             className="btn"
-            onClick={() => { setLoadingSessions(true); fetchSessions(); fetchOutput(); }}
+            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines); }}
             style={{ fontSize: 11 }}
           >
             Atualizar
@@ -350,22 +416,13 @@ export default function TerminalPage() {
         </div>
       </div>
 
-      {directMode && (
-        <input
-          ref={hiddenInputRef}
-          onKeyDown={handleDirectKeyDown}
-          onChange={() => {}}
-          value=""
-          autoComplete="off"
-          style={{ position: "fixed", opacity: 0, pointerEvents: "none", width: 1, height: 1, top: 0, left: 0 }}
-          aria-hidden="true"
-        />
-      )}
-
       <pre
         ref={outputRef}
-        tabIndex={-1}
-        onClick={() => directMode && hiddenInputRef.current?.focus()}
+        tabIndex={directMode ? 0 : -1}
+        onKeyDown={directMode ? handleDirectKeyDown : undefined}
+        onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
+        onTouchEnd={isMobile ? () => inputRef.current?.focus() : undefined}
+        onClick={() => directMode && outputRef.current?.focus()}
         style={{
           flex: 1,
           background: "#0d0d0d",
@@ -378,8 +435,7 @@ export default function TerminalPage() {
           fontFamily: "monospace",
           lineHeight: 1.5,
           color: "#d4d4d4",
-          whiteSpace: "pre-wrap",
-          wordWrap: "break-word",
+          whiteSpace: "pre",
           minHeight: 0,
           outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
           cursor: directMode ? "text" : "default",
@@ -399,6 +455,8 @@ export default function TerminalPage() {
             key={title}
             className="btn"
             title={title}
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
             onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
             style={{ fontSize: 11, padding: "4px 8px", minWidth: 0, fontFamily: "monospace" }}
           >
@@ -434,6 +492,8 @@ export default function TerminalPage() {
             />
             <button
               className="btn btn-primary"
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendText(input); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
               onClick={() => sendText(input)}
               disabled={sending || !input.trim()}
               style={{ fontSize: 12, minWidth: 60 }}
@@ -458,7 +518,28 @@ export default function TerminalPage() {
   ) : null;
 
   return (
-    <div style={{ marginLeft: -24, marginRight: -24, marginTop: -24, padding: "16px 24px", display: "flex", flexDirection: "column", height: "100dvh", boxSizing: "border-box" }}>
+    <div ref={containerRef} style={isMobile && selected ? {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: vpHeight ?? "100dvh",
+      padding: "8px 12px",
+      display: "flex",
+      flexDirection: "column",
+      boxSizing: "border-box",
+      overflow: "hidden",
+      background: "var(--bg-primary)",
+      zIndex: 100,
+    } : {
+      marginLeft: -24, marginRight: -24, marginTop: -24,
+      padding: "16px 24px",
+      display: "flex",
+      flexDirection: "column",
+      height: vpHeight ?? "100dvh",
+      boxSizing: "border-box",
+      overflow: "hidden",
+    }}>
       <div className="page-header" style={{ marginBottom: 12, flexShrink: 0 }}>
         <h1 className="page-title">Terminais</h1>
       </div>
