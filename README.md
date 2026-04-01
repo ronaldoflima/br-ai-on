@@ -11,23 +11,24 @@ git clone <repo> br-ai-on && cd br-ai-on
 cp .env.example .env
 ```
 
-### 2. Configurar TOTP (autenticação do dashboard)
+### 2. Configurar TOTP (autenticação do dashboard) - OPCIONAL
 
 ```bash
 node scripts/setup-totp.js
 # Escaneie o QR code com Google Authenticator ou 1Password
 ```
 
-### 3. Instalar dependências do dashboard
+### 3. Instalar dependências e buildar o dashboard
 
 ```bash
-cd dashboard && npm install && cd ..
+cd dashboard && npm install && npm run build && cd ..
 ```
 
 ### 4. Iniciar o dashboard
 
 ```bash
-cd dashboard && npm run dev
+npm run start   # produção
+npm run dev     # desenvolvimento
 # Acessível em http://localhost:3040
 ```
 
@@ -227,7 +228,7 @@ http://<tailscale-ip>:3040
 
 O dashboard Next.js precisa estar rodando no host:
 ```bash
-cd dashboard && npm run dev -- --hostname 0.0.0.0 --port 3040
+npm run start
 ```
 
 ### Acessar os Agentes via SSH

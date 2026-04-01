@@ -4,11 +4,7 @@ const SESSION_COOKIE = "braion_session";
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
 export function middleware(req: NextRequest) {
-  // Only allow DISABLE_AUTH in development
-  if (
-    process.env.DISABLE_AUTH === "true" &&
-    process.env.NODE_ENV === "development"
-  ) {
+  if (process.env.DISABLE_AUTH === "true") {
     return NextResponse.next();
   }
 
