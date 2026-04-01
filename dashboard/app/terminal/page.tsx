@@ -20,18 +20,18 @@ interface TmuxSession {
   activity: string | null;
 }
 
-const SPECIAL_KEYS: { label: string; key: string; title: string }[] = [
+const SPECIAL_KEYS: { label: string; key: string; ctrl?: boolean; title: string }[] = [
   { label: "Enter", key: "Enter", title: "Enter" },
-  { label: "↑", key: "Up", title: "Seta cima" },
-  { label: "↓", key: "Down", title: "Seta baixo" },
-  { label: "←", key: "Left", title: "Seta esquerda" },
-  { label: "→", key: "Right", title: "Seta direita" },
+  { label: "↑", key: "ArrowUp", title: "Seta cima" },
+  { label: "↓", key: "ArrowDown", title: "Seta baixo" },
+  { label: "←", key: "ArrowLeft", title: "Seta esquerda" },
+  { label: "→", key: "ArrowRight", title: "Seta direita" },
   { label: "Tab", key: "Tab", title: "Tab" },
-  { label: "⇤Tab", key: "BTab", title: "Shift+Tab" },
-  { label: "Ctrl+C", key: "C-c", title: "Ctrl+C (interromper)" },
-  { label: "Ctrl+B", key: "C-b", title: "Ctrl+B (prefixo tmux)" },
-  { label: "Ctrl+E", key: "C-e", title: "Ctrl+E" },
-  { label: "Ctrl+T", key: "C-t", title: "Ctrl+T" },
+  { label: "⇤Tab", key: "Tab", title: "Shift+Tab" },
+  { label: "Ctrl+C", key: "c", ctrl: true, title: "Ctrl+C (interromper)" },
+  { label: "Ctrl+B", key: "b", ctrl: true, title: "Ctrl+B (prefixo tmux)" },
+  { label: "Ctrl+E", key: "e", ctrl: true, title: "Ctrl+E" },
+  { label: "Ctrl+T", key: "t", ctrl: true, title: "Ctrl+T" },
   { label: "Esc", key: "Escape", title: "Escape" },
 ];
 
@@ -50,9 +50,11 @@ export default function TerminalPage() {
   const [newSessionName, setNewSessionName] = useState("");
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
+  const [directMode, setDirectMode] = useState(true);
   const outputRef = useRef<HTMLPreElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -69,9 +71,7 @@ export default function TerminalPage() {
     fetch(`/api/terminal?session=${encodeURIComponent(selected)}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.output !== undefined) {
-          setOutput(data.output);
-        }
+        if (data.output !== undefined) setOutput(data.output);
       })
       .catch(() => {});
   }, [selected]);
@@ -96,15 +96,35 @@ export default function TerminalPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [selected, fetchOutput]);
 
-  const sendKeys = async () => {
-    if (!selected || !input.trim()) return;
+  useEffect(() => {
+    if (directMode && selected) {
+      hiddenInputRef.current?.focus();
+    } else if (!directMode && selected) {
+      inputRef.current?.focus();
+    }
+  }, [directMode, selected]);
+
+  const sendKey = useCallback(async (key: string, ctrl = false, meta = false, shift = false) => {
+    if (!selected) return;
+    try {
+      await fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: selected, key, ctrl, meta, shift }),
+      });
+      setTimeout(fetchOutput, 150);
+    } catch {}
+  }, [selected, fetchOutput]);
+
+  const sendText = async (text: string) => {
+    if (!selected || !text.trim()) return;
     setSending(true);
     setError("");
     try {
       const res = await fetch("/api/terminal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session: selected, text: input }),
+        body: JSON.stringify({ session: selected, text }),
       });
       if (res.ok) {
         setInput("");
@@ -119,75 +139,32 @@ export default function TerminalPage() {
     setSending(false);
   };
 
-  const sendKey = useCallback(async (key: string) => {
-    if (!selected || sending) return;
-    setSending(true);
-    setError("");
-    try {
-      const res = await fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session: selected, key }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        setError(d.error || "Erro ao enviar tecla");
-      } else {
-        setTimeout(fetchOutput, 300);
-      }
-    } catch {
-      setError("Erro de conexão");
-    }
-    setSending(false);
-  }, [selected, sending, fetchOutput]);
+  const handleDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // AltGr no Windows/Linux = Ctrl+Alt juntos — não é modificador real
+    const isAltGr = e.ctrlKey && e.altKey;
+    // No Mac, Command (metaKey) é mapeado para Ctrl no contexto de terminal
+    const ctrl = isAltGr ? false : (e.ctrlKey || e.metaKey);
+    const meta = isAltGr ? false : e.altKey;
+    const shift = e.shiftKey;
+
+    // Teclas que têm comportamento padrão indesejado no browser
+    const shouldPrevent = ctrl || meta || [
+      "Tab", "Enter", "Backspace", "Escape", "Delete",
+      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+      "Home", "End", "PageUp", "PageDown",
+      "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+    ].includes(e.key);
+
+    if (shouldPrevent) e.preventDefault();
+
+    sendKey(e.key, ctrl, meta, shift);
+  };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.trim()) {
-        sendKeys();
-      } else {
-        sendKey("Enter");
-      }
-    }
-  };
-
-  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLPreElement>) => {
-    const arrowMap: Record<string, string> = {
-      ArrowUp: "Up", ArrowDown: "Down",
-      ArrowLeft: "Left", ArrowRight: "Right",
-    };
-    if (arrowMap[e.key]) {
-      e.preventDefault();
-      sendKey(arrowMap[e.key]);
-      return;
-    }
-
-    if (e.key === "Tab") {
-      e.preventDefault();
-      sendKey(e.shiftKey ? "BTab" : "Tab");
-      return;
-    }
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendKey("Enter");
-      return;
-    }
-
-    if (e.key === "Escape") {
-      e.preventDefault();
-      sendKey("Escape");
-      return;
-    }
-
-    if (e.ctrlKey) {
-      const ctrlMap: Record<string, string> = { b: "C-b", c: "C-c", e: "C-e", t: "C-t" };
-      const tmuxKey = ctrlMap[e.key.toLowerCase()];
-      if (tmuxKey) {
-        e.preventDefault();
-        sendKey(tmuxKey);
-      }
+      if (input.trim()) sendText(input);
+      else sendKey("Enter");
     }
   };
 
@@ -373,10 +350,22 @@ export default function TerminalPage() {
         </div>
       </div>
 
+      {directMode && (
+        <input
+          ref={hiddenInputRef}
+          onKeyDown={handleDirectKeyDown}
+          onChange={() => {}}
+          value=""
+          autoComplete="off"
+          style={{ position: "fixed", opacity: 0, pointerEvents: "none", width: 1, height: 1, top: 0, left: 0 }}
+          aria-hidden="true"
+        />
+      )}
+
       <pre
         ref={outputRef}
-        tabIndex={0}
-        onKeyDown={handleTerminalKeyDown}
+        tabIndex={-1}
+        onClick={() => directMode && hiddenInputRef.current?.focus()}
         style={{
           flex: 1,
           background: "#0d0d0d",
@@ -389,10 +378,11 @@ export default function TerminalPage() {
           fontFamily: "monospace",
           lineHeight: 1.5,
           color: "#d4d4d4",
-          whiteSpace: "pre",
+          whiteSpace: "pre-wrap",
+          wordWrap: "break-word",
           minHeight: 0,
-          outline: "none",
-          cursor: "default",
+          outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
+          cursor: directMode ? "text" : "default",
         }}
         dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
       >
@@ -404,13 +394,12 @@ export default function TerminalPage() {
       )}
 
       <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap", flexShrink: 0 }}>
-        {SPECIAL_KEYS.map(({ label, key, title }) => (
+        {SPECIAL_KEYS.map(({ label, key, ctrl, title }) => (
           <button
-            key={key}
+            key={title}
             className="btn"
             title={title}
-            onClick={() => sendKey(key)}
-            disabled={sending}
+            onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
             style={{ fontSize: 11, padding: "4px 8px", minWidth: 0, fontFamily: "monospace" }}
           >
             {label}
@@ -418,24 +407,48 @@ export default function TerminalPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 6, flexShrink: 0 }}>
-        <input
-          ref={inputRef}
-          className="input"
-          style={{ flex: 1, fontFamily: "monospace", fontSize: 12 }}
-          placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-        />
-        <button
-          className="btn btn-primary"
-          onClick={sendKeys}
-          disabled={sending || !input.trim()}
-          style={{ fontSize: 12, minWidth: 60 }}
-        >
-          {sending ? "..." : "Enviar"}
-        </button>
+      <div style={{ display: "flex", gap: 8, marginTop: 6, flexShrink: 0, alignItems: "center" }}>
+        {directMode ? (
+          <>
+            <div style={{ flex: 1, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+              modo direto • cada tecla é enviada imediatamente
+            </div>
+            <button
+              className="btn"
+              onClick={() => setDirectMode(false)}
+              style={{ fontSize: 11, padding: "4px 8px" }}
+            >
+              Campo de texto
+            </button>
+          </>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              className="input"
+              style={{ flex: 1, fontFamily: "monospace", fontSize: 12 }}
+              placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={() => sendText(input)}
+              disabled={sending || !input.trim()}
+              style={{ fontSize: 12, minWidth: 60 }}
+            >
+              {sending ? "..." : "Enviar"}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setDirectMode(true)}
+              style={{ fontSize: 11, padding: "4px 8px" }}
+            >
+              Modo direto
+            </button>
+          </>
+        )}
       </div>
     </div>
   ) : !isMobile ? (
