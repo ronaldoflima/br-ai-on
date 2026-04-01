@@ -273,13 +273,20 @@ export default function TerminalPage() {
   };
 
   const CURSOR_MARKER = "\uE000";
-  const CURSOR_HTML = '<span class="terminal-cursor">|</span>';
+  const CURSOR_PLACEHOLDER = "__TERMINAL_CURSOR__";
+  const CURSOR_HTML = '<span class="terminal-cursor"></span>';
 
   const outputHtml = useMemo(() => {
     if (!output) return null;
     try {
-      const html = ansiConverter.toHtml(output);
-      return html.includes(CURSOR_MARKER) ? html.replace(CURSOR_MARKER, CURSOR_HTML) : html;
+      // Replace PUA marker with safe ASCII placeholder before ANSI-to-HTML
+      // conversion — escapeXML encodes \uE000 as &#xE000; which breaks
+      // the raw-character check that was here before.
+      const safe = output.replace(CURSOR_MARKER, CURSOR_PLACEHOLDER);
+      const html = ansiConverter.toHtml(safe);
+      return html.includes(CURSOR_PLACEHOLDER)
+        ? html.replace(CURSOR_PLACEHOLDER, CURSOR_HTML)
+        : html;
     } catch { return null; }
   }, [output]);
 
