@@ -7,7 +7,7 @@ Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui 
 ### 1. Clonar e configurar
 
 ```bash
-git clone <repo> br-ai-on && cd br-ai-on
+git clone https://github.com/(usuário)flima/br-ai-on.git && cd br-ai-on
 cp .env.example .env
 ```
 
