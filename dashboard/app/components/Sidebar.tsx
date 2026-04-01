@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
-import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconMenu, IconClose } from "./icons";
+import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconMenu, IconClose, IconGithub } from "./icons";
 
 const NAV = [
   { href: "/", label: "Overview", icon: IconDashboard },
@@ -25,10 +25,18 @@ interface HealthData {
   pending_handoffs: number;
 }
 
+interface VersionData {
+  current: string;
+  latest: string | null;
+  hasUpdate: boolean;
+  repo: string;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
+  const [version, setVersion] = useState<VersionData | null>(null);
   const router = useRouter();
 
   async function handleLogout() {
@@ -51,6 +59,13 @@ export function Sidebar() {
     fetchHealth();
     const interval = setInterval(fetchHealth, 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/version")
+      .then((r) => r.ok ? r.json() : null)
+      .then(setVersion)
+      .catch(() => {});
   }, []);
 
   return (
@@ -91,6 +106,19 @@ export function Sidebar() {
           ))}
         </ul>
         <button onClick={handleLogout} className={styles.logoutBtn}>Sair</button>
+        {version && (
+          <div className={styles.versionStrip}>
+            <a href={version.repo} target="_blank" rel="noopener noreferrer" className={styles.versionLink}>
+              <IconGithub />
+              <span>v{version.current}</span>
+            </a>
+            {version.hasUpdate && (
+              <a href={`${version.repo}/releases`} target="_blank" rel="noopener noreferrer" className={styles.updateBadge}>
+                v{version.latest} disponível
+              </a>
+            )}
+          </div>
+        )}
         {health && (
           <div className={styles.healthStrip}>
             <div className={styles.healthRow}>

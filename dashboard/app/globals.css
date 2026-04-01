@@ -372,3 +372,11 @@ a:hover { color: var(--accent-hover); }
   .split-view { grid-template-columns: 1fr; }
   .filters .input, .filters .select { width: 100%; min-width: unset; }
 }
+
+
+/* Terminal cursor */
+.terminal-cursor { animation: terminal-blink 1s step-end infinite; }
+@keyframes terminal-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
