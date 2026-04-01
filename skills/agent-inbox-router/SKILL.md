@@ -11,9 +11,7 @@ Processe as notas do inbox e crie handoffs para os agentes corretos. Ao terminar
 
 ## 1. Carregar Configuração e Construir Mapa de Domínios
 
-Leia `agents/<nome>/config.yaml` e extraia:
-- `integrations.obsidian.inbox` → diretório inbox no Obsidian (ex: `agents/inbox`)
-- `integrations.obsidian.forwarded` → diretório destino após roteamento (ex: `agents/encaminhado`)
+Leia `agents/<nome>/config.yaml` e extraia o diretório inbox local (padrão: `agents/inbox`).
 
 Use **Glob** para encontrar todos os configs: `agents/*/config.yaml`
 
@@ -27,25 +25,22 @@ Monte um mapa `{ nome → domain }` com todos os agentes encontrados.
 
 ## 2. Listar Notas do Inbox
 
+Use **Glob** para listar arquivos `.md` no inbox:
 ```
-mcp__personal-mcp-gateway__obsidian_list_notes(directory: "<inbox_dir do config>")
+Glob: agents/inbox/*.md
 ```
 
 Para cada nota:
 
 ### 2.1 Verificar se Já Foi Roteada
 
-```
-mcp__personal-mcp-gateway__obsidian_extract_frontmatter(path: "<nota>")
-```
+Use **Read** para ler o arquivo e extraia o frontmatter YAML (entre `---`).
 
 Se o frontmatter já tiver `assigned_to` preenchido → **pule esta nota**.
 
 ### 2.2 Ler Conteúdo
 
-```
-mcp__personal-mcp-gateway__obsidian_read_note(path: "<nota>")
-```
+Use **Read** para ler o conteúdo completo da nota.
 
 ### 2.3 Determinar Agente
 
@@ -65,43 +60,23 @@ bash "$BRAION/lib/handoff.sh" send "<nome>" "<agente>" action null \
 
 Guarde o caminho do arquivo retornado para extrair o `handoff_id` (formato `HO-YYYYMMDD-NNN`).
 
-### 2.5 Atualizar Nota
+### 2.5 Atualizar e Mover Nota
 
-```
-mcp__personal-mcp-gateway__obsidian_update_note(
-  path: "<nota>",
-  frontmatter: {
-    assigned_to: "<agente>",
-    routed_at: "<timestamp ISO>",
-    handoff_id: "<HO-id>",
-    status: "forwarded"
-  }
-)
+Adicione frontmatter de roteamento ao conteúdo da nota:
+```yaml
+---
+assigned_to: "<agente>"
+routed_at: "<timestamp ISO>"
+handoff_id: "<HO-id>"
+status: "forwarded"
+---
 ```
 
-### 2.6 Mover para Forwarded
+Use **Write** para salvar a nota atualizada em `agents/forwarded/<nome-do-arquivo>`.
 
-Leia a nota atualizada para obter o conteúdo completo com o frontmatter novo:
-
-```
-mcp__personal-mcp-gateway__obsidian_read_note(path: "<nota>")
-```
-
-Extraia o nome do arquivo da nota (ex: `agents/inbox/minha-nota.md` → `minha-nota.md`).
-
-Crie a nota na pasta forwarded (use o `forwarded_dir` lido do config):
-
-```
-mcp__personal-mcp-gateway__obsidian_create_note(
-  path: "<forwarded_dir>/<nome-do-arquivo>",
-  content: "<conteúdo lido acima>"
-)
-```
-
-Delete a nota original do inbox:
-
-```
-mcp__personal-mcp-gateway__obsidian_delete_note(path: "<nota>")
+Depois, delete o arquivo original do inbox:
+```bash
+rm "$BRAION/agents/inbox/<nome-do-arquivo>"
 ```
 
 ## 3. Log e Encerramento

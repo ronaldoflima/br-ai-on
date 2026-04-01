@@ -4,40 +4,58 @@ Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui 
 
 ## Quickstart
 
-### 1. Clonar e configurar
-
 ```bash
-git clone <repo> br-ai-on && cd br-ai-on
-cp .env.example .env
+# Instala, faz build e sobe o serviço de produção automaticamente
+bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/install.sh)
 ```
 
-### 2. Configurar TOTP (autenticação do dashboard) - OPCIONAL
+Diretório padrão: `~/br-ai-on`. Para customizar:
+
+```bash
+REPO_DIR=~/outro/caminho bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/install.sh)
+```
+
+Após a instalação, o dashboard estará disponível em `http://localhost:3040`.
+
+### Configurar TOTP (autenticação do dashboard) — opcional
 
 ```bash
 node scripts/setup-totp.js
 # Escaneie o QR code com Google Authenticator ou 1Password
 ```
 
-### 3. Instalar dependências e buildar o dashboard
+### Desinstalar
 
 ```bash
-cd dashboard && npm install && npm run build && cd ..
+bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/uninstall.sh)
 ```
 
-### 4. Iniciar o dashboard
+---
+
+## Ambientes
+
+| Ambiente | Diretório | Branch | Porta | Comando |
+|----------|-----------|--------|-------|---------|
+| Produção | `~/br-ai-on` | `main` | 3040 | `npm run start` |
+| Homolog | `~/projects/br-ai-on` | `homolog` | 3041 | `next dev --turbopack` |
+
+### Serviços systemd
 
 ```bash
-npm run start   # produção
-npm run dev     # desenvolvimento
-# Acessível em http://localhost:3040
+# Produção
+systemctl --user start braion.service
+systemctl --user stop braion.service
+journalctl --user -u braion.service -f
+
+# Homolog/Dev
+systemctl --user start dev-braion.service
+systemctl --user stop dev-braion.service
+journalctl --user -u dev-braion.service -f
 ```
 
-### 5. (Opcional) Configurar cron de orquestração
+### Auto-deploy
 
-```bash
-./scripts/setup-cron.sh
-# Roda lib/agent-scheduler.py a cada 5 minutos
-```
+O `scripts/install.sh` roda via cron a cada minuto — verifica se há commit novo na `main`, faz build com Turbopack e reinicia o serviço automaticamente. Logs em `logs/deploy-prod.log`.
 
 ---
 
@@ -104,7 +122,7 @@ br-ai-on/
 │           └── archive/
 ├── lib/                         # scripts utilitários
 │   ├── agent-scheduler.py       # determina agentes due
-│   ├── agent-cron.sh            # cron de 5min
+│   ├── agent-cron.sh            # cron de 1min
 │   ├── orchestrate.sh           # orquestração de sessões
 │   ├── logger.sh                # logging JSONL
 │   ├── handoff.sh               # comunicação P2P
@@ -116,7 +134,7 @@ br-ai-on/
 │   ├── optimize.sh              # otimização de IDENTITYs
 │   ├── validate_output.sh       # validação de saída
 │   └── feature-request.sh       # gestão de feature requests
-├── .claude/skills/              # skills do Claude Code
+├── skills/                      # skills do Claude Code
 │   ├── agent-init/              # inicialização de sessão
 │   ├── agent-wrapup/            # encerramento de sessão
 │   ├── agent-handoff/           # handoffs entre agentes
@@ -130,9 +148,10 @@ br-ai-on/
 ├── logs/                        # <agente>_YYYY-MM-DD.jsonl
 ├── metrics/                     # YYYY-MM-DD.jsonl
 ├── dashboard/                   # Next.js 15 (porta 3040)
-├── scripts/                     # scripts utilitários
-│   ├── create-agent.sh          # scaffolding de novos agentes
-│   └── setup-cron.sh            # configuração do cron
+├── scripts/
+│   ├── install.sh               # instalação + auto-deploy de produção
+│   ├── uninstall.sh             # remove o serviço systemd
+│   └── create-agent.sh          # scaffolding de novos agentes
 ├── AGENTS.md                    # regras operacionais
 ├── USER.md                      # perfil do usuário
 └── CLAUDE.md                    # instruções do projeto
@@ -164,7 +183,7 @@ O core funciona sem nenhuma integração externa — todo estado é Markdown, YA
 
 ## Scheduling
 
-O scheduler (`lib/agent-scheduler.py`) roda via cron a cada 5 minutos:
+O scheduler (`lib/agent-scheduler.py`) roda via cron a cada minuto:
 
 ```bash
 python3 lib/agent-scheduler.py              # ver status de todos
@@ -172,8 +191,6 @@ python3 lib/agent-scheduler.py --mark-ran task-manager
 ```
 
 Classifica agentes em: `due` | `waiting` | `inactive` | `budget_blocked`
-
-O cron é configurado via `./scripts/setup-cron.sh`.
 
 ## Comunicação entre Agentes
 
@@ -201,58 +218,38 @@ lib/handoff.sh next_id
 
 ## Acesso Remoto via Tailscale
 
-O BR.AI.ON pode ser acessado remotamente de qualquer dispositivo na sua rede Tailscale, permitindo monitorar o dashboard e acessar os agentes de qualquer lugar.
-
 ### Setup
 
-1. **Instalar Tailscale** no host que roda o BR.AI.ON (VPS ou desktop):
+1. **Instalar Tailscale** no host:
    ```bash
    curl -fsSL https://tailscale.com/install.sh | sh
    sudo tailscale up
-   ```
-
-2. **Autenticar** com sua conta Tailscale e copiar o IP da máquina:
-   ```bash
    tailscale ip -4   # ex: 100.x.x.x
    ```
 
-3. **Instalar Tailscale** no dispositivo cliente (laptop, celular) e fazer login com a mesma conta.
+2. **Instalar Tailscale** no cliente e fazer login com a mesma conta.
 
 ### Acessar o Dashboard
-
-Com ambos os dispositivos na mesma rede Tailscale:
 
 ```
 http://<tailscale-ip>:3040
 ```
 
-O dashboard Next.js precisa estar rodando no host:
-```bash
-npm run start
-```
-
-### Acessar os Agentes via SSH
+### Acessar via SSH
 
 ```bash
 ssh <user>@<tailscale-ip>
 ```
 
-Para atalho, adicione ao `~/.ssh/config`:
+Atalho em `~/.ssh/config`:
 ```
 Host braion
   HostName <tailscale-ip>
   User <user>
 ```
 
-Depois: `ssh braion`
+### Executar Sessões Remotas
 
-### Executar Sessões Remotas com Claude Code
-
-```bash
-ssh braion "cd ~/br-ai-on && claude --dangerously-skip-permissions -p '/agent-init'"
-```
-
-Ou interativamente:
 ```bash
 ssh -t braion "cd ~/br-ai-on && claude"
 ```
@@ -260,7 +257,7 @@ ssh -t braion "cd ~/br-ai-on && claude"
 ## Stack
 
 - **Orquestração**: Claude Code + Bash/Python
-- **Dashboard**: Next.js 15, React 19
+- **Dashboard**: Next.js 15, React 19, Turbopack
 - **Estado**: Markdown + YAML + JSON no filesystem
 - **Logs**: JSONL estruturado
 - **Integrações**: MCP (opcionais)
