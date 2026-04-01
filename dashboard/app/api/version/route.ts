@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 const REPO = "(usuário)flima/br-ai-on";
 const GITHUB_API = `https://api.github.com/repos/${REPO}/tags`;
@@ -7,7 +9,7 @@ let cache: { version: string | null; ts: number } = { version: null, ts: 0 };
 const TTL = 10 * 60 * 1000;
 
 export async function GET() {
-  const pkg = await import("../../../package.json");
+  const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8"));
   const current = pkg.version as string;
 
   let latest: string | null = null;

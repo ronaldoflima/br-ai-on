@@ -149,7 +149,7 @@ fi
 # ── 1. Obsidian inbox → roteamento pelo task-manager ─────────────────────────
 inbox_count=0
 if [ -d "$OBSIDIAN_INBOX" ]; then
-  inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | wc -l | xargs || true)
+  inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
 fi
 if [ "${inbox_count:-0}" -gt 0 ]; then
   log "Inbox: $inbox_count nota(s) encontrada(s)"
