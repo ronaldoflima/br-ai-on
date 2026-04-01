@@ -37,7 +37,8 @@ function insertCursorMarker(
   text: string,
   cursor: { x: number; y: number; paneHeight: number }
 ): string {
-  const lines = text.split("\n");
+  const trimmed = text.endsWith("\n") ? text.slice(0, -1) : text;
+  const lines = trimmed.split("\n");
   const visibleStart = Math.max(0, lines.length - cursor.paneHeight);
   const lineIndex = visibleStart + cursor.y;
 
