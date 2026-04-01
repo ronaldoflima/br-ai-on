@@ -5,8 +5,22 @@
   padding: 16px 24px;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.wrapperMobileSelected {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--bg-primary);
+  z-index: 100;
 }
 
 .header {
@@ -185,6 +199,13 @@
   font-size: 11px;
 }
 
+.captureLinesInput {
+  width: 60px;
+  font-size: 11px;
+  padding: 3px 6px;
+  text-align: center;
+}
+
 .killBtn {
   font-size: 11px;
   color: var(--error);
@@ -245,6 +266,19 @@
   gap: 8px;
   margin-top: 6px;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.directModeLabel {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.modeToggleBtn {
+  font-size: 11px;
+  padding: 4px 8px;
 }
 
 .textInput {
