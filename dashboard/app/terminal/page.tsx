@@ -52,9 +52,14 @@ export default function TerminalPage() {
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
   const [directMode, setDirectMode] = useState(true);
+  const [showConfig, setShowConfig] = useState(false);
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
+  });
+  const [refreshRate, setRefreshRate] = useState(() => {
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "300") || 300;
+    return 300;
   });
   const outputRef = useRef<HTMLPreElement>(null);
   const sseRef = useRef<EventSource | null>(null);
@@ -70,12 +75,12 @@ export default function TerminalPage() {
       .catch(() => setLoadingSessions(false));
   };
 
-  const connectSSE = useCallback((session: string, lines: number) => {
+  const connectSSE = useCallback((session: string, lines: number, rate: number = 300) => {
     if (sseRef.current) {
       sseRef.current.close();
       sseRef.current = null;
     }
-    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}`);
+    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}&rate=${rate}`);
     es.addEventListener("output", (e) => {
       try { setOutput(JSON.parse(e.data)); } catch {}
     });
@@ -139,11 +144,11 @@ export default function TerminalPage() {
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
       return;
     }
-    connectSSE(selected, captureLines);
+    connectSSE(selected, captureLines, refreshRate);
     return () => {
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
     };
-  }, [selected, captureLines, connectSSE]);
+  }, [selected, captureLines, refreshRate, connectSSE]);
 
   useEffect(() => {
     if (isMobile && directMode) setDirectMode(false);
@@ -267,9 +272,15 @@ export default function TerminalPage() {
     setKilling(false);
   };
 
+  const CURSOR_MARKER = "\uE000";
+  const CURSOR_HTML = '<span class="terminal-cursor">|</span>';
+
   const outputHtml = useMemo(() => {
     if (!output) return null;
-    try { return ansiConverter.toHtml(output); } catch { return null; }
+    try {
+      const html = ansiConverter.toHtml(output);
+      return html.includes(CURSOR_MARKER) ? html.replace(CURSOR_MARKER, CURSOR_HTML) : html;
+    } catch { return null; }
   }, [output]);
 
   const showSessionList = !isMobile || !selected;
@@ -351,22 +362,16 @@ export default function TerminalPage() {
         )}
         <span className={styles.terminalTitle}>{selected}</span>
         <div className={styles.toolbarActions}>
-          <input
-            type="number"
-            min={10}
-            max={2000}
-            value={captureLines}
-            onChange={(e) => {
-              const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
-              setCaptureLines(v);
-              localStorage.setItem("termCaptureLines", String(v));
-            }}
-            title="Linhas de scrollback capturadas"
-            className={`input ${styles.captureLinesInput}`}
-          />
           <button
             className={`btn ${styles.toolbarBtn}`}
-            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines); }}
+            onClick={() => setShowConfig((v) => !v)}
+            title="Configurações do terminal"
+          >
+            ⚙
+          </button>
+          <button
+            className={`btn ${styles.toolbarBtn}`}
+            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
           >
             Atualizar
           </button>
@@ -379,6 +384,42 @@ export default function TerminalPage() {
           </button>
         </div>
       </div>
+
+      {showConfig && (
+        <div className={styles.configPanel}>
+          <label className={styles.configLabel}>
+            Linhas de scrollback
+            <input
+              type="number"
+              min={10}
+              max={2000}
+              value={captureLines}
+              onChange={(e) => {
+                const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
+                setCaptureLines(v);
+                localStorage.setItem("termCaptureLines", String(v));
+              }}
+              className={`input ${styles.configInput}`}
+            />
+          </label>
+          <label className={styles.configLabel}>
+            Refresh rate (ms)
+            <input
+              type="number"
+              min={100}
+              max={10000}
+              step={100}
+              value={refreshRate}
+              onChange={(e) => {
+                const v = Math.max(100, Math.min(10000, parseInt(e.target.value) || 300));
+                setRefreshRate(v);
+                localStorage.setItem("termRefreshRate", String(v));
+              }}
+              className={`input ${styles.configInputWide}`}
+            />
+          </label>
+        </div>
+      )}
 
       <pre
         ref={outputRef}

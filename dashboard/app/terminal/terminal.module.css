@@ -292,6 +292,39 @@
   min-width: 60px;
 }
 
+.configPanel {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.configLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.configInput {
+  width: 64px;
+  font-size: 11px;
+  padding: 3px 6px;
+  text-align: center;
+}
+
+.configInputWide {
+  composes: configInput;
+  width: 72px;
+}
+
 .emptyState {
   flex: 1;
   display: flex;
