@@ -363,17 +363,15 @@ export default function TerminalPage() {
         <span className={styles.terminalTitle}>{selected}</span>
         <div className={styles.toolbarActions}>
           <button
-            className="btn"
+            className={`btn ${styles.toolbarBtn}`}
             onClick={() => setShowConfig((v) => !v)}
             title="Configurações do terminal"
-            style={{ fontSize: 11, padding: "3px 8px" }}
           >
             ⚙
           </button>
           <button
-            className="btn"
+            className={`btn ${styles.toolbarBtn}`}
             onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
-            style={{ fontSize: 11 }}
           >
             Atualizar
           </button>
@@ -388,12 +386,8 @@ export default function TerminalPage() {
       </div>
 
       {showConfig && (
-        <div style={{
-          display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap",
-          background: "var(--bg-secondary)", border: "1px solid var(--border)",
-          borderRadius: 6, padding: "8px 12px", marginBottom: 8, flexShrink: 0,
-        }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-secondary)" }}>
+        <div className={styles.configPanel}>
+          <label className={styles.configLabel}>
             Linhas de scrollback
             <input
               type="number"
@@ -405,11 +399,10 @@ export default function TerminalPage() {
                 setCaptureLines(v);
                 localStorage.setItem("termCaptureLines", String(v));
               }}
-              className="input"
-              style={{ width: 64, fontSize: 11, padding: "3px 6px", textAlign: "center" }}
+              className={`input ${styles.configInput}`}
             />
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-secondary)" }}>
+          <label className={styles.configLabel}>
             Refresh rate (ms)
             <input
               type="number"
@@ -422,8 +415,7 @@ export default function TerminalPage() {
                 setRefreshRate(v);
                 localStorage.setItem("termRefreshRate", String(v));
               }}
-              className="input"
-              style={{ width: 72, fontSize: 11, padding: "3px 6px", textAlign: "center" }}
+              className={`input ${styles.configInputWide}`}
             />
           </label>
         </div>
@@ -436,20 +428,8 @@ export default function TerminalPage() {
         onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
         onTouchEnd={isMobile ? () => inputRef.current?.focus() : undefined}
         onClick={() => directMode && outputRef.current?.focus()}
+        className={isMobile ? styles.outputMobile : styles.output}
         style={{
-          flex: 1,
-          background: "#0d0d0d",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 12,
-          margin: 0,
-          overflow: "auto",
-          fontSize: isMobile ? 10 : 11,
-          fontFamily: "monospace",
-          lineHeight: 1.5,
-          color: "#d4d4d4",
-          whiteSpace: "pre",
-          minHeight: 0,
           outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
           cursor: directMode ? "text" : "default",
         }}
@@ -462,32 +442,30 @@ export default function TerminalPage() {
         <div className={styles.errorMsg}>{error}</div>
       )}
 
-      <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap", flexShrink: 0 }}>
+      <div className={styles.specialKeys}>
         {SPECIAL_KEYS.map(({ label, key, ctrl, title }) => (
           <button
             key={title}
-            className="btn"
+            className={`btn ${styles.specialKeyBtn}`}
             title={title}
             onMouseDown={(e) => e.preventDefault()}
             onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
             onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
-            style={{ fontSize: 11, padding: "4px 8px", minWidth: 0, fontFamily: "monospace" }}
           >
             {label}
           </button>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 6, flexShrink: 0, alignItems: "center" }}>
+      <div className={styles.inputRow}>
         {directMode ? (
           <>
-            <div style={{ flex: 1, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+            <div className={styles.directModeLabel}>
               modo direto • cada tecla é enviada imediatamente
             </div>
             <button
-              className="btn"
+              className={`btn ${styles.modeToggleBtn}`}
               onClick={() => setDirectMode(false)}
-              style={{ fontSize: 11, padding: "4px 8px" }}
             >
               Campo de texto
             </button>
@@ -496,27 +474,24 @@ export default function TerminalPage() {
           <>
             <input
               ref={inputRef}
-              className="input"
-              style={{ flex: 1, fontFamily: "monospace", fontSize: 12 }}
+              className={`input ${styles.textInput}`}
               placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleInputKeyDown}
             />
             <button
-              className="btn btn-primary"
+              className={`btn btn-primary ${styles.sendBtn}`}
               onMouseDown={(e) => e.preventDefault()}
               onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendText(input); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
               onClick={() => sendText(input)}
               disabled={sending || !input.trim()}
-              style={{ fontSize: 12, minWidth: 60 }}
             >
               {sending ? "..." : "Enviar"}
             </button>
             <button
-              className="btn"
+              className={`btn ${styles.modeToggleBtn}`}
               onClick={() => setDirectMode(true)}
-              style={{ fontSize: 11, padding: "4px 8px" }}
             >
               Modo direto
             </button>
@@ -531,29 +506,8 @@ export default function TerminalPage() {
   ) : null;
 
   return (
-    <div ref={containerRef} style={isMobile && selected ? {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: vpHeight ?? "100dvh",
-      padding: "8px 12px",
-      display: "flex",
-      flexDirection: "column",
-      boxSizing: "border-box",
-      overflow: "hidden",
-      background: "var(--bg-primary)",
-      zIndex: 100,
-    } : {
-      marginLeft: -24, marginRight: -24, marginTop: -24,
-      padding: "16px 24px",
-      display: "flex",
-      flexDirection: "column",
-      height: vpHeight ?? "100dvh",
-      boxSizing: "border-box",
-      overflow: "hidden",
-    }}>
-      <div className="page-header" style={{ marginBottom: 12, flexShrink: 0 }}>
+    <div ref={containerRef} className={isMobile && selected ? styles.wrapperMobileSelected : styles.wrapper} style={{ height: vpHeight ?? "100dvh" }}>
+      <div className={`page-header ${styles.header}`}>
         <h1 className="page-title">Terminais</h1>
       </div>
 

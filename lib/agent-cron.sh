@@ -102,16 +102,6 @@ get_agent_model() {
 
 get_agent_command() {
   local config=$1
-  # Lê o campo command do config.yaml (pode ser multiline com | ou simples)
-  awk '/^command: *\\|/{found=1; next} found && /^  /{printf "%s", substr($0,3); next} found{found=0; exit}' "$config" 2>/dev/null | xargs
-  # Se não encontrou formato multiline, tenta formato simples
-  if [ -z "${cmd:-}" ]; then
-    awk '/^command:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
-  fi
-}
-
-get_agent_command() {
-  local config=$1
   # Lê campo command: do config.yaml, remove quotes
   awk '/^command:/{gsub(/^command:[[:space:]]*/,""); gsub(/^"|"$/,""); print}' "$config" 2>/dev/null
 }
@@ -247,12 +237,9 @@ if [ "$due_count" -gt 0 ]; then
   run_alone_active=false
   marked_agents=""
 
-  echo "$scheduler_output" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for a in data.get('due', []):
-    print(f\"{a['name']}\t{a.get('directory','')}\t{a.get('model','claude-sonnet-4-6')}\t{a.get('run_alone', False)}\t{a.get('command','')}\")
-" 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
+  echo "$scheduler_output" | jq -r '
+    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // "")] | @tsv
+  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
