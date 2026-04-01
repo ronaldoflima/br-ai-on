@@ -42,11 +42,11 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome
 ## 1. Carregar Identidade
 
 Leia os seguintes arquivos na raiz do projeto:
-- `agents/<nome>/SOUL.md` — sua personalidade e regras
+- `agents/<nome>/IDENTITY.md` — sua identidade e regras
 - `USER.md` — perfil do usuário
 - `AGENTS.md` — regras operacionais
 
-Adote a identidade definida no SOUL.md para esta sessão.
+Adote a identidade definida no IDENTITY.md para esta sessão.
 
 ## 2. Carregar Estado Persistente
 
