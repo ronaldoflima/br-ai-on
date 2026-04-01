@@ -122,6 +122,49 @@
   color: var(--error);
 }
 
+.versionStrip {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.versionLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.versionLink:hover {
+  color: var(--text-primary);
+}
+
+.updateBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: 2px 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  width: fit-content;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.updateBadge:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .healthStrip {
   padding: 12px 16px;
   border-top: 1px solid var(--border);
