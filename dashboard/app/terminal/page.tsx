@@ -21,18 +21,18 @@ interface TmuxSession {
   activity: string | null;
 }
 
-const SPECIAL_KEYS: { label: string; key: string; title: string }[] = [
+const SPECIAL_KEYS: { label: string; key: string; ctrl?: boolean; title: string }[] = [
   { label: "Enter", key: "Enter", title: "Enter" },
-  { label: "↑", key: "Up", title: "Seta cima" },
-  { label: "↓", key: "Down", title: "Seta baixo" },
-  { label: "←", key: "Left", title: "Seta esquerda" },
-  { label: "→", key: "Right", title: "Seta direita" },
+  { label: "↑", key: "ArrowUp", title: "Seta cima" },
+  { label: "↓", key: "ArrowDown", title: "Seta baixo" },
+  { label: "←", key: "ArrowLeft", title: "Seta esquerda" },
+  { label: "→", key: "ArrowRight", title: "Seta direita" },
   { label: "Tab", key: "Tab", title: "Tab" },
-  { label: "⇤Tab", key: "BTab", title: "Shift+Tab" },
-  { label: "Ctrl+C", key: "C-c", title: "Ctrl+C (interromper)" },
-  { label: "Ctrl+B", key: "C-b", title: "Ctrl+B (prefixo tmux)" },
-  { label: "Ctrl+E", key: "C-e", title: "Ctrl+E" },
-  { label: "Ctrl+T", key: "C-t", title: "Ctrl+T" },
+  { label: "⇤Tab", key: "Tab", title: "Shift+Tab" },
+  { label: "Ctrl+C", key: "c", ctrl: true, title: "Ctrl+C (interromper)" },
+  { label: "Ctrl+B", key: "b", ctrl: true, title: "Ctrl+B (prefixo tmux)" },
+  { label: "Ctrl+E", key: "e", ctrl: true, title: "Ctrl+E" },
+  { label: "Ctrl+T", key: "t", ctrl: true, title: "Ctrl+T" },
   { label: "Esc", key: "Escape", title: "Escape" },
 ];
 
@@ -51,8 +51,13 @@ export default function TerminalPage() {
   const [newSessionName, setNewSessionName] = useState("");
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
+  const [directMode, setDirectMode] = useState(true);
+  const [captureLines, setCaptureLines] = useState(() => {
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
+    return 100;
+  });
   const outputRef = useRef<HTMLPreElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchSessions = () => {
@@ -65,23 +70,62 @@ export default function TerminalPage() {
       .catch(() => setLoadingSessions(false));
   };
 
-  const fetchOutput = useCallback(() => {
-    if (!selected) return;
-    fetch(`/api/terminal?session=${encodeURIComponent(selected)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.output !== undefined) {
-          setOutput(data.output);
-        }
-      })
-      .catch(() => {});
-  }, [selected]);
+  const connectSSE = useCallback((session: string, lines: number) => {
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}`);
+    es.addEventListener("output", (e) => {
+      try { setOutput(JSON.parse(e.data)); } catch {}
+    });
+    es.onerror = () => {
+      es.close();
+      sseRef.current = null;
+    };
+    sseRef.current = es;
+  }, []);
 
   useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
+    const el = outputRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottom) el.scrollTop = el.scrollHeight;
   }, [output]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [vpHeight, setVpHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      setVpHeight(vv.height);
+      window.scrollTo(0, 0);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !selected) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const saved = { html: html.style.overflow, body: body.style.overflow };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = saved.html;
+      body.style.overflow = saved.body;
+    };
+  }, [isMobile, selected]);
 
   useEffect(() => {
     fetchSessions();
@@ -90,26 +134,52 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (!selected) { setOutput(""); return; }
-    fetchOutput();
-    pollRef.current = setInterval(fetchOutput, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [selected, fetchOutput]);
+    if (!selected) {
+      setOutput("");
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+      return;
+    }
+    connectSSE(selected, captureLines);
+    return () => {
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+    };
+  }, [selected, captureLines, connectSSE]);
 
-  const sendKeys = async () => {
-    if (!selected || !input.trim()) return;
+  useEffect(() => {
+    if (isMobile && directMode) setDirectMode(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (directMode && selected) {
+      outputRef.current?.focus();
+    } else if (!directMode && selected) {
+      inputRef.current?.focus();
+    }
+  }, [directMode, selected]);
+
+  const sendKey = useCallback(async (key: string, ctrl = false, meta = false, shift = false) => {
+    if (!selected) return;
+    try {
+      await fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: selected, key, ctrl, meta, shift }),
+      });
+    } catch {}
+  }, [selected]);
+
+  const sendText = async (text: string) => {
+    if (!selected || !text.trim()) return;
     setSending(true);
     setError("");
     try {
       const res = await fetch("/api/terminal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session: selected, text: input }),
+        body: JSON.stringify({ session: selected, text }),
       });
       if (res.ok) {
         setInput("");
-        setTimeout(fetchOutput, 500);
       } else {
         const d = await res.json();
         setError(d.error || "Erro ao enviar");
@@ -120,75 +190,34 @@ export default function TerminalPage() {
     setSending(false);
   };
 
-  const sendKey = useCallback(async (key: string) => {
-    if (!selected || sending) return;
-    setSending(true);
-    setError("");
-    try {
-      const res = await fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session: selected, key }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        setError(d.error || "Erro ao enviar tecla");
-      } else {
-        setTimeout(fetchOutput, 300);
-      }
-    } catch {
-      setError("Erro de conexão");
-    }
-    setSending(false);
-  }, [selected, sending, fetchOutput]);
+  const handleDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+
+    // AltGr no Windows/Linux = Ctrl+Alt juntos — não é modificador real
+    const isAltGr = e.ctrlKey && e.altKey;
+    // No Mac, Command (metaKey) é mapeado para Ctrl no contexto de terminal
+    const ctrl = isAltGr ? false : (e.ctrlKey || e.metaKey);
+    const meta = isAltGr ? false : e.altKey;
+    const shift = e.shiftKey;
+
+    // Teclas que têm comportamento padrão indesejado no browser
+    const shouldPrevent = ctrl || meta || [
+      "Tab", "Enter", "Backspace", "Escape", "Delete",
+      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+      "Home", "End", "PageUp", "PageDown",
+      "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+    ].includes(e.key);
+
+    if (shouldPrevent) e.preventDefault();
+
+    sendKey(e.key, ctrl, meta, shift);
+  };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.trim()) {
-        sendKeys();
-      } else {
-        sendKey("Enter");
-      }
-    }
-  };
-
-  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLPreElement>) => {
-    const arrowMap: Record<string, string> = {
-      ArrowUp: "Up", ArrowDown: "Down",
-      ArrowLeft: "Left", ArrowRight: "Right",
-    };
-    if (arrowMap[e.key]) {
-      e.preventDefault();
-      sendKey(arrowMap[e.key]);
-      return;
-    }
-
-    if (e.key === "Tab") {
-      e.preventDefault();
-      sendKey(e.shiftKey ? "BTab" : "Tab");
-      return;
-    }
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendKey("Enter");
-      return;
-    }
-
-    if (e.key === "Escape") {
-      e.preventDefault();
-      sendKey("Escape");
-      return;
-    }
-
-    if (e.ctrlKey) {
-      const ctrlMap: Record<string, string> = { b: "C-b", c: "C-c", e: "C-e", t: "C-t" };
-      const tmuxKey = ctrlMap[e.key.toLowerCase()];
-      if (tmuxKey) {
-        e.preventDefault();
-        sendKey(tmuxKey);
-      }
+      if (input.trim()) sendText(input);
+      else sendKey("Enter");
     }
   };
 
@@ -322,9 +351,22 @@ export default function TerminalPage() {
         )}
         <span className={styles.terminalTitle}>{selected}</span>
         <div className={styles.toolbarActions}>
+          <input
+            type="number"
+            min={10}
+            max={2000}
+            value={captureLines}
+            onChange={(e) => {
+              const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
+              setCaptureLines(v);
+              localStorage.setItem("termCaptureLines", String(v));
+            }}
+            title="Linhas de scrollback capturadas"
+            className={`input ${styles.captureLinesInput}`}
+          />
           <button
             className={`btn ${styles.toolbarBtn}`}
-            onClick={() => { setLoadingSessions(true); fetchSessions(); fetchOutput(); }}
+            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines); }}
           >
             Atualizar
           </button>
@@ -340,9 +382,16 @@ export default function TerminalPage() {
 
       <pre
         ref={outputRef}
-        tabIndex={0}
-        onKeyDown={handleTerminalKeyDown}
+        tabIndex={directMode ? 0 : -1}
+        onKeyDown={directMode ? handleDirectKeyDown : undefined}
+        onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
+        onTouchEnd={isMobile ? () => inputRef.current?.focus() : undefined}
+        onClick={() => directMode && outputRef.current?.focus()}
         className={isMobile ? styles.outputMobile : styles.output}
+        style={{
+          outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
+          cursor: directMode ? "text" : "default",
+        }}
         dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
       >
         {outputHtml ? undefined : "Aguardando saída..."}
@@ -353,13 +402,14 @@ export default function TerminalPage() {
       )}
 
       <div className={styles.specialKeys}>
-        {SPECIAL_KEYS.map(({ label, key, title }) => (
+        {SPECIAL_KEYS.map(({ label, key, ctrl, title }) => (
           <button
-            key={key}
+            key={title}
             className={`btn ${styles.specialKeyBtn}`}
             title={title}
-            onClick={() => sendKey(key)}
-            disabled={sending}
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
+            onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
           >
             {label}
           </button>
@@ -367,21 +417,45 @@ export default function TerminalPage() {
       </div>
 
       <div className={styles.inputRow}>
-        <input
-          ref={inputRef}
-          className={`input ${styles.textInput}`}
-          placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-        />
-        <button
-          className={`btn btn-primary ${styles.sendBtn}`}
-          onClick={sendKeys}
-          disabled={sending || !input.trim()}
-        >
-          {sending ? "..." : "Enviar"}
-        </button>
+        {directMode ? (
+          <>
+            <div className={styles.directModeLabel}>
+              modo direto • cada tecla é enviada imediatamente
+            </div>
+            <button
+              className={`btn ${styles.modeToggleBtn}`}
+              onClick={() => setDirectMode(false)}
+            >
+              Campo de texto
+            </button>
+          </>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              className={`input ${styles.textInput}`}
+              placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+            />
+            <button
+              className={`btn btn-primary ${styles.sendBtn}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendText(input); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
+              onClick={() => sendText(input)}
+              disabled={sending || !input.trim()}
+            >
+              {sending ? "..." : "Enviar"}
+            </button>
+            <button
+              className={`btn ${styles.modeToggleBtn}`}
+              onClick={() => setDirectMode(true)}
+            >
+              Modo direto
+            </button>
+          </>
+        )}
       </div>
     </div>
   ) : !isMobile ? (
@@ -391,7 +465,7 @@ export default function TerminalPage() {
   ) : null;
 
   return (
-    <div className={styles.wrapper}>
+    <div ref={containerRef} className={isMobile && selected ? styles.wrapperMobileSelected : styles.wrapper} style={{ height: vpHeight ?? "100dvh" }}>
       <div className={`page-header ${styles.header}`}>
         <h1 className="page-title">Terminais</h1>
       </div>

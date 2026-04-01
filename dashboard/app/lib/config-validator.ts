@@ -96,5 +96,10 @@ export function validateAgentConfig(raw: string): ValidationResult {
     errors.push({ field: "version", message: `Versão inválida "${cfg.version}". Formato: 0.1.0` });
   }
 
+  // command: opcional, string quando presente
+  if (cfg.command !== undefined && typeof cfg.command !== "string") {
+    errors.push({ field: "command", message: "command deve ser uma string" });
+  }
+
   return { valid: errors.length === 0, errors };
 }

@@ -100,19 +100,33 @@ get_agent_model() {
   awk '/^model:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
 }
 
+get_agent_command() {
+  local config=$1
+  # Lê campo command: do config.yaml, remove quotes
+  awk '/^command:/{gsub(/^command:[[:space:]]*/,""); gsub(/^"|"$/,""); print}' "$config" 2>/dev/null
+}
+
 start_session() {
-  local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL}
+  local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
 
   if session_running "$session"; then
     kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
   fi
 
   tmux new-session -d -s "$session" -c "$working_dir"
-  tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+
+  # Se tem comando customizado, usa ele; senão usa o claude padrão
+  if [ -n "$custom_cmd" ]; then
+    tmux send-keys -t "$session" "$custom_cmd" Enter
+    log "START $session em $working_dir (command=$custom_cmd)"
+  else
+    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+    log "START $session em $working_dir (model=$model)"
+  fi
+
   sleep 5
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
-  log "START $session em $working_dir (model=$model)"
 }
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
@@ -207,8 +221,9 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     prompt="Read $BRAION/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. BR.AI.ON base: $BRAION. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
+    agent_cmd=$(get_agent_command "$config")
 
-    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
+    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
   done
 done
 
@@ -223,8 +238,8 @@ if [ "$due_count" -gt 0 ]; then
   marked_agents=""
 
   echo "$scheduler_output" | jq -r '
-    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring)] | @tsv
-  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone; do
+    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // "")] | @tsv
+  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
@@ -252,7 +267,14 @@ if [ "$due_count" -gt 0 ]; then
 
     prompt="Read $BRAION/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
+    # Lê command do config do agente
+    agent_config="$BRAION/agents/${agent_name}/config.yaml"
+    agent_cmd=""
+    if [ -f "$agent_config" ]; then
+      agent_cmd=$(get_agent_command "$agent_config")
+    fi
+
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"
