@@ -7,7 +7,7 @@ fallback_model: claude-haiku-4-5
 
 schedule:
   mode: alive
-  interval: "30m"
+  interval: "2h"
   priority: 1
   run_alone: false
 
@@ -21,6 +21,6 @@ integrations:
   notion:
     enabled: false
   obsidian:
-    enabled: false
+    enabled: true
     inbox: "agents/inbox"
     identity: "taskmanager"
