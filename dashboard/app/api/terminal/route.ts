@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const output = execSync(`tmux capture-pane -pet '${session}' -S -500 2>/dev/null`, {
+    const output = execSync(`tmux capture-pane -pet '${session}' -S -100 2>/dev/null`, {
       encoding: "utf-8",
       timeout: 5000,
     });
