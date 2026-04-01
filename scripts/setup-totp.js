@@ -6,7 +6,7 @@ const readline = require("readline");
 
 const ENV_PATH = path.resolve(__dirname, "../.env");
 const BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-const SERVICE_NAME = "HawkAI";
+const SERVICE_NAME = "BR.AI.ON";
 
 function base32Encode(buf) {
   let bits = 0, value = 0, output = "";
@@ -77,7 +77,7 @@ async function main() {
   const secret = generateSecret();
   const otpauth = keyUri("admin", SERVICE_NAME, secret);
 
-  console.log("\n🔐 HawkAI TOTP Setup\n");
+  console.log("\n🔐 BR.AI.ON TOTP Setup\n");
   console.log("Escaneie com Google Authenticator, 1Password ou similar:\n");
 
   await printQr(otpauth);

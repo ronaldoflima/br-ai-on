@@ -217,7 +217,7 @@ lib/handoff.sh next_id
 - Comandos via Telegram para controlar agentes (`lib/channels.sh`)
 - Logs estruturados JSONL para observabilidade
 - Métricas diárias JSONL para analytics (`metrics/YYYY-MM-DD.jsonl`)
-- Dashboard web em `dashboard/` (Next.js 15, porta 3030)
+- Dashboard web em `dashboard/` (Next.js 15, porta 3040)
 - Estado acessível via arquivos para debugging manual
 
 ## Orquestrador

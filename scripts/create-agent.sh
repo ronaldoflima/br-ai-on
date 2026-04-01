@@ -10,7 +10,7 @@ prompt() { printf "${YELLOW}▸ %s${NC} " "$1"; }
 success() { printf "${GREEN}✔ %s${NC}\n" "$1"; }
 header() { printf "\n${BOLD}%s${NC}\n\n" "$1"; }
 
-header "🦅 HawkAI — Criar Novo Agente"
+header "🧠 BR.AI.ON — Criar Novo Agente"
 
 echo "Este wizard vai te guiar na criacao de um novo agente."
 echo "Cada passo explica o que esta sendo configurado."

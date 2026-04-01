@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/feature-request.sh — Envia um feature request para o hawkai-maintainer
+# lib/feature-request.sh — Envia um feature request para o braion-maintainer
 #
 # Uso interativo:
 #   bash lib/feature-request.sh
@@ -14,7 +14,7 @@ TITLE="${1:-}"
 CONTEXT="${2:-}"
 
 if [ -z "$TITLE" ]; then
-  echo "=== Feature Request para HawkAI Maintainer ==="
+  echo "=== Feature Request para BR.AI.ON Maintainer ==="
   echo ""
   printf "Descreva a feature: "
   read -r TITLE
@@ -23,11 +23,11 @@ if [ -z "$TITLE" ]; then
   read -r CONTEXT
 fi
 
-filepath=$(bash "$SCRIPT_DIR/handoff.sh" send "user" "hawkai-maintainer" "action" "null" \
+filepath=$(bash "$SCRIPT_DIR/handoff.sh" send "user" "braion-maintainer" "action" "null" \
   "$TITLE" \
   "${CONTEXT:-Solicitado diretamente pelo usuário via feature-request.sh}" \
-  "Implementar a feature no projeto ~/hawkai e notificar via Telegram quando concluído")
+  "Implementar a feature no projeto ~/br-ai-on e notificar via Telegram quando concluído")
 
 echo ""
 echo "Feature request enviado: $(basename "$filepath")"
-echo "O HawkAI Maintainer será acionado no próximo ciclo do cron (até 5min)."
+echo "O BR.AI.ON Maintainer será acionado no próximo ciclo do cron (até 5min)."
