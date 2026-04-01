@@ -56,8 +56,8 @@ Se ambíguo, prefira o domínio mais específico.
 ### 2.4 Criar Handoff
 
 ```bash
-HAWKAI="<HawkAI base>"
-bash "$HAWKAI/lib/handoff.sh" send "<nome>" "<agente>" action null \
+BRAION="<BR.AI.ON base>"
+bash "$BRAION/lib/handoff.sh" send "<nome>" "<agente>" action null \
   "<título ou primeira linha da nota>" \
   "<conteúdo completo da nota>" \
   "Processar conforme o conteúdo da nota"
@@ -107,7 +107,7 @@ mcp__personal-mcp-gateway__obsidian_delete_note(path: "<nota>")
 ## 3. Log e Encerramento
 
 ```bash
-bash "$HAWKAI/lib/logger.sh" "<nome>" "Inbox roteado" \
+bash "$BRAION/lib/logger.sh" "<nome>" "Inbox roteado" \
   '{"notas_processadas": N, "handoffs_criados": N}'
 ```
 
