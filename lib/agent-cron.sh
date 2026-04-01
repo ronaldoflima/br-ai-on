@@ -100,19 +100,43 @@ get_agent_model() {
   awk '/^model:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
 }
 
+get_agent_command() {
+  local config=$1
+  # Lê o campo command do config.yaml (pode ser multiline com | ou simples)
+  awk '/^command: *\\|/{found=1; next} found && /^  /{printf "%s", substr($0,3); next} found{found=0; exit}' "$config" 2>/dev/null | xargs
+  # Se não encontrou formato multiline, tenta formato simples
+  if [ -z "${cmd:-}" ]; then
+    awk '/^command:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
+  fi
+}
+
+get_agent_command() {
+  local config=$1
+  # Lê campo command: do config.yaml, remove quotes
+  awk '/^command:/{gsub(/^command:[[:space:]]*/,""); gsub(/^"|"$/,""); print}' "$config" 2>/dev/null
+}
+
 start_session() {
-  local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL}
+  local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
 
   if session_running "$session"; then
     kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
   fi
 
   tmux new-session -d -s "$session" -c "$working_dir"
-  tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+
+  # Se tem comando customizado, usa ele; senão usa o claude padrão
+  if [ -n "$custom_cmd" ]; then
+    tmux send-keys -t "$session" "$custom_cmd" Enter
+    log "START $session em $working_dir (command=$custom_cmd)"
+  else
+    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+    log "START $session em $working_dir (model=$model)"
+  fi
+
   sleep 5
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
-  log "START $session em $working_dir (model=$model)"
 }
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
@@ -207,8 +231,9 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
 
     prompt="Read $HAWKAI/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. HawkAI base: $HAWKAI. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
+    agent_cmd=$(get_agent_command "$config")
 
-    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
+    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
   done
 done
 
@@ -226,8 +251,8 @@ if [ "$due_count" -gt 0 ]; then
 import json, sys
 data = json.load(sys.stdin)
 for a in data.get('due', []):
-    print(f\"{a['name']}\t{a.get('directory','')}\t{a.get('model','claude-sonnet-4-6')}\t{a.get('run_alone', False)}\")
-" 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone; do
+    print(f\"{a['name']}\t{a.get('directory','')}\t{a.get('model','claude-sonnet-4-6')}\t{a.get('run_alone', False)}\t{a.get('command','')}\")
+" 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
     [ -z "$agent_name" ] && continue
 
     session="hawkai-${agent_name}"
@@ -255,7 +280,14 @@ for a in data.get('due', []):
 
     prompt="Read $HAWKAI/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. HawkAI base: $HAWKAI. Working directory: $agent_dir."
 
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}"
+    # Lê command do config do agente
+    agent_config="$HAWKAI/agents/${agent_name}/config.yaml"
+    agent_cmd=""
+    if [ -f "$agent_config" ]; then
+      agent_cmd=$(get_agent_command "$agent_config")
+    fi
+
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
 
     python3 "$HAWKAI/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"

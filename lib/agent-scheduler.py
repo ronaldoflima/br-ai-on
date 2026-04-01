@@ -183,6 +183,7 @@ def compute_schedule(configs, schedule_state, now):
             "directory": directory,
             "model": model,
             "fallback_model": fallback_model,
+            "command": cfg.get("command", ""),
             "budget": budget_info,
         }
         if obsidian_info:

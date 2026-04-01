@@ -126,6 +126,8 @@ domain: <Domínio>
 version: "0.x.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
+# command opcional: substitui o comando padrão do Claude Code
+# command: "ollama launch claude --model kimi-k2.5:cloud"
 
 schedule:
   mode: alive | handoff-only | disabled
@@ -210,6 +212,23 @@ lib/handoff.sh list <agent>
 lib/handoff.sh archive <agent> <caminho_arquivo>
 lib/handoff.sh next_id
 ```
+
+## Comando Customizado (Opcional)
+
+O campo `command` no `config.yaml` permite usar um CLI diferente do Claude Code padrão:
+
+```yaml
+name: meu-agente
+model: claude-sonnet-4-6
+# Ou use um comando customizado (ex: Ollama)
+command: "ollama launch claude --model kimi-k2.5:cloud"
+```
+
+Quando `command` está definido, o orquestrador usa esse comando em vez de `$CLAUDE --model ...`.
+Útil para:
+- Rodar modelos locais via Ollama
+- Usar proxies ou wrappers customizados
+- Testar comportamentos com comandos alternativos
 
 ## Comunicação
 
