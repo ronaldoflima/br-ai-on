@@ -5,7 +5,6 @@ export const dynamic = "force-dynamic";
 
 const SESSION_RE = /^[a-zA-Z0-9_:.-]+$/;
 const CURSOR_MARKER = "\uE000";
-const ANSI_ESC_RE = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
 function capturePane(session: string, lines: number): string {
   try {
@@ -41,7 +40,11 @@ function insertCursorMarker(
   const lines = text.split("\n");
   const visibleStart = Math.max(0, lines.length - cursor.paneHeight);
   const lineIndex = visibleStart + cursor.y;
-  if (lineIndex >= lines.length) return text;
+
+  // Pad with empty lines when cursor is past captured text
+  while (lineIndex >= lines.length) {
+    lines.push("");
+  }
 
   const line = lines[lineIndex];
 
@@ -52,7 +55,7 @@ function insertCursorMarker(
 
   while (i < line.length) {
     if (line[i] === "\x1b") {
-      const match = line.slice(i).match(/^\x1b\[[0-9;]*[a-zA-Z]/);
+      const match = line.slice(i).match(/^\x1b\[[0-9;?]*[a-zA-Z]/);
       if (match) { i += match[0].length; continue; }
     }
     if (visibleCount === cursor.x) { insertPos = i; break; }

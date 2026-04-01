@@ -381,7 +381,12 @@ a:hover { color: var(--accent-hover); }
 
 
 /* Terminal cursor */
-.terminal-cursor { animation: terminal-blink 1s step-end infinite; }
+.terminal-cursor {
+  border-left: 2px solid #d4d4d4;
+  margin-left: -1px;
+  margin-right: -1px;
+  animation: terminal-blink 1s step-end infinite;
+}
 @keyframes terminal-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
