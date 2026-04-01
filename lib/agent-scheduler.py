@@ -27,8 +27,8 @@ except ImportError:
     print(json.dumps({"error": "pyyaml não instalado — pip install pyyaml"}))
     sys.exit(1)
 
-HAWKAI_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCHEDULE_STATE_FILE = os.path.join(HAWKAI_BASE, "agents", "shared", "schedule_state.json")
+BRAION_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCHEDULE_STATE_FILE = os.path.join(BRAION_BASE, "agents", "shared", "schedule_state.json")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 VALID_MODES = {"alive", "handoff-only", "disabled"}
@@ -78,7 +78,7 @@ def increment_budget_count(agent_name, today_str):
 
 
 def load_configs():
-    pattern = os.path.join(HAWKAI_BASE, "agents", "*", "config.yaml")
+    pattern = os.path.join(BRAION_BASE, "agents", "*", "config.yaml")
     configs = []
     for path in sorted(glob.glob(pattern)):
         with open(path) as f:
@@ -137,7 +137,7 @@ def compute_schedule(configs, schedule_state, now):
         interval_s = parse_interval(interval_str)
         priority = sched.get("priority", 99)
         run_alone = sched.get("run_alone", False)
-        directory = cfg.get("directory", HAWKAI_BASE)
+        directory = cfg.get("directory", BRAION_BASE)
 
         last_run_str = schedule_state.get(name, "1970-01-01T00:00:00Z")
         try:
@@ -240,7 +240,7 @@ def cmd_mark_ran(agent_names):
     errors = []
 
     for name in agent_names:
-        config_path = os.path.join(HAWKAI_BASE, "agents", name, "config.yaml")
+        config_path = os.path.join(BRAION_BASE, "agents", name, "config.yaml")
         if not os.path.exists(config_path):
             errors.append(f"config não encontrado para: {name}")
             continue

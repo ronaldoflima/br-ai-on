@@ -6,7 +6,7 @@ CRON_SCRIPT="${PROJECT_DIR}/lib/agent-cron.sh"
 LOG_FILE="${PROJECT_DIR}/logs/agent-cron.log"
 CRON_ENTRY="* * * * * /bin/bash ${CRON_SCRIPT} >> ${LOG_FILE} 2>&1"
 
-echo "=== Setup: hawkai-cron ==="
+echo "=== Setup: braion-cron ==="
 echo ""
 
 # 1. Verificar dependencias

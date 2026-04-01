@@ -18,7 +18,7 @@ export async function GET(
     allSessions = out
       .trim()
       .split("\n")
-      .filter((s) => s.startsWith(`hawkai-${name}`));
+      .filter((s) => s.startsWith(`braion-${name}`));
   } catch {
     return NextResponse.json({ sessions: [] });
   }
