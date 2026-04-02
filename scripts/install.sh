@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="git@github.com:(usuário)flima/br-ai-on.git"
+REPO_URL="git@github.com:ronaldoflima/br-ai-on.git"
 REPO_DIR="${REPO_DIR:-$HOME/br-ai-on}"
 DASHBOARD_DIR="$REPO_DIR/dashboard"
 LOG_DIR="$REPO_DIR/logs"
