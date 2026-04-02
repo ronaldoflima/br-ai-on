@@ -13,7 +13,11 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-if [ ! -d "$REPO_DIR/.git" ]; then
+if [ -d "$REPO_DIR/.git" ]; then
+  log "Repositório já existe, fazendo pull..."
+  git -C "$REPO_DIR" pull origin main --quiet
+  log "Pull concluído"
+else
   echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
   git -C "$REPO_DIR" checkout main
