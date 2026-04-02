@@ -16,6 +16,8 @@ agents/**/state/completed_tasks.md
 agents/**/state/cache/
 agents/**/memory/episodic.jsonl
 agents/**/handoffs/archive/
+agents/**/handoffs/inbox/*
+!agents/**/handoffs/inbox/.gitkeep
 agents/shared/schedule_state.json
 agents/shared/messages.jsonl
 agents/shared/triggers.jsonl
