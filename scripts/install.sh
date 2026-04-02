@@ -7,10 +7,28 @@ DASHBOARD_DIR="$REPO_DIR/dashboard"
 LOG_DIR="$REPO_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy-prod.log"
 SERVICE_FILE="$HOME/.config/systemd/user/braion.service"
+OS="$(uname -s)"
 
 log() {
   mkdir -p "$LOG_DIR"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+service_restart() {
+  if [ "$OS" = "Linux" ]; then
+    systemctl --user restart braion.service
+    log "Serviço reiniciado"
+    sleep 2
+    journalctl --user -u braion.service -n 20 --no-pager
+  else
+    log "Reiniciando servidor..."
+    pkill -f "next start" 2>/dev/null || true
+    sleep 1
+    cd "$DASHBOARD_DIR"
+    nohup node --env-file=../.env ./node_modules/.bin/next start --port 3040 --hostname 0.0.0.0 >> "$LOG_FILE" 2>&1 &
+    sleep 2
+    tail -20 "$LOG_FILE"
+  fi
 }
 
 if [ -d "$REPO_DIR/.git" ]; then
@@ -33,7 +51,7 @@ else
   log "Build concluído"
 fi
 
-if [ ! -f "$SERVICE_FILE" ]; then
+if [ "$OS" = "Linux" ] && [ ! -f "$SERVICE_FILE" ]; then
   mkdir -p "$(dirname "$SERVICE_FILE")"
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
@@ -54,6 +72,7 @@ EOF
   systemctl --user enable braion.service
   systemctl --user start braion.service
   log "Serviço braion.service criado, habilitado e iniciado"
+  exit 0
 fi
 
 cd "$REPO_DIR"
@@ -75,7 +94,4 @@ cd "$DASHBOARD_DIR"
 node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"
 log "Build concluído"
 
-systemctl --user restart braion.service
-log "Serviço reiniciado"
-sleep 2
-journalctl --user -u braion.service -n 20 --no-pager
+service_restart
