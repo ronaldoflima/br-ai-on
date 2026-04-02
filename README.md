@@ -7,27 +7,28 @@ Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui 
 ### 1. Clonar e configurar
 
 ```bash
-git clone <repo> hawkai && cd hawkai
+git clone https://github.com/(usuário)flima/br-ai-on.git && cd br-ai-on
 cp .env.example .env
 ```
 
-### 2. Configurar TOTP (autenticação do dashboard)
+### 2. Configurar TOTP (autenticação do dashboard) - OPCIONAL
 
 ```bash
 node scripts/setup-totp.js
 # Escaneie o QR code com Google Authenticator ou 1Password
 ```
 
-### 3. Instalar dependências do dashboard
+### 3. Instalar dependências e buildar o dashboard
 
 ```bash
-cd dashboard && npm install && cd ..
+cd dashboard && npm install && npm run build && cd ..
 ```
 
 ### 4. Iniciar o dashboard
 
 ```bash
-cd dashboard && npm run dev
+npm run start   # produção
+npm run dev     # desenvolvimento
 # Acessível em http://localhost:3040
 ```
 
@@ -79,7 +80,7 @@ Novos agentes são criados com `./scripts/create-agent.sh`. Cada agente define s
 ## Estrutura
 
 ```
-hawkai/
+br-ai-on/
 ├── agents/
 │   ├── _defaults/               # agentes base
 │   │   ├── task-manager/
@@ -114,7 +115,6 @@ hawkai/
 │   ├── evaluate.sh              # avaliação de outputs
 │   ├── optimize.sh              # otimização de IDENTITYs
 │   ├── validate_output.sh       # validação de saída
-│   ├── pricing.sh               # cálculo de custos
 │   └── feature-request.sh       # gestão de feature requests
 ├── .claude/skills/              # skills do Claude Code
 │   ├── agent-init/              # inicialização de sessão
@@ -228,7 +228,7 @@ http://<tailscale-ip>:3040
 
 O dashboard Next.js precisa estar rodando no host:
 ```bash
-cd dashboard && npm run dev -- --hostname 0.0.0.0 --port 3040
+npm run start
 ```
 
 ### Acessar os Agentes via SSH
@@ -239,22 +239,22 @@ ssh <user>@<tailscale-ip>
 
 Para atalho, adicione ao `~/.ssh/config`:
 ```
-Host hawkai
+Host braion
   HostName <tailscale-ip>
   User <user>
 ```
 
-Depois: `ssh hawkai`
+Depois: `ssh braion`
 
 ### Executar Sessões Remotas com Claude Code
 
 ```bash
-ssh hawkai "cd ~/hawkai && claude --dangerously-skip-permissions -p '/agent-init'"
+ssh braion "cd ~/br-ai-on && claude --dangerously-skip-permissions -p '/agent-init'"
 ```
 
 Ou interativamente:
 ```bash
-ssh -t hawkai "cd ~/hawkai && claude"
+ssh -t braion "cd ~/br-ai-on && claude"
 ```
 
 ## Stack

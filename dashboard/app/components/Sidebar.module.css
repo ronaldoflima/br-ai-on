@@ -147,8 +147,8 @@
 .updateBadge {
   font-size: 10px;
   font-weight: 600;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
   padding: 2px 8px;
   border-radius: 8px;
   text-decoration: none;
@@ -157,7 +157,7 @@
 }
 
 .updateBadge:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--error) 22%, transparent);
 }
 
 @keyframes pulse {

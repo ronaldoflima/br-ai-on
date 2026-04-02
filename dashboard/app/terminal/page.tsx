@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import AnsiToHtml from "ansi-to-html";
+import styles from "./terminal.module.css";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -51,9 +52,14 @@ export default function TerminalPage() {
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
   const [directMode, setDirectMode] = useState(true);
+  const [showConfig, setShowConfig] = useState(false);
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
+  });
+  const [refreshRate, setRefreshRate] = useState(() => {
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "300") || 300;
+    return 300;
   });
   const outputRef = useRef<HTMLPreElement>(null);
   const sseRef = useRef<EventSource | null>(null);
@@ -69,12 +75,12 @@ export default function TerminalPage() {
       .catch(() => setLoadingSessions(false));
   };
 
-  const connectSSE = useCallback((session: string, lines: number) => {
+  const connectSSE = useCallback((session: string, lines: number, rate: number = 300) => {
     if (sseRef.current) {
       sseRef.current.close();
       sseRef.current = null;
     }
-    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}`);
+    const es = new EventSource(`/api/terminal/stream?session=${encodeURIComponent(session)}&lines=${lines}&rate=${rate}`);
     es.addEventListener("output", (e) => {
       try { setOutput(JSON.parse(e.data)); } catch {}
     });
@@ -138,11 +144,11 @@ export default function TerminalPage() {
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
       return;
     }
-    connectSSE(selected, captureLines);
+    connectSSE(selected, captureLines, refreshRate);
     return () => {
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
     };
-  }, [selected, captureLines, connectSSE]);
+  }, [selected, captureLines, refreshRate, connectSSE]);
 
   useEffect(() => {
     if (isMobile && directMode) setDirectMode(false);
@@ -266,43 +272,45 @@ export default function TerminalPage() {
     setKilling(false);
   };
 
+  const CURSOR_MARKER = "\uE000";
+  const CURSOR_PLACEHOLDER = "__TERMINAL_CURSOR__";
+  const CURSOR_HTML = '<span class="terminal-cursor"></span>';
+
   const outputHtml = useMemo(() => {
     if (!output) return null;
-    try { return ansiConverter.toHtml(output); } catch { return null; }
+    try {
+      // Replace PUA marker with safe ASCII placeholder before ANSI-to-HTML
+      // conversion — escapeXML encodes \uE000 as &#xE000; which breaks
+      // the raw-character check that was here before.
+      const safe = output.replace(CURSOR_MARKER, CURSOR_PLACEHOLDER);
+      const html = ansiConverter.toHtml(safe);
+      return html.includes(CURSOR_PLACEHOLDER)
+        ? html.replace(CURSOR_PLACEHOLDER, CURSOR_HTML)
+        : html;
+    } catch { return null; }
   }, [output]);
 
   const showSessionList = !isMobile || !selected;
   const showTerminal = !isMobile || !!selected;
 
   const sessionsList = (
-    <div style={{
-      width: isMobile ? "100%" : 220,
-      flexShrink: 0,
-      background: "var(--bg-secondary)",
-      border: "1px solid var(--border)",
-      borderRadius: 8,
-      padding: 8,
-      overflowY: "auto",
-      maxHeight: isMobile ? 180 : undefined,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 8px 8px" }}>
-        <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
+    <div className={isMobile ? styles.sessionsListMobile : styles.sessionsList}>
+      <div className={styles.sessionsHeader}>
+        <span className={styles.sessionsLabel}>
           Sessões tmux
         </span>
         <button
-          className="btn"
+          className={`btn ${styles.newSessionBtn}`}
           onClick={() => setShowNewSession((v) => !v)}
-          style={{ fontSize: 10, padding: "2px 6px" }}
           title="Nova sessão"
         >
           +
         </button>
       </div>
       {showNewSession && (
-        <div style={{ display: "flex", gap: 4, padding: "0 8px 8px", flexShrink: 0 }}>
+        <div className={styles.newSessionRow}>
           <input
-            className="input"
-            style={{ flex: 1, fontSize: 11, padding: "4px 6px" }}
+            className={`input ${styles.newSessionInput}`}
             placeholder="Nome da sessão"
             value={newSessionName}
             onChange={(e) => setNewSessionName(e.target.value)}
@@ -310,35 +318,25 @@ export default function TerminalPage() {
             autoFocus
           />
           <button
-            className="btn btn-primary"
+            className={`btn btn-primary ${styles.newSessionSubmit}`}
             onClick={createSession}
             disabled={creating || !newSessionName.trim()}
-            style={{ fontSize: 11, padding: "4px 8px" }}
           >
             {creating ? "..." : "Criar"}
           </button>
         </div>
       )}
       {loadingSessions ? (
-        <div style={{ padding: "8px", fontSize: 12, color: "var(--text-muted)" }}>Carregando...</div>
+        <div className={styles.statusMsg}>Carregando...</div>
       ) : sessions.length === 0 ? (
-        <div style={{ padding: "8px", fontSize: 12, color: "var(--text-muted)" }}>Nenhuma sessão ativa</div>
+        <div className={styles.statusMsg}>Nenhuma sessão ativa</div>
       ) : isMobile ? (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div className={styles.mobileChips}>
           {sessions.map((s) => (
             <button
               key={s.name}
               onClick={() => setSelected(s.name)}
-              style={{
-                background: selected === s.name ? "var(--bg-hover)" : "transparent",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                padding: "6px 12px",
-                cursor: "pointer",
-                color: selected === s.name ? "var(--text-primary)" : "var(--text-secondary)",
-                fontSize: 13,
-                fontWeight: selected === s.name ? 600 : 400,
-              }}
+              className={selected === s.name ? styles.mobileChipActive : styles.mobileChip}
             >
               {s.name}
             </button>
@@ -349,23 +347,10 @@ export default function TerminalPage() {
           <button
             key={s.name}
             onClick={() => setSelected(s.name)}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              background: selected === s.name ? "var(--bg-hover)" : "transparent",
-              border: "none",
-              borderRadius: 6,
-              padding: "8px 10px",
-              cursor: "pointer",
-              color: selected === s.name ? "var(--text-primary)" : "var(--text-secondary)",
-              fontSize: 13,
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
+            className={selected === s.name ? styles.sessionItemActive : styles.sessionItem}
           >
-            <span style={{ fontWeight: selected === s.name ? 600 : 400 }}>{s.name}</span>
-            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+            <span className={selected === s.name ? styles.sessionNameActive : styles.sessionName}>{s.name}</span>
+            <span className={styles.sessionMeta}>
               {s.windows}w {s.attached ? "· anexada" : ""}
             </span>
           </button>
@@ -375,46 +360,73 @@ export default function TerminalPage() {
   );
 
   const terminalPanel = selected ? (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexShrink: 0 }}>
+    <div className={styles.terminalPanel}>
+      <div className={styles.terminalToolbar}>
         {isMobile && (
-          <button className="btn" onClick={() => setSelected(null)} style={{ fontSize: 11 }}>
+          <button className={`btn ${styles.backBtn}`} onClick={() => setSelected(null)}>
             ← Sessões
           </button>
         )}
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{selected}</span>
-        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-          <input
-            type="number"
-            min={10}
-            max={2000}
-            value={captureLines}
-            onChange={(e) => {
-              const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
-              setCaptureLines(v);
-              localStorage.setItem("termCaptureLines", String(v));
-            }}
-            title="Linhas de scrollback capturadas"
-            className="input"
-            style={{ width: 60, fontSize: 11, padding: "3px 6px", textAlign: "center" }}
-          />
+        <span className={styles.terminalTitle}>{selected}</span>
+        <div className={styles.toolbarActions}>
           <button
-            className="btn"
-            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines); }}
-            style={{ fontSize: 11 }}
+            className={`btn ${styles.toolbarBtn}`}
+            onClick={() => setShowConfig((v) => !v)}
+            title="Configurações do terminal"
+          >
+            ⚙
+          </button>
+          <button
+            className={`btn ${styles.toolbarBtn}`}
+            onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
           >
             Atualizar
           </button>
           <button
-            className="btn"
+            className={`btn ${styles.killBtn}`}
             onClick={() => { if (window.confirm(`Matar a sessão "${selected}"?`)) killSession(); }}
             disabled={killing}
-            style={{ fontSize: 11, color: "var(--error)", borderColor: "var(--error)40" }}
           >
             {killing ? "Matando..." : "Matar"}
           </button>
         </div>
       </div>
+
+      {showConfig && (
+        <div className={styles.configPanel}>
+          <label className={styles.configLabel}>
+            Linhas de scrollback
+            <input
+              type="number"
+              min={10}
+              max={2000}
+              value={captureLines}
+              onChange={(e) => {
+                const v = Math.max(10, Math.min(2000, parseInt(e.target.value) || 100));
+                setCaptureLines(v);
+                localStorage.setItem("termCaptureLines", String(v));
+              }}
+              className={`input ${styles.configInput}`}
+            />
+          </label>
+          <label className={styles.configLabel}>
+            Refresh rate (ms)
+            <input
+              type="number"
+              min={100}
+              max={10000}
+              step={100}
+              value={refreshRate}
+              onChange={(e) => {
+                const v = Math.max(100, Math.min(10000, parseInt(e.target.value) || 300));
+                setRefreshRate(v);
+                localStorage.setItem("termRefreshRate", String(v));
+              }}
+              className={`input ${styles.configInputWide}`}
+            />
+          </label>
+        </div>
+      )}
 
       <pre
         ref={outputRef}
@@ -423,20 +435,8 @@ export default function TerminalPage() {
         onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
         onTouchEnd={isMobile ? () => inputRef.current?.focus() : undefined}
         onClick={() => directMode && outputRef.current?.focus()}
+        className={isMobile ? styles.outputMobile : styles.output}
         style={{
-          flex: 1,
-          background: "#0d0d0d",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 12,
-          margin: 0,
-          overflow: "auto",
-          fontSize: isMobile ? 10 : 11,
-          fontFamily: "monospace",
-          lineHeight: 1.5,
-          color: "#d4d4d4",
-          whiteSpace: "pre",
-          minHeight: 0,
           outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
           cursor: directMode ? "text" : "default",
         }}
@@ -446,35 +446,33 @@ export default function TerminalPage() {
       </pre>
 
       {error && (
-        <div style={{ color: "var(--error)", fontSize: 12, marginTop: 6, flexShrink: 0 }}>{error}</div>
+        <div className={styles.errorMsg}>{error}</div>
       )}
 
-      <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap", flexShrink: 0 }}>
+      <div className={styles.specialKeys}>
         {SPECIAL_KEYS.map(({ label, key, ctrl, title }) => (
           <button
             key={title}
-            className="btn"
+            className={`btn ${styles.specialKeyBtn}`}
             title={title}
             onMouseDown={(e) => e.preventDefault()}
             onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
             onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
-            style={{ fontSize: 11, padding: "4px 8px", minWidth: 0, fontFamily: "monospace" }}
           >
             {label}
           </button>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 6, flexShrink: 0, alignItems: "center" }}>
+      <div className={styles.inputRow}>
         {directMode ? (
           <>
-            <div style={{ flex: 1, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+            <div className={styles.directModeLabel}>
               modo direto • cada tecla é enviada imediatamente
             </div>
             <button
-              className="btn"
+              className={`btn ${styles.modeToggleBtn}`}
               onClick={() => setDirectMode(false)}
-              style={{ fontSize: 11, padding: "4px 8px" }}
             >
               Campo de texto
             </button>
@@ -483,27 +481,24 @@ export default function TerminalPage() {
           <>
             <input
               ref={inputRef}
-              className="input"
-              style={{ flex: 1, fontFamily: "monospace", fontSize: 12 }}
+              className={`input ${styles.textInput}`}
               placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleInputKeyDown}
             />
             <button
-              className="btn btn-primary"
+              className={`btn btn-primary ${styles.sendBtn}`}
               onMouseDown={(e) => e.preventDefault()}
               onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendText(input); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
               onClick={() => sendText(input)}
               disabled={sending || !input.trim()}
-              style={{ fontSize: 12, minWidth: 60 }}
             >
               {sending ? "..." : "Enviar"}
             </button>
             <button
-              className="btn"
+              className={`btn ${styles.modeToggleBtn}`}
               onClick={() => setDirectMode(true)}
-              style={{ fontSize: 11, padding: "4px 8px" }}
             >
               Modo direto
             </button>
@@ -512,45 +507,24 @@ export default function TerminalPage() {
       </div>
     </div>
   ) : !isMobile ? (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+    <div className={styles.emptyState}>
       Selecione uma sessão
     </div>
   ) : null;
 
   return (
-    <div ref={containerRef} style={isMobile && selected ? {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: vpHeight ?? "100dvh",
-      padding: "8px 12px",
-      display: "flex",
-      flexDirection: "column",
-      boxSizing: "border-box",
-      overflow: "hidden",
-      background: "var(--bg-primary)",
-      zIndex: 100,
-    } : {
-      marginLeft: -24, marginRight: -24, marginTop: -24,
-      padding: "16px 24px",
-      display: "flex",
-      flexDirection: "column",
-      height: vpHeight ?? "100dvh",
-      boxSizing: "border-box",
-      overflow: "hidden",
-    }}>
-      <div className="page-header" style={{ marginBottom: 12, flexShrink: 0 }}>
+    <div ref={containerRef} className={isMobile && selected ? styles.wrapperMobileSelected : styles.wrapper} style={{ height: vpHeight ?? "100dvh" }}>
+      <div className={`page-header ${styles.header}`}>
         <h1 className="page-title">Terminais</h1>
       </div>
 
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minHeight: 0 }}>
+        <div className={styles.mobileLayout}>
           {showSessionList && sessionsList}
           {showTerminal && terminalPanel}
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 16, flex: 1, minHeight: 0 }}>
+        <div className={styles.desktopLayout}>
           {sessionsList}
           {terminalPanel}
         </div>

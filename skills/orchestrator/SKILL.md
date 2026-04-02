@@ -25,23 +25,21 @@ Use esse mapa para todas as decisões de roteamento abaixo.
 5. **Monitorar** progresso e consolidar resultados
 6. **Reportar** resultado final ao usuário
 
-## Roteamento de Inbox Obsidian
+## Roteamento de Inbox Local
 
 Antes do fluxo normal de orquestração, verifique se há notas sem destinatário no inbox:
 
-1. Use `mcp__personal-mcp-gateway__obsidian_list_notes` com `directory: "agents/inbox"`
-2. Para cada nota, use `mcp__personal-mcp-gateway__obsidian_extract_frontmatter`
+1. Use **Glob** para listar `agents/inbox/*.md`
+2. Para cada nota, use **Read** e extraia o frontmatter YAML
 3. Filtre notas onde `status == "pending"` E (`to` está vazio ou ausente) E (`assigned_to` está vazio ou ausente)
 4. Para cada nota sem destinatário:
-   a. Leia o conteúdo com `mcp__personal-mcp-gateway__obsidian_read_note`
+   a. Leia o conteúdo completo com **Read**
    b. Analise o conteúdo contra os domínios do mapa de agentes
    c. Determine qual agente é o melhor match
-   d. Atualize a nota com `mcp__personal-mcp-gateway__obsidian_update_note`:
-      - Adicione `assigned_to: <nome_agente>` no frontmatter
-      - Mantenha o restante do frontmatter e conteúdo intactos
+   d. Atualize a nota com **Edit** adicionando `assigned_to: <nome_agente>` no frontmatter
 5. Se não conseguir determinar o agente:
-   a. Mude `status` para `review`
-   b. Appende mensagem: `**🤖 orchestrator** · <timestamp>\nNão consegui identificar qual agente deve tratar este pedido. Pode especificar o campo 'to' no frontmatter?`
+   a. Mude `status` para `review` no frontmatter via **Edit**
+   b. Appende ao corpo: `**orchestrator** · <timestamp>\nNão consegui identificar qual agente deve tratar este pedido. Especifique o campo 'to' no frontmatter.`
 
 ## Criação de Tarefas
 
@@ -91,5 +89,5 @@ Para comunicação urgente entre agentes, usar `agents/shared/messages.jsonl`:
 Ao final de cada ciclo:
 1. Verificar status das tarefas distribuídas
 2. Consolidar resultados
-3. Notificar usuário via Telegram se necessário
+3. Se o resultado exigir atenção do usuário, criar handoff para `user`
 4. Mover tarefas concluídas para `shared/archive/`

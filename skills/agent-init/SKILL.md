@@ -42,11 +42,11 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome
 ## 1. Carregar Identidade
 
 Leia os seguintes arquivos na raiz do projeto:
-- `agents/<nome>/SOUL.md` — sua personalidade e regras
+- `agents/<nome>/IDENTITY.md` — sua identidade e regras
 - `USER.md` — perfil do usuário
 - `AGENTS.md` — regras operacionais
 
-Adote a identidade definida no SOUL.md para esta sessão.
+Adote a identidade definida no IDENTITY.md para esta sessão.
 
 ## 2. Carregar Estado Persistente
 
@@ -90,7 +90,9 @@ Leia `agents/<nome>/config.yaml` para limites e integrações.
 
 ## 4. Buscar Tarefas
 
-Use as integrações habilitadas no config para buscar tarefas pendentes. Por padrão, consulte o Notion se `integrations.notion.enabled: true`.
+Verifique se há tarefas pendentes nos arquivos locais:
+- `agents/shared/task_board.md` — tarefas atribuídas a este agente
+- `agents/<nome>/handoffs/inbox/` — handoffs já carregados no passo 2.7
 
 ## 5. Definir Objetivo da Sessão
 

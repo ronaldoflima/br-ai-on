@@ -10,18 +10,13 @@
 
 set -euo pipefail
 
-<<<<<<< Updated upstream
-HAWKAI=$(cd "$(dirname "$0")/.." && pwd)
-OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/pessoal/obsidian-files}
-=======
 BRAION=$(cd "$(dirname "$0")/.." && pwd)
 OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
->>>>>>> Stashed changes
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
 CLAUDE=${CLAUDE:-$(command -v claude || echo claude)}
 DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
-LOG_FILE=${LOG_FILE:-$HAWKAI/logs/agent-cron.log}
+LOG_FILE=${LOG_FILE:-$BRAION/logs/agent-cron.log}
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
 
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -31,7 +26,7 @@ log() {
 }
 
 # ── Pause check ───────────────────────────────────────────────────────────────
-if [ -f "$HAWKAI/.paused" ]; then
+if [ -f "$BRAION/.paused" ]; then
   log "PAUSED — arquivo .paused existe, saindo sem iniciar agentes"
   exit 0
 fi
@@ -85,10 +80,10 @@ heartbeat_is_processing() {
   [ -f "$heartbeat_file" ] || return 0
 
   local status last_ping now elapsed
-  status=$(python3 -c "import json,sys; d=json.load(open('$heartbeat_file')); print(d.get('status',''))" 2>/dev/null || echo "")
+  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
   [ "$status" != "processing" ] && return 0
 
-  last_ping=$(python3 -c "import json,sys; d=json.load(open('$heartbeat_file')); print(d.get('last_ping',''))" 2>/dev/null || echo "")
+  last_ping=$(jq -r '.last_ping // ""' "$heartbeat_file" 2>/dev/null || echo "")
   [ -z "$last_ping" ] && return 0
 
   now=$(date -u +%s)
@@ -103,16 +98,6 @@ heartbeat_is_processing() {
 get_agent_model() {
   local config=$1
   awk '/^model:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
-}
-
-get_agent_command() {
-  local config=$1
-  # Lê o campo command do config.yaml (pode ser multiline com | ou simples)
-  awk '/^command: *\\|/{found=1; next} found && /^  /{printf "%s", substr($0,3); next} found{found=0; exit}' "$config" 2>/dev/null | xargs
-  # Se não encontrou formato multiline, tenta formato simples
-  if [ -z "${cmd:-}" ]; then
-    awk '/^command:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
-  fi
 }
 
 get_agent_command() {
@@ -154,18 +139,18 @@ fi
 # ── 1. Obsidian inbox → roteamento pelo task-manager ─────────────────────────
 inbox_count=0
 if [ -d "$OBSIDIAN_INBOX" ]; then
-  inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | wc -l | xargs || true)
+  inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
 fi
 if [ "${inbox_count:-0}" -gt 0 ]; then
   log "Inbox: $inbox_count nota(s) encontrada(s)"
-  heartbeat="$HAWKAI/agents/_defaults/task-manager/state/heartbeat.json"
-  tarefas_model=$(get_agent_model "$HAWKAI/agents/_defaults/task-manager/config.yaml")
+  heartbeat="$BRAION/agents/_defaults/task-manager/state/heartbeat.json"
+  tarefas_model=$(get_agent_model "$BRAION/agents/_defaults/task-manager/config.yaml")
   if heartbeat_is_processing "$heartbeat"; then
-    start_session "hawkai-task-manager" "$HAWKAI" \
-      "Read $HAWKAI/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. Agent: task-manager. HawkAI base: $HAWKAI." \
+    start_session "braion-task-manager" "$BRAION" \
+      "Read $BRAION/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. Agent: task-manager. BR.AI.ON base: $BRAION." \
       "${tarefas_model:-$DEFAULT_MODEL}"
   else
-    log "SKIP hawkai-task-manager — heartbeat processing recente"
+    log "SKIP braion-task-manager — heartbeat processing recente"
   fi
 fi
 
@@ -179,7 +164,7 @@ notify_user_handoff() {
   log "Handoff to user from $from: $description"
 }
 
-for config in "$HAWKAI/agents"/*/config.yaml; do
+for config in "$BRAION/agents"/*/config.yaml; do
   agent_dir=$(dirname "$config")
   agent=$(basename "$agent_dir")
   [ "$agent" = "shared" ] && continue
@@ -188,7 +173,7 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
   [ -d "$inbox_dir" ] || continue
 
   working_dir=$(awk '/^directory:/{print $2}' "$config" 2>/dev/null || echo "")
-  [ -z "$working_dir" ] && working_dir="$HAWKAI"
+  [ -z "$working_dir" ] && working_dir="$BRAION"
 
   for handoff_file in "$inbox_dir"/HO-*.md; do
     [ -f "$handoff_file" ] || continue
@@ -216,7 +201,7 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
       continue
     fi
 
-    session="hawkai-${agent}-${ho_id}"
+    session="braion-${agent}-${ho_id}"
 
     if session_running "$session"; then
       kill_stale_session "$session" || { log "SKIP $session — sessão ativa"; continue; }
@@ -228,13 +213,13 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
     # fi
 
     # Se o agente tem sessão alive ativa, aguarda ela terminar para evitar escrita concorrente em state/
-    if session_running "hawkai-${agent}"; then
-      kill_stale_session "hawkai-${agent}" || { log "SKIP $session — sessão alive hawkai-${agent} ativa, handoff será processado no próximo ciclo"; continue; }
+    if session_running "braion-${agent}"; then
+      kill_stale_session "braion-${agent}" || { log "SKIP $session — sessão alive braion-${agent} ativa, handoff será processado no próximo ciclo"; continue; }
     fi
 
     log "Handoff: iniciando $session para $handoff_file"
 
-    prompt="Read $HAWKAI/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. HawkAI base: $HAWKAI. Working directory: $working_dir."
+    prompt="Read $BRAION/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. BR.AI.ON base: $BRAION. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
     agent_cmd=$(get_agent_command "$config")
 
@@ -243,8 +228,8 @@ for config in "$HAWKAI/agents"/*/config.yaml; do
 done
 
 # ── 3. Agentes alive due → iniciar via scheduler ─────────────────────────────
-scheduler_output=$(python3 "$HAWKAI/lib/agent-scheduler.py" 2>/dev/null || echo '{"due":[]}')
-due_count=$(echo "$scheduler_output" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('due',[])))" 2>/dev/null || echo 0)
+scheduler_output=$(python3 "$BRAION/lib/agent-scheduler.py" 2>/dev/null || echo '{"due":[]}')
+due_count=$(echo "$scheduler_output" | jq '.due | length' 2>/dev/null || echo 0)
 
 if [ "$due_count" -gt 0 ]; then
   log "Scheduler: $due_count agente(s) due"
@@ -252,16 +237,13 @@ if [ "$due_count" -gt 0 ]; then
   run_alone_active=false
   marked_agents=""
 
-  echo "$scheduler_output" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for a in data.get('due', []):
-    print(f\"{a['name']}\t{a.get('directory','')}\t{a.get('model','claude-sonnet-4-6')}\t{a.get('run_alone', False)}\t{a.get('command','')}\")
-" 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
+  echo "$scheduler_output" | jq -r '
+    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // "")] | @tsv
+  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
     [ -z "$agent_name" ] && continue
 
-    session="hawkai-${agent_name}"
-    heartbeat="$HAWKAI/agents/${agent_name}/state/heartbeat.json"
+    session="braion-${agent_name}"
+    heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
 
     if session_running "$session"; then
       log "SKIP $session — sessão tmux ativa (alive)"
@@ -273,28 +255,21 @@ for a in data.get('due', []):
       continue
     fi
 
-    if [ "$run_alone" = "True" ]; then
-      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^hawkai-' || true)
+    if [ "$run_alone" = "true" ]; then
+      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^braion-' || true)
       if [ "${active_sessions:-0}" -gt 0 ]; then
         log "SKIP $session — run_alone mas há $active_sessions sessão(ões) ativa(s)"
         continue
       fi
     fi
 
-    [ -z "$agent_dir" ] && agent_dir="$HAWKAI"
+    [ -z "$agent_dir" ] && agent_dir="$BRAION"
 
-    prompt="Read $HAWKAI/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. HawkAI base: $HAWKAI. Working directory: $agent_dir."
-
-    # Lê command do config do agente
-    agent_config="$HAWKAI/agents/${agent_name}/config.yaml"
-    agent_cmd=""
-    if [ -f "$agent_config" ]; then
-      agent_cmd=$(get_agent_command "$agent_config")
-    fi
+    prompt="Read $BRAION/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
     start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
 
-    python3 "$HAWKAI/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
+    python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"
   done
 fi

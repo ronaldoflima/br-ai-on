@@ -17,6 +17,19 @@ const VALID_MODES = ["alive", "handoff-only", "disabled"];
 
 const INTERVAL_RE = /^\d+(s|m|h|d)$/;
 
+const KNOWN_TOP_LEVEL_FIELDS = new Set([
+  "name", "display_name", "domain", "version", "model", "fallback_model",
+  "command", "schedule", "budget", "integrations",
+]);
+
+const KNOWN_SCHEDULE_FIELDS = new Set([
+  "mode", "interval", "priority", "run_alone",
+]);
+
+const KNOWN_BUDGET_FIELDS = new Set([
+  "max_sessions_per_day", "max_tokens_per_session",
+]);
+
 export function validateAgentConfig(raw: string): ValidationResult {
   const errors: ConfigError[] = [];
 
@@ -31,14 +44,18 @@ export function validateAgentConfig(raw: string): ValidationResult {
     return { valid: false, errors: [{ field: "yaml", message: "Config deve ser um objeto YAML" }] };
   }
 
-  // Campos obrigatórios
+  for (const key of Object.keys(cfg)) {
+    if (!KNOWN_TOP_LEVEL_FIELDS.has(key)) {
+      errors.push({ field: key, message: `Campo desconhecido: "${key}"` });
+    }
+  }
+
   for (const field of ["name", "display_name", "domain", "version", "model", "fallback_model"] as const) {
     if (!cfg[field] || typeof cfg[field] !== "string") {
       errors.push({ field, message: `Campo obrigatório ausente ou inválido: ${field}` });
     }
   }
 
-  // model e fallback_model devem ser modelos Claude válidos
   if (cfg.model && !VALID_MODELS.includes(cfg.model as string)) {
     errors.push({
       field: "model",
@@ -57,6 +74,11 @@ export function validateAgentConfig(raw: string): ValidationResult {
   if (!sched || typeof sched !== "object") {
     errors.push({ field: "schedule", message: "Campo obrigatório: schedule" });
   } else {
+    for (const key of Object.keys(sched)) {
+      if (!KNOWN_SCHEDULE_FIELDS.has(key)) {
+        errors.push({ field: `schedule.${key}`, message: `Campo desconhecido em schedule: "${key}"` });
+      }
+    }
     const mode = sched.mode as string | undefined;
     if (!mode || !VALID_MODES.includes(mode)) {
       errors.push({
@@ -71,10 +93,13 @@ export function validateAgentConfig(raw: string): ValidationResult {
       } else if (!INTERVAL_RE.test(String(interval))) {
         errors.push({ field: "schedule.interval", message: `Intervalo inválido "${interval}". Formato: 15m, 1h, 2h, 7d` });
       }
-      const priority = sched.priority;
-      if (priority !== undefined && (typeof priority !== "number" || priority < 1)) {
-        errors.push({ field: "schedule.priority", message: "schedule.priority deve ser número >= 1" });
-      }
+    }
+    const priority = sched.priority;
+    if (priority !== undefined && (typeof priority !== "number" || priority < 1)) {
+      errors.push({ field: "schedule.priority", message: "schedule.priority deve ser número >= 1" });
+    }
+    if (sched.run_alone !== undefined && typeof sched.run_alone !== "boolean") {
+      errors.push({ field: "schedule.run_alone", message: "schedule.run_alone deve ser boolean" });
     }
   }
 
@@ -83,11 +108,38 @@ export function validateAgentConfig(raw: string): ValidationResult {
   if (!budget || typeof budget !== "object") {
     errors.push({ field: "budget", message: "Campo obrigatório: budget" });
   } else {
+    for (const key of Object.keys(budget)) {
+      if (!KNOWN_BUDGET_FIELDS.has(key)) {
+        errors.push({ field: `budget.${key}`, message: `Campo desconhecido em budget: "${key}"` });
+      }
+    }
     if (!budget.max_sessions_per_day || typeof budget.max_sessions_per_day !== "number" || budget.max_sessions_per_day < 1) {
       errors.push({ field: "budget.max_sessions_per_day", message: "budget.max_sessions_per_day deve ser número >= 1" });
     }
     if (!budget.max_tokens_per_session || typeof budget.max_tokens_per_session !== "number" || budget.max_tokens_per_session < 1000) {
       errors.push({ field: "budget.max_tokens_per_session", message: "budget.max_tokens_per_session deve ser número >= 1000" });
+    }
+  }
+
+  // integrations: opcional, mas se presente cada chave deve ter enabled: boolean
+  if (cfg.integrations !== undefined) {
+    if (typeof cfg.integrations !== "object" || cfg.integrations === null || Array.isArray(cfg.integrations)) {
+      errors.push({ field: "integrations", message: "integrations deve ser um objeto" });
+    } else {
+      const integrations = cfg.integrations as Record<string, unknown>;
+      for (const [key, value] of Object.entries(integrations)) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          errors.push({ field: `integrations.${key}`, message: `integrations.${key} deve ser um objeto` });
+          continue;
+        }
+        const integration = value as Record<string, unknown>;
+        if (typeof integration.enabled !== "boolean") {
+          errors.push({
+            field: `integrations.${key}.enabled`,
+            message: `integrations.${key}.enabled é obrigatório e deve ser boolean`,
+          });
+        }
+      }
     }
   }
 
