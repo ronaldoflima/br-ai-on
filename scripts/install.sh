@@ -59,7 +59,11 @@ if [ -d "$REPO_DIR/.git" ]; then
   git -C "$REPO_DIR" pull origin main --quiet
   log "Pull concluído"
 else
-  [ -d "$REPO_DIR" ] && rm -rf "$REPO_DIR"
+  if [ -d "$REPO_DIR" ]; then
+    BACKUP="${REPO_DIR}.bak.$(date '+%Y%m%d%H%M%S')"
+    echo "Backup de $REPO_DIR em $BACKUP..."
+    mv "$REPO_DIR" "$BACKUP"
+  fi
   echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
   git -C "$REPO_DIR" checkout main
