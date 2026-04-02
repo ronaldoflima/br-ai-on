@@ -10,8 +10,13 @@
 
 set -euo pipefail
 
+<<<<<<< Updated upstream
 HAWKAI=$(cd "$(dirname "$0")/.." && pwd)
 OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/pessoal/obsidian-files}
+=======
+BRAION=$(cd "$(dirname "$0")/.." && pwd)
+OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
+>>>>>>> Stashed changes
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
 CLAUDE=${CLAUDE:-$(command -v claude || echo claude)}
