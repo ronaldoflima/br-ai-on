@@ -14,11 +14,7 @@ log() {
 }
 
 if [ ! -d "$REPO_DIR/.git" ]; then
-  if [ -d "$REPO_DIR" ] && [ "$(ls -A "$REPO_DIR")" ]; then
-    echo "Erro: $REPO_DIR já existe e não está vazio. Remova ou use REPO_DIR para outro caminho."
-    exit 1
-  fi
-  log "Clonando repositório em $REPO_DIR..."
+  echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
   git -C "$REPO_DIR" checkout main
   log "Repositório clonado"
