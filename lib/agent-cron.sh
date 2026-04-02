@@ -11,7 +11,7 @@
 set -euo pipefail
 
 BRAION=$(cd "$(dirname "$0")/.." && pwd)
-OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/pessoal/obsidian-files}
+OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
 CLAUDE=${CLAUDE:-$(command -v claude || echo claude)}
