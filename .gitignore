@@ -11,9 +11,8 @@ dashboard/.next/
 agents/*
 !agents/_defaults/
 !agents/shared/
-agents/**/state/heartbeat.json
-agents/**/state/completed_tasks.md
-agents/**/state/cache/
+agents/**/state/*
+!agents/**/state/.gitkeep
 agents/**/memory/episodic.jsonl
 agents/**/handoffs/archive/
 agents/**/handoffs/inbox/*
