@@ -8,6 +8,76 @@ LOG_DIR="$REPO_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy-prod.log"
 SERVICE_FILE="$HOME/.config/systemd/user/braion.service"
 OS="$(uname -s)"
+NODE_MIN="20"
+
+check_deps() {
+  local missing=()
+
+  if ! command -v git &>/dev/null; then
+    missing+=("git")
+  fi
+
+  if ! command -v node &>/dev/null; then
+    missing+=("node")
+  else
+    local node_ver
+    node_ver=$(node -v | sed 's/v//' | cut -d. -f1)
+    if [ "$node_ver" -lt "$NODE_MIN" ]; then
+      echo "Node.js $NODE_MIN+ necessário (encontrado: $(node -v))"
+      missing+=("node")
+    fi
+  fi
+
+  if ! command -v npm &>/dev/null; then
+    missing+=("npm")
+  fi
+
+  if [ ${#missing[@]} -eq 0 ]; then
+    return 0
+  fi
+
+  echo "Dependências faltando: ${missing[*]}"
+  echo "Instalando..."
+
+  if [ "$OS" = "Linux" ]; then
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get update -qq
+      if [[ " ${missing[*]} " == *" node "* ]] || [[ " ${missing[*]} " == *" npm "* ]]; then
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        sudo apt-get install -y -qq nodejs
+      fi
+      if [[ " ${missing[*]} " == *" git "* ]]; then
+        sudo apt-get install -y -qq git
+      fi
+    elif command -v dnf &>/dev/null; then
+      if [[ " ${missing[*]} " == *" node "* ]] || [[ " ${missing[*]} " == *" npm "* ]]; then
+        curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+        sudo dnf install -y nodejs
+      fi
+      if [[ " ${missing[*]} " == *" git "* ]]; then
+        sudo dnf install -y git
+      fi
+    else
+      echo "Gerenciador de pacotes não suportado. Instale manualmente: ${missing[*]}"
+      exit 1
+    fi
+  elif [ "$OS" = "Darwin" ]; then
+    if ! command -v brew &>/dev/null; then
+      echo "Instalando Homebrew..."
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    if [[ " ${missing[*]} " == *" node "* ]] || [[ " ${missing[*]} " == *" npm "* ]]; then
+      brew install node
+    fi
+    if [[ " ${missing[*]} " == *" git "* ]]; then
+      brew install git
+    fi
+  fi
+
+  echo "Dependências instaladas."
+}
+
+check_deps
 
 log() {
   mkdir -p "$LOG_DIR"
@@ -55,9 +125,7 @@ EOF
 
 # — Setup do repo
 if [ -d "$REPO_DIR/.git" ]; then
-  log "Repositório já existe, fazendo pull..."
-  git -C "$REPO_DIR" pull origin main --quiet
-  log "Pull concluído"
+  log "Repositório encontrado."
 else
   if [ -d "$REPO_DIR" ]; then
     BACKUP="${REPO_DIR}.bak.$(date '+%Y%m%d%H%M%S')"
