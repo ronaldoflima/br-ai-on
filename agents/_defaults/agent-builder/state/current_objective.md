@@ -1,3 +1,0 @@
-# Objetivo Atual
-
-(nenhum)

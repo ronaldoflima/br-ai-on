@@ -11,11 +11,14 @@ dashboard/.next/
 agents/*
 !agents/_defaults/
 !agents/shared/
-agents/**/state/heartbeat.json
-agents/**/state/completed_tasks.md
-agents/**/state/cache/
+agents/**/state/*
+!agents/**/state/.gitkeep
 agents/**/memory/episodic.jsonl
 agents/**/handoffs/archive/
+agents/**/handoffs/inbox/*
+!agents/**/handoffs/inbox/.gitkeep
+agents/**/handoffs/artifacts/*
+!agents/**/handoffs/artifacts/.gitkeep
 agents/shared/schedule_state.json
 agents/shared/messages.jsonl
 agents/shared/triggers.jsonl

@@ -5,6 +5,11 @@ const PUBLIC_PATHS = ["/login", "/api/auth"];
 
 export function middleware(req: NextRequest) {
   if (process.env.DISABLE_AUTH === "true") {
+    if (req.nextUrl.pathname.startsWith("/login")) {
+      const home = req.nextUrl.clone();
+      home.pathname = "/";
+      return NextResponse.redirect(home);
+    }
     return NextResponse.next();
   }
 
