@@ -18,8 +18,8 @@ const VALID_MODES = ["alive", "handoff-only", "disabled"];
 const INTERVAL_RE = /^\d+(s|m|h|d)$/;
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
-  "name", "display_name", "domain", "version", "model", "fallback_model",
-  "command", "schedule", "budget", "integrations",
+  "name", "display_name", "domain", "directory", "version", "model", "fallback_model",
+  "command", "schedule", "budget", "integrations", "collaborators",
 ]);
 
 const KNOWN_SCHEDULE_FIELDS = new Set([
@@ -140,6 +140,14 @@ export function validateAgentConfig(raw: string): ValidationResult {
           });
         }
       }
+    }
+  }
+
+  if (cfg.directory !== undefined) {
+    if (typeof cfg.directory !== "string") {
+      errors.push({ field: "directory", message: "directory deve ser uma string" });
+    } else if (!cfg.directory.startsWith("/")) {
+      errors.push({ field: "directory", message: "directory deve ser um caminho absoluto" });
     }
   }
 
