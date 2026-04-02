@@ -64,6 +64,7 @@ else
     echo "Backup de $REPO_DIR em $BACKUP..."
     mv "$REPO_DIR" "$BACKUP"
   fi
+  [ -d "$REPO_DIR" ] && rm -rf "$REPO_DIR"
   echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
   git -C "$REPO_DIR" checkout main
