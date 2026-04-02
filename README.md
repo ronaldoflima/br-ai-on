@@ -6,13 +6,13 @@ Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui 
 
 ```bash
 # Instala, faz build e sobe o serviço de produção automaticamente
-bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ronaldoflima/br-ai-on/main/scripts/install.sh)
 ```
 
 Diretório padrão: `~/br-ai-on`. Para customizar:
 
 ```bash
-REPO_DIR=~/outro/caminho bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/install.sh)
+REPO_DIR=~/outro/caminho bash <(curl -fsSL https://raw.githubusercontent.com/ronaldoflima/br-ai-on/main/scripts/install.sh)
 ```
 
 Após a instalação, o dashboard estará disponível em `http://localhost:3040`.
@@ -27,7 +27,7 @@ node scripts/setup-totp.js
 ### Desinstalar
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/(usuário)flima/br-ai-on/main/scripts/uninstall.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ronaldoflima/br-ai-on/main/scripts/uninstall.sh)
 ```
 
 ---
