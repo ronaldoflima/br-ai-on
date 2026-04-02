@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const REPO = "(usuário)flima/br-ai-on";
+const REPO = "ronaldoflima/br-ai-on";
 const GITHUB_API = `https://api.github.com/repos/${REPO}/tags`;
 
 let cache: { version: string | null; ts: number } = { version: null, ts: 0 };
