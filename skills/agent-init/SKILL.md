@@ -90,7 +90,9 @@ Leia `agents/<nome>/config.yaml` para limites e integrações.
 
 ## 4. Buscar Tarefas
 
-Use as integrações habilitadas no config para buscar tarefas pendentes. Por padrão, consulte o Notion se `integrations.notion.enabled: true`.
+Verifique se há tarefas pendentes nos arquivos locais:
+- `agents/shared/task_board.md` — tarefas atribuídas a este agente
+- `agents/<nome>/handoffs/inbox/` — handoffs já carregados no passo 2.7
 
 ## 5. Definir Objetivo da Sessão
 

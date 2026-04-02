@@ -92,9 +92,9 @@ bash "$BRAION/lib/logger.sh" "$AGENT" "Handoffs processados" '{"count": N}'
 
 ## 5. Notificar
 
-Se a ação for crítica ou precisar de atenção do usuário, envie via Telegram:
-```
-mcp__personal-mcp-gateway__gateway_send_notification
+Se a ação for crítica ou precisar de atenção do usuário, envie um handoff para `user`:
+```bash
+bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<resultado>" "<próximos passos>"
 ```
 
 ## 6. Heartbeat Final e Encerramento
