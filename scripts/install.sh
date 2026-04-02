@@ -29,7 +29,7 @@ else
   log "Dependências instaladas"
 
   log "Executando build inicial..."
-  node --env-file=../.env ./node_modules/.bin/next build --turbopack >> "$LOG_FILE" 2>&1
+  node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"
   log "Build concluído"
 fi
 
@@ -72,7 +72,7 @@ git pull origin main --quiet
 log "Pull concluído"
 
 cd "$DASHBOARD_DIR"
-node --env-file=../.env ./node_modules/.bin/next build --turbopack >> "$LOG_FILE" 2>&1
+node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"
 log "Build concluído"
 
 systemctl --user restart braion.service
