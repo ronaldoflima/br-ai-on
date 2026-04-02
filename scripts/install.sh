@@ -170,8 +170,28 @@ fi
 
 log "Nova versão detectada: $LOCAL -> $REMOTE"
 
-git pull origin main --quiet
-log "Pull concluído"
+HAS_STASH=false
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  git stash push -m "install-auto-$(date '+%Y%m%d%H%M%S')"
+  HAS_STASH=true
+  log "Mudanças locais salvas em stash"
+fi
+
+if ! git rebase origin/main 2>/dev/null; then
+  git rebase --abort 2>/dev/null || true
+  log "WARN: rebase falhou, usando reset para origin/main"
+  git reset --hard origin/main
+fi
+
+if [ "$HAS_STASH" = true ]; then
+  if git stash pop 2>/dev/null; then
+    log "Mudanças locais restauradas"
+  else
+    log "WARN: conflito ao restaurar mudanças locais — mantidas no stash"
+  fi
+fi
+
+log "Atualização concluída"
 
 cd "$DASHBOARD_DIR"
 node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"
