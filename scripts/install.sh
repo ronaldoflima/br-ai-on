@@ -64,6 +64,11 @@ else
   git -C "$REPO_DIR" checkout main
   log "Repositório clonado"
 
+  if [ ! -f "$REPO_DIR/.env" ]; then
+    cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
+    log ".env criado a partir do .env.example — configure antes de continuar"
+  fi
+
   log "Instalando dependências..."
   cd "$DASHBOARD_DIR" && npm install
   log "Dependências instaladas"
