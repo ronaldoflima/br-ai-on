@@ -77,3 +77,5 @@ log "Build concluído"
 
 systemctl --user restart braion.service
 log "Serviço reiniciado"
+sleep 2
+journalctl --user -u braion.service -n 20 --no-pager
