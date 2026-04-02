@@ -20,6 +20,10 @@ export default function AgentDetailPage() {
   const [configErrors, setConfigErrors] = useState<ConfigError[]>([]);
   const [terminalSessions, setTerminalSessions] = useState<{ session: string; output: string }[]>([]);
   const [terminalLoading, setTerminalLoading] = useState(false);
+  const [showHandoffModal, setShowHandoffModal] = useState(false);
+  const [handoffForm, setHandoffForm] = useState({ expects: "action", description: "", context: "", expected: "" });
+  const [handoffSending, setHandoffSending] = useState(false);
+  const [handoffStatus, setHandoffStatus] = useState("");
 
   useEffect(() => {
     fetch(`/api/agents/${name}`)
@@ -90,6 +94,29 @@ export default function AgentDetailPage() {
     setTimeout(() => setSaveStatus(""), 2000);
   };
 
+  const sendHandoff = async () => {
+    setHandoffSending(true);
+    setHandoffStatus("");
+    try {
+      const res = await fetch("/api/handoffs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: name, ...handoffForm }),
+      });
+      if (res.ok) {
+        setHandoffStatus("Enviado!");
+        setHandoffForm({ expects: "action", description: "", context: "", expected: "" });
+        setTimeout(() => { setShowHandoffModal(false); setHandoffStatus(""); }, 1200);
+      } else {
+        const data = await res.json();
+        setHandoffStatus(data.error || "Erro ao enviar");
+      }
+    } catch {
+      setHandoffStatus("Erro de conexão");
+    }
+    setHandoffSending(false);
+  };
+
   const deleteAgent = async () => {
     if (!confirm(`Excluir o agente "${name}" permanentemente? Esta ação não pode ser desfeita.`)) return;
     const res = await fetch(`/api/agents/${name}`, { method: "DELETE" });
@@ -129,6 +156,7 @@ export default function AgentDetailPage() {
             </span>
           )}
           <button className="btn" onClick={() => router.push(`/logs?agent=${name}`)}>Ver Logs</button>
+          <button className="btn btn-primary" onClick={() => setShowHandoffModal(true)}>Novo Handoff</button>
           <button className="btn" style={{ color: "var(--error)", borderColor: "var(--error)" }} onClick={deleteAgent}>Excluir</button>
         </div>
       </div>
@@ -276,6 +304,73 @@ export default function AgentDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {showHandoffModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="card" style={{ width: "100%", maxWidth: 520, padding: 24 }}>
+            <div className="flex-between mb-md">
+              <h3 className="subsection-title" style={{ margin: 0 }}>Novo Handoff → {name}</h3>
+              <button className="btn" onClick={() => { setShowHandoffModal(false); setHandoffStatus(""); }}>✕</button>
+            </div>
+            <div className="flex-col" style={{ gap: 12 }}>
+              <div>
+                <label className="text-muted-sm">Expects</label>
+                <select
+                  className="textarea"
+                  style={{ minHeight: "unset", padding: "6px 10px" }}
+                  value={handoffForm.expects}
+                  onChange={(e) => setHandoffForm((f) => ({ ...f, expects: e.target.value }))}
+                >
+                  <option value="action">action</option>
+                  <option value="review">review</option>
+                  <option value="info">info</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-muted-sm">Descrição</label>
+                <textarea
+                  className="textarea"
+                  style={{ minHeight: 60 }}
+                  value={handoffForm.description}
+                  onChange={(e) => setHandoffForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="O que este handoff solicita?"
+                />
+              </div>
+              <div>
+                <label className="text-muted-sm">Contexto</label>
+                <textarea
+                  className="textarea"
+                  style={{ minHeight: 60 }}
+                  value={handoffForm.context}
+                  onChange={(e) => setHandoffForm((f) => ({ ...f, context: e.target.value }))}
+                  placeholder="Contexto adicional..."
+                />
+              </div>
+              <div>
+                <label className="text-muted-sm">Esperado</label>
+                <textarea
+                  className="textarea"
+                  style={{ minHeight: 60 }}
+                  value={handoffForm.expected}
+                  onChange={(e) => setHandoffForm((f) => ({ ...f, expected: e.target.value }))}
+                  placeholder="Resultado esperado..."
+                />
+              </div>
+              <div className="flex-row" style={{ justifyContent: "flex-end", gap: 8, alignItems: "center" }}>
+                {handoffStatus && (
+                  <span className="text-muted-sm" style={{ color: handoffStatus === "Enviado!" ? "var(--success)" : "var(--error)" }}>
+                    {handoffStatus}
+                  </span>
+                )}
+                <button className="btn" onClick={() => { setShowHandoffModal(false); setHandoffStatus(""); }}>Cancelar</button>
+                <button className="btn btn-primary" onClick={sendHandoff} disabled={handoffSending || !handoffForm.description.trim()}>
+                  {handoffSending ? "Enviando..." : "Enviar"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
