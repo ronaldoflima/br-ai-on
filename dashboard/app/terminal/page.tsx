@@ -64,6 +64,8 @@ export default function TerminalPage() {
   const outputRef = useRef<HTMLPreElement>(null);
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mobileDirectInputRef = useRef<HTMLInputElement>(null);
+  const [mobileDirectValue, setMobileDirectValue] = useState("");
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -151,16 +153,16 @@ export default function TerminalPage() {
   }, [selected, captureLines, refreshRate, connectSSE]);
 
   useEffect(() => {
-    if (isMobile && directMode) setDirectMode(false);
-  }, [isMobile]);
-
-  useEffect(() => {
     if (directMode && selected) {
-      outputRef.current?.focus();
+      if (isMobile) {
+        mobileDirectInputRef.current?.focus();
+      } else {
+        outputRef.current?.focus();
+      }
     } else if (!directMode && selected) {
       inputRef.current?.focus();
     }
-  }, [directMode, selected]);
+  }, [directMode, selected, isMobile]);
 
   const sendKey = useCallback(async (key: string, ctrl = false, meta = false, shift = false) => {
     if (!selected) return;
@@ -216,6 +218,27 @@ export default function TerminalPage() {
     if (shouldPrevent) e.preventDefault();
 
     sendKey(e.key, ctrl, meta, shift);
+  };
+
+  const handleMobileDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
+    for (const char of newText) {
+      sendKey(char);
+    }
+    setMobileDirectValue("");
+  }, [sendKey]);
+
+  const handleMobileDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+    const specialKeys = [
+      "Backspace", "Delete", "Enter", "Escape", "Tab",
+      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+      "Home", "End", "PageUp", "PageDown",
+    ];
+    if (specialKeys.includes(e.key)) {
+      e.preventDefault();
+      sendKey(e.key);
+    }
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -433,7 +456,7 @@ export default function TerminalPage() {
         tabIndex={directMode ? 0 : -1}
         onKeyDown={directMode ? handleDirectKeyDown : undefined}
         onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
-        onTouchEnd={isMobile ? () => inputRef.current?.focus() : undefined}
+        onTouchEnd={isMobile ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
         onClick={() => directMode && outputRef.current?.focus()}
         className={isMobile ? styles.outputMobile : styles.output}
         style={{
@@ -456,7 +479,7 @@ export default function TerminalPage() {
             className={`btn ${styles.specialKeyBtn}`}
             title={title}
             onMouseDown={(e) => e.preventDefault()}
-            onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
+            onTouchEnd={isMobile ? (e) => { e.preventDefault(); sendKey(key, ctrl ?? false, false, label === "⇤Tab"); setTimeout(() => (directMode ? mobileDirectInputRef.current : inputRef.current)?.focus(), 0); } : undefined}
             onClick={() => sendKey(key, ctrl ?? false, false, label === "⇤Tab")}
           >
             {label}
@@ -467,8 +490,24 @@ export default function TerminalPage() {
       <div className={styles.inputRow}>
         {directMode ? (
           <>
-            <div className={styles.directModeLabel}>
-              modo direto • cada tecla é enviada imediatamente
+            {isMobile && (
+              <input
+                ref={mobileDirectInputRef}
+                value={mobileDirectValue}
+                onChange={handleMobileDirectChange}
+                onKeyDown={handleMobileDirectKeyDown}
+                autoCorrect="off"
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+                style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+              />
+            )}
+            <div
+              className={styles.directModeLabel}
+              onClick={() => isMobile && mobileDirectInputRef.current?.focus()}
+            >
+              {isMobile ? "modo direto • toque aqui ou no terminal para digitar" : "modo direto • cada tecla é enviada imediatamente"}
             </div>
             <button
               className={`btn ${styles.modeToggleBtn}`}
