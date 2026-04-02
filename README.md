@@ -59,31 +59,6 @@ O `scripts/install.sh` roda via cron a cada minuto — verifica se há commit no
 
 ---
 
-## Arquitetura
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Orquestrador                        │
-│          (scheduling, routing, distribuição)             │
-└──────────┬──────────────────────────────┬───────────────┘
-           │                              │
-    ┌──────▼──────┐                ┌──────▼──────┐
-    │  Scheduler  │                │ Inbox Router│
-    │  (Python)   │                │ (filesystem)│
-    └──────┬──────┘                └──────┬──────┘
-           │                              │
-     ┌─────▼──────────────────────────────▼─────┐
-     │              Agentes                      │
-     │  (definidos em agents/_defaults/ ou       │
-     │   criados com scripts/create-agent.sh)    │
-     └─────┬──────────────┬──────────────┬──────┘
-           │              │              │
-    ┌──────▼───┐   ┌──────▼───┐   ┌─────▼─────┐
-    │ Memória  │   │ Handoffs │   │   Logs    │
-    │ sem+epi  │   │  P2P     │   │  JSONL    │
-    └──────────┘   └──────────┘   └───────────┘
-```
-
 ## Agentes
 
 Agentes base em `agents/_defaults/`:
