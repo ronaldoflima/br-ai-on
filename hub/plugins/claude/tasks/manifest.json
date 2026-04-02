@@ -1,0 +1,26 @@
+{
+  "name": "tasks",
+  "version": "1.0.0",
+  "description": "Extração, persistência e sincronização de tarefas a partir de canais de comunicação (Teams, Email, Calendário)",
+  "author": "ronaldoflima",
+  "commands": [
+    "config",
+    "extract",
+    "update",
+    "sync",
+    "sync-notion",
+    "sync-obsidian",
+    "save-notion",
+    "save-obsidian"
+  ],
+  "config": {
+    "file": "tasks-config.json",
+    "example": "tasks-config.example.json"
+  },
+  "requires": {
+    "mcp": ["Microsoft_365"],
+    "optional_mcp": ["Notion", "obsidian"]
+  },
+  "install_dir": ".claude/commands/tasks",
+  "post_install": "Execute /tasks:config init para configurar suas variáveis pessoais"
+}

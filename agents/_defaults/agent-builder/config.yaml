@@ -14,11 +14,3 @@ schedule:
 budget:
   max_tokens_per_session: 80000
   max_sessions_per_day: 5
-
-integrations:
-  telegram:
-    enabled: false
-  notion:
-    enabled: false
-  obsidian:
-    enabled: false

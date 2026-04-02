@@ -1,0 +1,75 @@
+{
+  "user": {
+    "email": "seu.email@empresa.com",
+    "mention_aliases": ["@SeuNome"],
+    "language": "pt-br"
+  },
+  "extract": {
+    "default_period": "24h",
+    "cache_ttl_minutes": 30,
+    "teams": {
+      "chat_query": "*",
+      "chat_limit": 50,
+      "channel_limit": 50
+    },
+    "email": {
+      "limit_per_query": 20,
+      "search_queries": [
+        "precisa fazer",
+        "urgente prazo deadline",
+        "por favor pode verificar revisar",
+        "bug erro problema issue fix",
+        "deploy release implementar atualizar"
+      ]
+    },
+    "calendar": {
+      "days_ahead": 2,
+      "limit": 50
+    }
+  },
+  "classification": {
+    "priorities": {
+      "alta": { "label": "🔥 Alta", "keywords": ["urgente", "ASAP", "crítico", "blocker", "produção"], "deadline_days_max": 2 },
+      "media": { "label": "⚡ Média", "deadline_days_min": 2, "deadline_days_max": 7 },
+      "baixa": { "label": "🐌 Baixa", "keywords": ["quando puder", "nice-to-have"] }
+    },
+    "origens": ["Slack", "Github", "Manual", "Interno", "Email", "Produção", "Outros", "Teams"],
+    "status_default": "⏳ Pendente"
+  },
+  "notion": {
+    "enabled": false,
+    "database_id": "",
+    "database_name": "",
+    "duplicate_threshold": 0.8,
+    "properties": {
+      "name": "Name",
+      "status": "Status",
+      "priority": "Prioridade",
+      "origin": "Origem",
+      "context": "Contexto",
+      "responsible": "Responsavel",
+      "date": "Data",
+      "last_check": "Ultima_Verificacao",
+      "github_ref": "GitHub_Ref"
+    },
+    "status_values": {
+      "pending": "⏳ Pendente",
+      "in_progress": "🔄 Em progresso",
+      "done": "✅ Concluído"
+    }
+  },
+  "obsidian": {
+    "enabled": false,
+    "vault_path": "pessoal/inbox",
+    "slug_max_length": 60,
+    "default_tags": ["tarefa"],
+    "template": "# {Name}\n\n## Contexto\n{Contexto}\n\n## Links\n- Notion: {notion_url}\n- GitHub: {GitHub_Ref}\n\n## Ações\n- [ ] TODO\n"
+  },
+  "logs": {
+    "base_path": "logs/extract-tasks",
+    "latest_file": "latest.json",
+    "extraction_file": "latest-extraction.json",
+    "processed_file": "processed.json"
+  },
+  "save_targets": []
+}
