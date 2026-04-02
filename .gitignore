@@ -18,6 +18,8 @@ agents/**/memory/episodic.jsonl
 agents/**/handoffs/archive/
 agents/**/handoffs/inbox/*
 !agents/**/handoffs/inbox/.gitkeep
+agents/**/handoffs/artifacts/*
+!agents/**/handoffs/artifacts/.gitkeep
 agents/shared/schedule_state.json
 agents/shared/messages.jsonl
 agents/shared/triggers.jsonl
