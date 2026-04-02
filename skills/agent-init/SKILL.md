@@ -91,7 +91,6 @@ Leia `agents/<nome>/config.yaml` para limites e integrações.
 ## 4. Buscar Tarefas
 
 Verifique se há tarefas pendentes nos arquivos locais:
-- `agents/shared/task_board.md` — tarefas atribuídas a este agente
 - `agents/<nome>/handoffs/inbox/` — handoffs já carregados no passo 2.7
 
 ## 5. Definir Objetivo da Sessão

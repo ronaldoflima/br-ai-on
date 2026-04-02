@@ -1,9 +1,13 @@
 name: task-manager
 display_name: TaskManager
 domain: Tarefas/Produtividade
-version: "0.1.0"
+version: "1.0.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
+
+requires:
+  hub_plugin: tasks
+  hub_version: ">=1.0.0"
 
 schedule:
   mode: alive
@@ -11,16 +15,19 @@ schedule:
   priority: 1
   run_alone: false
 
+workflow:
+  init:
+    - validate_config
+  main:
+    - extract
+    - update
+    - sync
+  commands:
+    validate_config: "/tasks:config validate"
+    extract: "/tasks:extract"
+    update: "/tasks:update"
+    sync: "/tasks:sync"
+
 budget:
   max_tokens_per_session: 50000
   max_sessions_per_day: 10
-
-integrations:
-  telegram:
-    enabled: false
-  notion:
-    enabled: false
-  obsidian:
-    enabled: true
-    inbox: "agents/inbox"
-    identity: "taskmanager"
