@@ -59,6 +59,7 @@ if [ -d "$REPO_DIR/.git" ]; then
   git -C "$REPO_DIR" pull origin main --quiet
   log "Pull concluído"
 else
+  [ -d "$REPO_DIR" ] && rm -rf "$REPO_DIR"
   echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
   git -C "$REPO_DIR" checkout main
