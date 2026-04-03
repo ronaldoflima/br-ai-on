@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-layout">
       <Sidebar />
-      <main className="app-main">
+      <main className={`app-main${pathname === "/terminal" ? " app-main-full" : ""}`}>
         <ErrorBanner />
         {children}
       </main>
