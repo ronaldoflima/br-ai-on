@@ -247,7 +247,7 @@ export default function HandoffsPage() {
       ) : (
         <div className="flex-col">
           {items.map((ho) => (
-            <div key={ho.id} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
+            <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
               <div className="flex-between mb-sm">
                 <div className="flex-row">
                   <span className="mono-md font-semibold">{ho.id}</span>

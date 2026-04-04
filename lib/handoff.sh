@@ -17,7 +17,7 @@ handoff_next_id() {
   local date_str
   date_str=$(date -u +%Y%m%d)
   local seq=1
-  for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/archive; do
+  for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/archive "$AGENTS_DIR"/*/handoffs/in_progress; do
     [ -d "$dir" ] || continue
     for f in "$dir"/HO-"${date_str}"-*.md; do
       [ -f "$f" ] || continue
