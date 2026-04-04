@@ -37,7 +37,9 @@ Plans:
   1. Documentação do task-manager e inbox-router estabelece claramente que inbox-router faz a conversão Obsidian→handoff
   2. IDENTITY.md ou SKILL.md do orchestrator não descreve responsabilidade de routing de inbox
   3. Uma mensagem criada no Obsidian inbox segue exatamente um caminho: inbox-router → handoff
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
 
 ### Phase 3: Schema de Handoffs
 **Goal**: Handoffs suportam thread_id — criação, herança automática, histórico de thread e integração na skill de processamento
@@ -48,7 +50,9 @@ Plans:
   2. Ao responder um handoff com `reply_to`, `thread_id` é herdado automaticamente sem intervenção manual
   3. `lib/handoff.sh thread-history <thread_id>` retorna lista dos handoffs da thread com from/to/status
   4. `agent-handoff/SKILL.md` instrui o agente a carregar thread history quando `thread_id` está presente antes de processar
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
 
 ### Phase 4: Visibilidade
 **Goal**: Usuário consegue ver todos os handoffs dos agentes diretamente no dashboard web
@@ -58,7 +62,9 @@ Plans:
   1. Dashboard na porta 3040 exibe lista de handoffs com from, to, status e created
   2. Handoffs de todos os agentes aparecem na mesma visualização
   3. Status dos handoffs (pending, complete, archived) é refletido na UI
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
 **UI hint**: yes
 
 ## Progress
