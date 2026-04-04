@@ -30,12 +30,15 @@ Comunicação confiável entre agentes: toda mensagem (user→agente, agente→a
 
 ### Active
 
-- [ ] Deprecar canais redundantes (task_board, messages.jsonl)
-- [ ] Unificar responsabilidades de routing (inbox-router como único conversor)
-- [ ] Adicionar campo `priority` no schema de handoffs
-- [ ] Adicionar campo `thread_id` no schema de handoffs
-- [ ] Cron processar handoffs por prioridade
-- [ ] Handoff board JSON para dashboard
+None — all v1.0 requirements complete.
+
+### Completed in v1.0
+
+- [x] Deprecar canais redundantes (task_board, messages.jsonl) — Phase 1
+- [x] Unificar responsabilidades de routing (inbox-router como único conversor) — Phase 2
+- [x] Adicionar campo `thread_id` no schema de handoffs — Phase 3
+- [x] Thread history e integração na skill agent-handoff — Phase 3
+- [x] Dashboard exibe handoffs com thread_id — Phase 4
 
 ### Out of Scope
 
@@ -48,7 +51,7 @@ Comunicação confiável entre agentes: toda mensagem (user→agente, agente→a
 - 4 canais de interação existem: handoffs (principal), Obsidian inbox, task_board.md, messages.jsonl
 - Handoffs são o mecanismo mais maduro e usado — os outros são redundantes ou subutilizados
 - Há sobreposição entre inbox-router, task-manager e orchestrator para routing de Obsidian inbox
-- Dashboard web (Next.js, porta 3040) existe mas não tem visibilidade de handoffs
+- Dashboard web (Next.js, porta 3040) exibe handoffs com thread_id
 - `lib/handoff.sh` já implementa criação, listagem e arquivamento de handoffs
 
 ## Constraints
@@ -61,9 +64,9 @@ Comunicação confiável entre agentes: toda mensagem (user→agente, agente→a
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Handoffs como canal único | Mais maduro, já em uso por todos os agentes | — Pending |
-| inbox-router como único conversor Obsidian→handoff | Elimina sobreposição com task-manager e orchestrator | — Pending |
-| Novos campos opcionais no schema | Backwards compatibility com handoffs existentes | — Pending |
+| Handoffs como canal único | Mais maduro, já em uso por todos os agentes | ✅ Validated Phase 1 |
+| inbox-router como único conversor Obsidian→handoff | Elimina sobreposição com task-manager e orchestrator | ✅ Validated Phase 2 |
+| Novos campos opcionais no schema | Backwards compatibility com handoffs existentes | ✅ Validated Phase 3 |
 
 ## Evolution
 
@@ -83,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after milestone v1.0 initialization*
+*Last updated: 2026-04-04 after milestone v1.0 completion*
