@@ -1,7 +1,176 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { Handoff } from "../lib/types";
 import { useAgentListFull } from "../lib/useAgentList";
+
+interface ArtifactFile {
+  name: string;
+  size: number;
+  modified: string;
+  type: string;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ArtifactViewer({ agent, id, file, onClose }: {
+  agent: string;
+  id: string;
+  file: ArtifactFile;
+  onClose: () => void;
+}) {
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/artifacts?agent=${agent}&id=${id}&file=${encodeURIComponent(file.name)}`)
+      .then((r) => r.json())
+      .then((data) => setContent(data.content || ""))
+      .catch(() => setContent("Erro ao carregar arquivo"))
+      .finally(() => setLoading(false));
+  }, [agent, id, file.name]);
+
+  function copyToClipboard() {
+    if (content) {
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  function download() {
+    if (content == null) return;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="card modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header flex-between">
+          <div className="flex-row">
+            <span className="font-semibold">{file.name}</span>
+            <span className="badge badge-muted">{file.type}</span>
+            <span className="text-muted-xs">{formatSize(file.size)}</span>
+          </div>
+          <div className="flex-row">
+            <button className="badge badge-info pointer" onClick={copyToClipboard}>
+              {copied ? "Copiado!" : "Copiar"}
+            </button>
+            <button className="badge badge-info pointer" onClick={download}>Baixar</button>
+            <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+          </div>
+        </div>
+        <div className="modal-body">
+          {loading ? (
+            <div className="empty-state">Carregando...</div>
+          ) : (
+            <pre className="mono-sm text-secondary-sm pre-wrap" style={{
+              padding: 16,
+              background: "var(--bg-primary)",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border)",
+              maxHeight: "70vh",
+              overflow: "auto",
+            }}>
+              {content}
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArtifactsSection({ agent, handoffId }: { agent: string; handoffId: string }) {
+  const [files, setFiles] = useState<ArtifactFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState<ArtifactFile | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/artifacts?agent=${agent}&id=${handoffId}`)
+      .then((r) => r.json())
+      .then((data) => setFiles(data.files || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [agent, handoffId]);
+
+  function downloadFile(file: ArtifactFile) {
+    fetch(`/api/artifacts?agent=${agent}&id=${handoffId}&file=${encodeURIComponent(file.name)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const blob = new Blob([data.content || ""], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+  }
+
+  function copyFile(file: ArtifactFile) {
+    fetch(`/api/artifacts?agent=${agent}&id=${handoffId}&file=${encodeURIComponent(file.name)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        navigator.clipboard.writeText(data.content || "");
+      });
+  }
+
+  if (loading) return <div className="text-muted-xs" style={{ marginTop: 8 }}>Carregando artefatos...</div>;
+  if (files.length === 0) return null;
+
+  return (
+    <>
+      {viewing && (
+        <ArtifactViewer agent={agent} id={handoffId} file={viewing} onClose={() => setViewing(null)} />
+      )}
+      <div style={{ marginTop: 12, padding: 12, background: "var(--bg-secondary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+        <div className="flex-between mb-sm">
+          <span className="text-muted-xs font-semibold" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Artefatos ({files.length})
+          </span>
+        </div>
+        <div className="flex-col" style={{ gap: 4 }}>
+          {files.map((f) => (
+            <div key={f.name} className="flex-between" style={{
+              padding: "6px 8px",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+            }}>
+              <div className="flex-row">
+                <span className="mono-sm">{f.name}</span>
+                <span className="badge badge-muted">{f.type}</span>
+                <span className="text-muted-xs">{formatSize(f.size)}</span>
+              </div>
+              <div className="flex-row" onClick={(e) => e.stopPropagation()}>
+                <button className="badge badge-info pointer" onClick={() => setViewing(f)} title="Visualizar">
+                  Ver
+                </button>
+                <button className="badge badge-muted pointer" onClick={() => copyFile(f)} title="Copiar conteúdo">
+                  Copiar
+                </button>
+                <button className="badge badge-muted pointer" onClick={() => downloadFile(f)} title="Baixar arquivo">
+                  Baixar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function NewHandoffModal({ agents, onClose, onCreated }: {
   agents: { name: string; display_name: string }[];
@@ -247,7 +416,7 @@ export default function HandoffsPage() {
       ) : (
         <div className="flex-col">
           {items.map((ho) => (
-            <div key={ho.id} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
+            <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
               <div className="flex-between mb-sm">
                 <div className="flex-row">
                   <span className="mono-md font-semibold">{ho.id}</span>
@@ -281,9 +450,12 @@ export default function HandoffsPage() {
               <div className="text-secondary-sm">{ho.description}</div>
               {ho.created && <div className="text-muted-xs mt-sm">{new Date(ho.created).toLocaleString("pt-BR")}</div>}
               {expanded === ho.id && (
-                <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
-                  {ho.body}
-                </pre>
+                <>
+                  <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
+                    {ho.body}
+                  </pre>
+                  <ArtifactsSection agent={ho.to} handoffId={ho.id} />
+                </>
               )}
             </div>
           ))}
