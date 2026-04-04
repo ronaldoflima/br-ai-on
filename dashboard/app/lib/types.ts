@@ -51,6 +51,7 @@ export interface Handoff {
   status: string;
   expects: string;
   reply_to: string | null;
+  thread_id?: string | null;
   description: string;
   body: string;
   filename: string;
