@@ -11,7 +11,7 @@ v1.0 consolida handoffs como canal único de comunicação entre agentes. A jorn
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Limpeza de Canais** - Deprecar task_board.md e messages.jsonl como canais de comunicação (completed 2026-04-04)
-- [ ] **Phase 2: Routing** - Documentar inbox-router como único conversor Obsidian→handoff e limpar sobreposição
+- [x] **Phase 2: Routing** - Documentar inbox-router como único conversor Obsidian→handoff e limpar sobreposição (completed 2026-04-04)
 - [ ] **Phase 3: Schema de Handoffs** - Adicionar thread_id ao schema e suporte completo em handoff.sh e skills
 - [ ] **Phase 4: Visibilidade** - Dashboard Next.js exibe handoffs dos agentes em tempo real
 
@@ -37,9 +37,9 @@ Plans:
   1. Documentação do task-manager e inbox-router estabelece claramente que inbox-router faz a conversão Obsidian→handoff
   2. IDENTITY.md ou SKILL.md do orchestrator não descreve responsabilidade de routing de inbox
   3. Uma mensagem criada no Obsidian inbox segue exatamente um caminho: inbox-router → handoff
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
+- [x] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
 
 ### Phase 3: Schema de Handoffs
 **Goal**: Handoffs suportam thread_id — criação, herança automática, histórico de thread e integração na skill de processamento
@@ -75,6 +75,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Limpeza de Canais | 1/1 | Complete    | 2026-04-04 |
-| 2. Routing | 0/? | Not started | - |
+| 2. Routing | 1/1 | Complete   | 2026-04-04 |
 | 3. Schema de Handoffs | 0/? | Not started | - |
 | 4. Visibilidade | 0/? | Not started | - |

@@ -12,8 +12,8 @@
 
 ### Routing
 
-- [ ] **ROUTE-01**: Documentar que task-manager + skill agent-inbox-router é o único responsável por Obsidian→handoff
-- [ ] **ROUTE-02**: Garantir que orchestrator não faz routing de inbox (apenas decomposição de tarefas complexas)
+- [x] **ROUTE-01**: Documentar que task-manager + skill agent-inbox-router é o único responsável por Obsidian→handoff
+- [x] **ROUTE-02**: Garantir que orchestrator não faz routing de inbox (apenas decomposição de tarefas complexas)
 
 ### Schema de Handoffs
 
@@ -62,8 +62,8 @@
 |-------------|-------|--------|
 | CLEAN-01 | Phase 1 | Complete |
 | CLEAN-02 | Phase 1 | Complete |
-| ROUTE-01 | Phase 2 | Pending |
-| ROUTE-02 | Phase 2 | Pending |
+| ROUTE-01 | Phase 2 | Complete |
+| ROUTE-02 | Phase 2 | Complete |
 | SCHEMA-01 | Phase 3 | Pending |
 | SCHEMA-02 | Phase 3 | Pending |
 | SCHEMA-03 | Phase 3 | Pending |
