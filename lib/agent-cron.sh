@@ -136,7 +136,7 @@ if [ -d "$OBSIDIAN_VAULT/.git" ]; then
     || log "Obsidian: pull falhou (continuando com versão local)"
 fi
 
-# ── 1. Obsidian inbox → roteamento pelo task-manager ─────────────────────────
+# ── 1. Obsidian inbox → conversão pelo skill inbox-router (executado via task-manager) ──
 inbox_count=0
 if [ -d "$OBSIDIAN_INBOX" ]; then
   inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
