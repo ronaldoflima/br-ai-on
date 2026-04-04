@@ -17,9 +17,9 @@
 
 ### Schema de Handoffs
 
-- [ ] **SCHEMA-01**: Adicionar campo `thread_id` no schema de handoffs para conversas multi-turno
-- [ ] **SCHEMA-02**: `lib/handoff.sh` suporta `thread_id` — herda automaticamente ao responder com `reply_to`
-- [ ] **SCHEMA-03**: `lib/handoff.sh thread-history <thread_id>` retorna resumo dos handoffs anteriores da thread
+- [x] **SCHEMA-01**: Adicionar campo `thread_id` no schema de handoffs para conversas multi-turno
+- [x] **SCHEMA-02**: `lib/handoff.sh` suporta `thread_id` — herda automaticamente ao responder com `reply_to`
+- [x] **SCHEMA-03**: `lib/handoff.sh thread-history <thread_id>` retorna resumo dos handoffs anteriores da thread
 - [ ] **SCHEMA-04**: `agent-handoff/SKILL.md` carrega thread history como contexto antes de processar handoff com thread_id
 
 ### Visibilidade
@@ -64,9 +64,9 @@
 | CLEAN-02 | Phase 1 | Complete |
 | ROUTE-01 | Phase 2 | Complete |
 | ROUTE-02 | Phase 2 | Complete |
-| SCHEMA-01 | Phase 3 | Pending |
-| SCHEMA-02 | Phase 3 | Pending |
-| SCHEMA-03 | Phase 3 | Pending |
+| SCHEMA-01 | Phase 3 | Complete |
+| SCHEMA-02 | Phase 3 | Complete |
+| SCHEMA-03 | Phase 3 | Complete |
 | SCHEMA-04 | Phase 3 | Pending |
 | VIS-01 | Phase 4 | Pending |
 
