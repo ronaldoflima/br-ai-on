@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Handoff } from "../lib/types";
 import { useAgentListFull } from "../lib/useAgentList";
+import styles from "./handoffs.module.css";
 
 interface ArtifactFile {
   name: string;
@@ -330,9 +331,15 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
   );
 }
 
+function toggleSet(set: Set<string>, val: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(val)) next.delete(val);
+  else next.add(val);
+  return next;
+}
+
 export default function HandoffsPage() {
   const agents = useAgentListFull(false);
-  const [filter, setFilter] = useState("all");
   const [inbox, setInbox] = useState<Handoff[]>([]);
   const [archive, setArchive] = useState<Handoff[]>([]);
   const [tab, setTab] = useState<"inbox" | "archive">("inbox");
@@ -342,16 +349,23 @@ export default function HandoffsPage() {
   const [archiving, setArchiving] = useState<string | null>(null);
   const [editing, setEditing] = useState<Handoff | null>(null);
 
+  const [search, setSearch] = useState("");
+  const [filterFrom, setFilterFrom] = useState<Set<string>>(new Set());
+  const [filterTo, setFilterTo] = useState<Set<string>>(new Set());
+  const [filterDomain, setFilterDomain] = useState<Set<string>>(new Set());
+  const [filterSchedule, setFilterSchedule] = useState<Set<string>>(new Set());
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+
   function load() {
     setLoading(true);
-    fetch(`/api/handoffs?agent=${filter}`)
+    fetch("/api/handoffs?agent=all")
       .then((r) => r.json())
       .then((data) => { setInbox(data.inbox || []); setArchive(data.archive || []); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [filter]);
+  useEffect(load, []);
 
   async function archiveHandoff(ho: Handoff, e: React.MouseEvent) {
     e.stopPropagation();
@@ -365,7 +379,82 @@ export default function HandoffsPage() {
     load();
   }
 
-  const items = tab === "inbox" ? inbox : archive;
+  const allHandoffs = [...inbox, ...archive];
+  const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, archive]);
+  const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, archive]);
+  const uniqueDomains = useMemo(() => {
+    const domains = agents.map((a) => a.domain).filter(Boolean);
+    return [...new Set(domains)].sort();
+  }, [agents]);
+
+  const agentDomainMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    agents.forEach((a) => { if (a.domain) map[a.name] = a.domain; });
+    return map;
+  }, [agents]);
+
+  const agentScheduleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    agents.forEach((a) => { map[a.name] = a.schedule_mode; });
+    return map;
+  }, [agents]);
+
+  const filterItems = useCallback((items: Handoff[]) => {
+    let result = items;
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((h) =>
+        h.id.toLowerCase().includes(q) ||
+        h.from.toLowerCase().includes(q) ||
+        h.to.toLowerCase().includes(q) ||
+        h.description.toLowerCase().includes(q)
+      );
+    }
+
+    if (filterFrom.size > 0) {
+      result = result.filter((h) => filterFrom.has(h.from));
+    }
+    if (filterTo.size > 0) {
+      result = result.filter((h) => filterTo.has(h.to));
+    }
+    if (filterDomain.size > 0) {
+      result = result.filter((h) => {
+        const fromDomain = agentDomainMap[h.from];
+        const toDomain = agentDomainMap[h.to];
+        return (fromDomain && filterDomain.has(fromDomain)) || (toDomain && filterDomain.has(toDomain));
+      });
+    }
+    if (filterSchedule.size > 0) {
+      result = result.filter((h) => {
+        const fromMode = agentScheduleMap[h.from];
+        const toMode = agentScheduleMap[h.to];
+        return (fromMode && filterSchedule.has(fromMode)) || (toMode && filterSchedule.has(toMode));
+      });
+    }
+
+    result = [...result].sort((a, b) => {
+      const da = new Date(a.created).getTime();
+      const db = new Date(b.created).getTime();
+      return sortOrder === "newest" ? db - da : da - db;
+    });
+
+    return result;
+  }, [search, filterFrom, filterTo, filterDomain, filterSchedule, sortOrder, agentDomainMap, agentScheduleMap]);
+
+  const filteredInbox = useMemo(() => filterItems(inbox), [inbox, filterItems]);
+  const filteredArchive = useMemo(() => filterItems(archive), [archive, filterItems]);
+  const items = tab === "inbox" ? filteredInbox : filteredArchive;
+
+  const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0;
+
+  function clearFilters() {
+    setSearch("");
+    setFilterFrom(new Set());
+    setFilterTo(new Set());
+    setFilterDomain(new Set());
+    setFilterSchedule(new Set());
+  }
 
   const expectsBadge: Record<string, string> = {
     action: "badge-error",
@@ -373,94 +462,174 @@ export default function HandoffsPage() {
     review: "badge-warning",
   };
 
+  const scheduleLabels: Record<string, string> = {
+    alive: "Alive",
+    "handoff-only": "Handoff-only",
+    disabled: "Disabled",
+  };
+
   return (
-    <div>
+    <div className={styles.wrapper}>
       {showNew && <NewHandoffModal agents={agents} onClose={() => setShowNew(false)} onCreated={load} />}
       {editing && <EditHandoffModal handoff={editing} isArchived={tab === "archive"} onClose={() => setEditing(null)} onSaved={load} />}
 
       <div className="page-header">
         <h1 className="page-title">Handoffs</h1>
-        <div className="flex-row">
-          <button className="badge badge-info pointer" onClick={() => setShowNew(true)}>+ Novo</button>
-          <button
-            className={`badge ${filter === "all" ? "badge-info" : "badge-muted"} pointer`}
-            onClick={() => setFilter("all")}
-          >
-            Todos
-          </button>
-          {agents.map((a) => (
-            <button
-              key={a.name}
-              className={`badge ${filter === a.name ? "badge-info" : "badge-muted"} pointer`}
-              onClick={() => setFilter(filter === a.name ? "all" : a.name)}
-            >
-              {a.display_name}
-            </button>
+        <button className="badge badge-info pointer" onClick={() => setShowNew(true)}>+ Novo</button>
+      </div>
+
+      <div className={styles.desktopLayout}>
+        <div className={styles.filterSidebar}>
+          <input
+            className={styles.sidebarSearch}
+            placeholder="Buscar..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {uniqueFrom.length > 0 && (
+            <>
+              <div className={styles.sectionLabel}>From</div>
+              {uniqueFrom.map((name) => (
+                <label key={`from-${name}`} className={styles.checkItem}>
+                  <input
+                    type="checkbox"
+                    checked={filterFrom.has(name)}
+                    onChange={() => setFilterFrom(toggleSet(filterFrom, name))}
+                  />
+                  {name}
+                </label>
+              ))}
+            </>
+          )}
+
+          {uniqueTo.length > 0 && (
+            <>
+              <div className={styles.sectionLabel}>To</div>
+              {uniqueTo.map((name) => (
+                <label key={`to-${name}`} className={styles.checkItem}>
+                  <input
+                    type="checkbox"
+                    checked={filterTo.has(name)}
+                    onChange={() => setFilterTo(toggleSet(filterTo, name))}
+                  />
+                  {name}
+                </label>
+              ))}
+            </>
+          )}
+
+          {uniqueDomains.length > 0 && (
+            <>
+              <div className={styles.sectionLabel}>Domínio</div>
+              {uniqueDomains.map((d) => (
+                <label key={`dom-${d}`} className={styles.checkItem}>
+                  <input
+                    type="checkbox"
+                    checked={filterDomain.has(d)}
+                    onChange={() => setFilterDomain(toggleSet(filterDomain, d))}
+                  />
+                  {d}
+                </label>
+              ))}
+            </>
+          )}
+
+          <div className={styles.sectionLabel}>Schedule Mode</div>
+          {["alive", "handoff-only", "disabled"].map((mode) => (
+            <label key={`sched-${mode}`} className={styles.checkItem}>
+              <input
+                type="checkbox"
+                checked={filterSchedule.has(mode)}
+                onChange={() => setFilterSchedule(toggleSet(filterSchedule, mode))}
+              />
+              {scheduleLabels[mode]}
+            </label>
           ))}
+
+          <div className={styles.sectionLabel}>Ordenação</div>
+          <select
+            className={styles.sortSelect}
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+          >
+            <option value="newest">Mais recente</option>
+            <option value="oldest">Mais antigo</option>
+          </select>
+
+          {hasFilters && (
+            <button className={styles.clearBtn} onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          )}
         </div>
-      </div>
 
-      <div className="tabs">
-        <button className={`tab ${tab === "inbox" ? "active" : ""}`} onClick={() => setTab("inbox")}>
-          Inbox ({inbox.length})
-        </button>
-        <button className={`tab ${tab === "archive" ? "active" : ""}`} onClick={() => setTab("archive")}>
-          Archive ({archive.length})
-        </button>
-      </div>
+        <div className={styles.mainPanel}>
+          <div className="tabs">
+            <button className={`tab ${tab === "inbox" ? "active" : ""}`} onClick={() => setTab("inbox")}>
+              Inbox ({filteredInbox.length})
+            </button>
+            <button className={`tab ${tab === "archive" ? "active" : ""}`} onClick={() => setTab("archive")}>
+              Archive ({filteredArchive.length})
+            </button>
+          </div>
 
-      {loading ? (
-        <div className="empty-state">Carregando...</div>
-      ) : items.length === 0 ? (
-        <div className="empty-state">Nenhum handoff {tab === "inbox" ? "pendente" : "arquivado"}</div>
-      ) : (
-        <div className="flex-col">
-          {items.map((ho) => (
-            <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
-              <div className="flex-between mb-sm">
-                <div className="flex-row">
-                  <span className="mono-md font-semibold">{ho.id}</span>
-                  <span className="text-muted-sm">
-                    {ho.from} → {ho.to}
-                  </span>
-                  {ho.reply_to && <span className="text-muted-xs">(reply to {ho.reply_to})</span>}
-                </div>
-                <div className="flex-row">
-                  <span className={`badge ${expectsBadge[ho.expects] || "badge-muted"}`}>{ho.expects}</span>
-                  <span className={`badge ${ho.status === "pending" ? "badge-warning" : "badge-muted"}`}>{ho.status}</span>
-                  <button
-                    className="badge badge-muted pointer"
-                    onClick={(e) => { e.stopPropagation(); setEditing(ho); }}
-                    title="Editar handoff"
-                  >
-                    Editar
-                  </button>
-                  {tab === "inbox" && (
-                    <button
-                      className="badge badge-muted pointer"
-                      onClick={(e) => archiveHandoff(ho, e)}
-                      disabled={archiving === ho.id}
-                      title="Arquivar handoff"
-                    >
-                      {archiving === ho.id ? "..." : "Arquivar"}
-                    </button>
+          {loading ? (
+            <div className="empty-state">Carregando...</div>
+          ) : items.length === 0 ? (
+            <div className="empty-state">
+              {hasFilters ? "Nenhum handoff corresponde aos filtros" : `Nenhum handoff ${tab === "inbox" ? "pendente" : "arquivado"}`}
+            </div>
+          ) : (
+            <div className="flex-col">
+              {items.map((ho) => (
+                <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
+                  <div className="flex-between mb-sm">
+                    <div className="flex-row">
+                      <span className="mono-md font-semibold">{ho.id}</span>
+                      <span className="text-muted-sm">
+                        {ho.from} → {ho.to}
+                      </span>
+                      {ho.reply_to && <span className="text-muted-xs">(reply to {ho.reply_to})</span>}
+                    </div>
+                    <div className="flex-row">
+                      <span className={`badge ${expectsBadge[ho.expects] || "badge-muted"}`}>{ho.expects}</span>
+                      <span className={`badge ${ho.status === "pending" ? "badge-warning" : "badge-muted"}`}>{ho.status}</span>
+                      <button
+                        className="badge badge-muted pointer"
+                        onClick={(e) => { e.stopPropagation(); setEditing(ho); }}
+                        title="Editar handoff"
+                      >
+                        Editar
+                      </button>
+                      {tab === "inbox" && (
+                        <button
+                          className="badge badge-muted pointer"
+                          onClick={(e) => archiveHandoff(ho, e)}
+                          disabled={archiving === ho.id}
+                          title="Arquivar handoff"
+                        >
+                          {archiving === ho.id ? "..." : "Arquivar"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-secondary-sm">{ho.description}</div>
+                  {ho.created && <div className="text-muted-xs mt-sm">{new Date(ho.created).toLocaleString("pt-BR")}</div>}
+                  {expanded === ho.id && (
+                    <>
+                      <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
+                        {ho.body}
+                      </pre>
+                      <ArtifactsSection agent={ho.to === "user" ? ho.from : ho.to} handoffId={ho.id} />
+                    </>
                   )}
                 </div>
-              </div>
-              <div className="text-secondary-sm">{ho.description}</div>
-              {ho.created && <div className="text-muted-xs mt-sm">{new Date(ho.created).toLocaleString("pt-BR")}</div>}
-              {expanded === ho.id && (
-                <>
-                  <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
-                    {ho.body}
-                  </pre>
-                  <ArtifactsSection agent={ho.to} handoffId={ho.id} />
-                </>
-              )}
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
