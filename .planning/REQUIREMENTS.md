@@ -24,7 +24,7 @@
 
 ### Visibilidade
 
-- [ ] **VIS-01**: Dashboard Next.js consome handoffs dos agentes e exibe status em tempo real
+- [x] **VIS-01**: Dashboard Next.js consome handoffs dos agentes e exibe status em tempo real
 
 ## v2 Requirements
 
@@ -68,7 +68,7 @@
 | SCHEMA-02 | Phase 3 | Complete |
 | SCHEMA-03 | Phase 3 | Complete |
 | SCHEMA-04 | Phase 3 | Complete |
-| VIS-01 | Phase 4 | Pending |
+| VIS-01 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 9 total
