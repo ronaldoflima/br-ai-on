@@ -13,7 +13,7 @@ v1.0 consolida handoffs como canal único de comunicação entre agentes. A jorn
 - [x] **Phase 1: Limpeza de Canais** - Deprecar task_board.md e messages.jsonl como canais de comunicação (completed 2026-04-04)
 - [x] **Phase 2: Routing** - Documentar inbox-router como único conversor Obsidian→handoff e limpar sobreposição (completed 2026-04-04)
 - [x] **Phase 3: Schema de Handoffs** - Adicionar thread_id ao schema e suporte completo em handoff.sh e skills (completed 2026-04-04)
-- [ ] **Phase 4: Visibilidade** - Dashboard Next.js exibe handoffs dos agentes em tempo real
+- [x] **Phase 4: Visibilidade** - Dashboard Next.js exibe handoffs dos agentes em tempo real (completed 2026-04-04)
 
 ## Phase Details
 
@@ -63,9 +63,9 @@ Plans:
   1. Dashboard na porta 3040 exibe lista de handoffs com from, to, status e created
   2. Handoffs de todos os agentes aparecem na mesma visualização
   3. Status dos handoffs (pending, complete, archived) é refletido na UI
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 04-01-PLAN.md — Dashboard de handoffs
+- [x] 04-01-PLAN.md — Dashboard de handoffs
 **UI hint**: yes
 
 ## Progress
@@ -78,4 +78,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Limpeza de Canais | 1/1 | Complete    | 2026-04-04 |
 | 2. Routing | 1/1 | Complete    | 2026-04-04 |
 | 3. Schema de Handoffs | 2/2 | Complete    | 2026-04-04 |
-| 4. Visibilidade | 0/? | Not started | - |
+| 4. Visibilidade | 1/1 | Complete   | 2026-04-04 |
