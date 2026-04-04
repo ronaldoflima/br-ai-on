@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
-import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconMenu, IconClose, IconGithub } from "./icons";
+import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconMenu, IconClose, IconGithub } from "./icons";
 
 const NAV = [
   { href: "/", label: "Overview", icon: IconDashboard },
@@ -17,6 +17,7 @@ const NAV = [
 
 const CLAUDE_CODE_NAV = [
   { href: "/memories", label: "Memórias", icon: IconMemories },
+  { href: "/integrations", label: "Integrações", icon: IconIntegrations },
 ];
 
 interface HealthData {
