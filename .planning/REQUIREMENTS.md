@@ -60,21 +60,21 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLEAN-01 | — | Pending |
-| CLEAN-02 | — | Pending |
-| ROUTE-01 | — | Pending |
-| ROUTE-02 | — | Pending |
-| SCHEMA-01 | — | Pending |
-| SCHEMA-02 | — | Pending |
-| SCHEMA-03 | — | Pending |
-| SCHEMA-04 | — | Pending |
-| VIS-01 | — | Pending |
+| CLEAN-01 | Phase 1 | Pending |
+| CLEAN-02 | Phase 1 | Pending |
+| ROUTE-01 | Phase 2 | Pending |
+| ROUTE-02 | Phase 2 | Pending |
+| SCHEMA-01 | Phase 3 | Pending |
+| SCHEMA-02 | Phase 3 | Pending |
+| SCHEMA-03 | Phase 3 | Pending |
+| SCHEMA-04 | Phase 3 | Pending |
+| VIS-01 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-04*
-*Last updated: 2026-04-04 after initial definition*
+*Last updated: 2026-04-04 after roadmap creation*
