@@ -612,6 +612,18 @@ export default function HandoffsPage() {
                         >
                           {archiving === ho.id ? "..." : "Arquivar"}
                         </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-secondary-sm">{ho.description}</div>
+                  {ho.created && <div className="text-muted-xs mt-sm">{new Date(ho.created).toLocaleString("pt-BR")}</div>}
+                  {expanded === ho.id && (
+                    <>
+                      <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
+                        {ho.body}
+                      </pre>
+                      <ArtifactsSection agent={ho.to === "user" ? ho.from : ho.to} handoffId={ho.id} />
+                    </>
                   )}
                 </div>
               ))}
