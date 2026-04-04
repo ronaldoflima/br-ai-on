@@ -54,7 +54,13 @@ artifacts_dir=$(bash "$BRAION/lib/handoff.sh" artifacts-dir "$AGENT" "<ho_id>")
 ```
 Salve todos os artefatos gerados em `$artifacts_dir/`. Informe os paths no resumo final.
 
-**c) Leia o arquivo** (frontmatter + corpo) e identifique: `from`, `expects`, `description`, `context`, `expected`
+**c) Leia o arquivo** (frontmatter + corpo) e identifique: `from`, `expects`, `description`, `context`, `expected`, `thread_id`
+
+Se `thread_id` estiver presente no frontmatter, carregue o historico da thread antes de processar:
+```bash
+thread_ctx=$(bash "$BRAION/lib/handoff.sh" thread-history "<thread_id>")
+```
+Use `$thread_ctx` como contexto adicional para entender o historico da conversa antes de executar a acao.
 
 **d) Execute** a ação conforme seu SOUL e o conteúdo do handoff
 
@@ -69,6 +75,12 @@ Para notificar o usuário (quando o resultado exige ação humana):
 ```bash
 bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<resultado>" "<próximos passos>"
 ```
+
+Se o handoff original tinha `thread_id`, passe-o como parametro 8 ao responder:
+```bash
+bash "$BRAION/lib/handoff.sh" send "$AGENT" "<from>" info "<ho_id>" "<resumo>" "<resultado>" "<proximos passos>" "<thread_id>"
+```
+Isso garante que a thread continua rastreavel.
 
 > **NUNCA responda a handoffs com `expects: info`** — são notificações unidirecionais. O cron arquiva automaticamente sem iniciar sessão. Responder cria loop infinito de ACKs.
 >
