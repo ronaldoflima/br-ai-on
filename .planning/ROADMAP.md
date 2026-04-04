@@ -12,7 +12,7 @@ v1.0 consolida handoffs como canal único de comunicação entre agentes. A jorn
 
 - [x] **Phase 1: Limpeza de Canais** - Deprecar task_board.md e messages.jsonl como canais de comunicação (completed 2026-04-04)
 - [x] **Phase 2: Routing** - Documentar inbox-router como único conversor Obsidian→handoff e limpar sobreposição (completed 2026-04-04)
-- [ ] **Phase 3: Schema de Handoffs** - Adicionar thread_id ao schema e suporte completo em handoff.sh e skills
+- [x] **Phase 3: Schema de Handoffs** - Adicionar thread_id ao schema e suporte completo em handoff.sh e skills (completed 2026-04-04)
 - [ ] **Phase 4: Visibilidade** - Dashboard Next.js exibe handoffs dos agentes em tempo real
 
 ## Phase Details
@@ -50,10 +50,10 @@ Plans:
   2. Ao responder um handoff com `reply_to`, `thread_id` é herdado automaticamente sem intervenção manual
   3. `lib/handoff.sh thread-history <thread_id>` retorna lista dos handoffs da thread com from/to/status
   4. `agent-handoff/SKILL.md` instrui o agente a carregar thread history quando `thread_id` está presente antes de processar
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 03-01-PLAN.md — Adicionar thread_id ao handoff_send com heranca e thread-history
-- [ ] 03-02-PLAN.md — Atualizar SKILL.md com instrucoes de thread_id
+- [x] 03-02-PLAN.md — Atualizar SKILL.md com instrucoes de thread_id
 
 ### Phase 4: Visibilidade
 **Goal**: Usuário consegue ver todos os handoffs dos agentes diretamente no dashboard web
@@ -77,5 +77,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Limpeza de Canais | 1/1 | Complete    | 2026-04-04 |
 | 2. Routing | 1/1 | Complete    | 2026-04-04 |
-| 3. Schema de Handoffs | 1/2 | In Progress|  |
+| 3. Schema de Handoffs | 2/2 | Complete   | 2026-04-04 |
 | 4. Visibilidade | 0/? | Not started | - |
