@@ -161,14 +161,41 @@ handoff_archive() {
     "{\"handoff_id\":\"$ho_id\"}" 2>/dev/null || true
 }
 
-command="${1:?Uso: handoff.sh <send|list|claim|archive|artifacts-dir|next_id> [args...]}"
+handoff_thread_history() {
+  local thread_id="${1:?Uso: handoff.sh thread-history <thread_id>}"
+  local results=()
+  for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/in_progress "$AGENTS_DIR"/*/handoffs/archive; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/HO-*.md; do
+      [ -f "$f" ] || continue
+      if grep -q "^thread_id: $thread_id" "$f" 2>/dev/null; then
+        local from to status created
+        from=$(grep '^from:' "$f" | sed 's/from: //')
+        to=$(grep '^to:' "$f" | sed 's/to: //')
+        status=$(grep '^status:' "$f" | sed 's/status: //')
+        created=$(grep '^created:' "$f" | sed 's/created: //')
+        results+=("$created|$from|$to|$status")
+      fi
+    done
+  done
+  if [ ${#results[@]} -eq 0 ]; then
+    echo "No handoffs found for thread $thread_id"
+    return 0
+  fi
+  printf '%s\n' "${results[@]}" | sort | while IFS='|' read -r created from to status; do
+    printf '%s  %s -> %s  [%s]\n' "$created" "$from" "$to" "$status"
+  done
+}
+
+command="${1:?Uso: handoff.sh <send|list|claim|archive|artifacts-dir|next_id|thread-history> [args...]}"
 shift
 case "$command" in
   send)          handoff_send "$@" ;;
   list)          handoff_list "$@" ;;
   claim)         handoff_claim "$@" ;;
   archive)       handoff_archive "$@" ;;
-  artifacts-dir) handoff_artifacts_dir "$@" ;;
-  next_id)       handoff_next_id ;;
-  *)             echo "Comando desconhecido: $command" >&2; exit 1 ;;
+  artifacts-dir)   handoff_artifacts_dir "$@" ;;
+  next_id)         handoff_next_id ;;
+  thread-history)  handoff_thread_history "$@" ;;
+  *)               echo "Comando desconhecido: $command" >&2; exit 1 ;;
 esac
