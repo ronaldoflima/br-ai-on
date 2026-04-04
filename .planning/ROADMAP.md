@@ -10,7 +10,7 @@ v1.0 consolida handoffs como canal único de comunicação entre agentes. A jorn
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Limpeza de Canais** - Deprecar task_board.md e messages.jsonl como canais de comunicação
+- [x] **Phase 1: Limpeza de Canais** - Deprecar task_board.md e messages.jsonl como canais de comunicação (completed 2026-04-04)
 - [ ] **Phase 2: Routing** - Documentar inbox-router como único conversor Obsidian→handoff e limpar sobreposição
 - [ ] **Phase 3: Schema de Handoffs** - Adicionar thread_id ao schema e suporte completo em handoff.sh e skills
 - [ ] **Phase 4: Visibilidade** - Dashboard Next.js exibe handoffs dos agentes em tempo real
@@ -25,9 +25,9 @@ v1.0 consolida handoffs como canal único de comunicação entre agentes. A jorn
   1. `agents/shared/task_board.md` não existe mais ou contém header de deprecação claro impedindo uso acidental
   2. `agents/shared/messages.jsonl` não existe mais ou contém indicação de deprecação
   3. Nenhum agente ou script referencia task_board.md ou messages.jsonl como destino de escrita ativo
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 01-01-PLAN.md — Remover referências a task_board.md e messages.jsonl de skills, scripts e .gitignore
+- [x] 01-01-PLAN.md — Remover referências a task_board.md e messages.jsonl de skills, scripts e .gitignore
 
 ### Phase 2: Routing
 **Goal**: inbox-router é o único responsável por converter mensagens Obsidian em handoffs — sem sobreposição com orchestrator ou task-manager
@@ -68,7 +68,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Limpeza de Canais | 0/1 | Not started | - |
+| 1. Limpeza de Canais | 1/1 | Complete   | 2026-04-04 |
 | 2. Routing | 0/? | Not started | - |
 | 3. Schema de Handoffs | 0/? | Not started | - |
 | 4. Visibilidade | 0/? | Not started | - |
