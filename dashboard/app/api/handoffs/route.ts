@@ -124,10 +124,23 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  inbox.sort((a, b) => b.created.localeCompare(a.created));
-  archive.sort((a, b) => b.created.localeCompare(a.created));
+  const dedup = (arr: Handoff[]) => {
+    const seen = new Set<string>();
+    return arr.filter((h) => {
+      const key = `${h.id}_${h.from}_${h.to}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
 
-  return NextResponse.json({ agent, inbox, archive });
+  const dedupInbox = dedup(inbox);
+  const dedupArchive = dedup(archive);
+
+  dedupInbox.sort((a, b) => b.created.localeCompare(a.created));
+  dedupArchive.sort((a, b) => b.created.localeCompare(a.created));
+
+  return NextResponse.json({ agent, inbox: dedupInbox, archive: dedupArchive });
 }
 
 function nextHandoffId(): string {
@@ -135,7 +148,7 @@ function nextHandoffId(): string {
   let seq = 1;
   if (existsSync(AGENTS_DIR)) {
     for (const dir of readdirSync(AGENTS_DIR)) {
-      for (const sub of ["handoffs/inbox", "handoffs/archive"]) {
+      for (const sub of ["handoffs/inbox", "handoffs/archive", "handoffs/in_progress"]) {
         const d = join(AGENTS_DIR, dir, sub);
         if (!existsSync(d)) continue;
         for (const f of readdirSync(d)) {
