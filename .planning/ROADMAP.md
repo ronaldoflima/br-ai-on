@@ -50,9 +50,10 @@ Plans:
   2. Ao responder um handoff com `reply_to`, `thread_id` é herdado automaticamente sem intervenção manual
   3. `lib/handoff.sh thread-history <thread_id>` retorna lista dos handoffs da thread com from/to/status
   4. `agent-handoff/SKILL.md` instrui o agente a carregar thread history quando `thread_id` está presente antes de processar
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
+- [ ] 03-01-PLAN.md — Adicionar thread_id ao handoff_send com heranca e thread-history
+- [ ] 03-02-PLAN.md — Atualizar SKILL.md com instrucoes de thread_id
 
 ### Phase 4: Visibilidade
 **Goal**: Usuário consegue ver todos os handoffs dos agentes diretamente no dashboard web
@@ -64,7 +65,7 @@ Plans:
   3. Status dos handoffs (pending, complete, archived) é refletido na UI
 **Plans:** 1 plan
 Plans:
-- [ ] 02-01-PLAN.md — Clarificar ownership de inbox routing e limpar sobreposição
+- [ ] 04-01-PLAN.md — Dashboard de handoffs
 **UI hint**: yes
 
 ## Progress
@@ -76,5 +77,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Limpeza de Canais | 1/1 | Complete    | 2026-04-04 |
 | 2. Routing | 1/1 | Complete    | 2026-04-04 |
-| 3. Schema de Handoffs | 0/? | Not started | - |
+| 3. Schema de Handoffs | 0/2 | Not started | - |
 | 4. Visibilidade | 0/? | Not started | - |
