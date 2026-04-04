@@ -242,5 +242,5 @@ Quando `command` está definido, o orquestrador usa esse comando em vez de `$CLA
 ## Orquestrador
 
 - Skill: `skills/orchestrator/SKILL.md`
-- Responsável por rodar o scheduler, rotear inbox Obsidian e spawnar subagentes
+- Responsável por rodar o scheduler e spawnar subagentes
 - Único com permissão de escrita em `agents/shared/`
