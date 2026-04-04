@@ -16,6 +16,7 @@ interface Handoff {
   status: string;
   expects: string;
   reply_to: string | null;
+  thread_id?: string | null;
   description: string;
   body: string;
   filename: string;
@@ -54,6 +55,7 @@ function parseHandoff(filePath: string, filename: string): Handoff | null {
       status: meta.status || "pending",
       expects: meta.expects || "",
       reply_to: meta.reply_to || null,
+      thread_id: meta.thread_id || null,
       description: descMatch ? descMatch[1].trim().slice(0, 200) : "",
       body,
       filename,
