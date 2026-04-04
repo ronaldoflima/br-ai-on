@@ -136,13 +136,71 @@ if [ -d "$OBSIDIAN_VAULT/.git" ]; then
     || log "Obsidian: pull falhou (continuando com versão local)"
 fi
 
-# ── 1. Obsidian inbox → roteamento pelo task-manager ─────────────────────────
+# ── 1a. Obsidian inbox → roteamento via integrations.json (regras determinísticas) ──
+INTEGRATIONS_FILE="$BRAION/config/integrations.json"
+
+if [ -f "$INTEGRATIONS_FILE" ] && command -v jq >/dev/null 2>&1; then
+  rule_count=$(jq '.obsidian_rules | length' "$INTEGRATIONS_FILE" 2>/dev/null || echo 0)
+
+  for i in $(seq 0 $(( rule_count - 1 ))); do
+    enabled=$(jq -r ".obsidian_rules[$i].enabled" "$INTEGRATIONS_FILE" 2>/dev/null || echo "false")
+    [ "$enabled" = "true" ] || continue
+
+    folder=$(jq -r ".obsidian_rules[$i].folder" "$INTEGRATIONS_FILE" 2>/dev/null || echo "")
+    [ -d "$folder" ] || continue
+
+    filter_type=$(jq -r ".obsidian_rules[$i].filter.type" "$INTEGRATIONS_FILE" 2>/dev/null || echo "none")
+    filter_value=$(jq -r ".obsidian_rules[$i].filter.value" "$INTEGRATIONS_FILE" 2>/dev/null || echo "")
+    agent=$(jq -r ".obsidian_rules[$i].agent" "$INTEGRATIONS_FILE" 2>/dev/null || echo "")
+    [ -n "$agent" ] || continue
+
+    while IFS= read -r -d '' note_file; do
+      grep -q "^assigned_to:" "$note_file" 2>/dev/null && continue
+
+      case "$filter_type" in
+        tag)
+          grep -q "#${filter_value}" "$note_file" 2>/dev/null || continue
+          ;;
+        property)
+          awk '/^---/{found=!found} found && /^'"${filter_value}"':/' "$note_file" 2>/dev/null | grep -q . || continue
+          ;;
+      esac
+
+      first_line=$(head -1 "$note_file" 2>/dev/null | sed 's/^#[[:space:]]*//' || echo "$(basename "$note_file")")
+      content=$(cat "$note_file" 2>/dev/null || echo "")
+
+      bash "$BRAION/lib/handoff.sh" send "inbox-router" "$agent" action null \
+        "$first_line" \
+        "$content" \
+        "Processar conforme o conteúdo da nota" 2>/dev/null && {
+
+        python3 -c "
+import sys, re
+path = sys.argv[1]; agent = sys.argv[2]
+content = open(path).read()
+if content.startswith('---'):
+    content = content.replace('---\n', '---\nassigned_to: ' + agent + '\n', 1)
+else:
+    content = '---\nassigned_to: ' + agent + '\n---\n' + content
+open(path, 'w').write(content)
+" "$note_file" "$agent" 2>/dev/null
+
+        forwarded_dir="$folder/forwarded"
+        mkdir -p "$forwarded_dir"
+        mv "$note_file" "$forwarded_dir/$(basename "$note_file")"
+        log "Inbox: roteado $(basename "$note_file") → $agent"
+      }
+    done < <(find "$folder" -maxdepth 1 -name "*.md" -not -name ".*" -print0 2>/dev/null)
+  done
+fi
+
+# ── 1b. Obsidian inbox → fallback via skill inbox-router (AI, para notas sem regra) ──
 inbox_count=0
 if [ -d "$OBSIDIAN_INBOX" ]; then
   inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
 fi
 if [ "${inbox_count:-0}" -gt 0 ]; then
-  log "Inbox: $inbox_count nota(s) encontrada(s)"
+  log "Inbox: $inbox_count nota(s) sem regra — iniciando inbox-router AI"
   heartbeat="$BRAION/agents/_defaults/task-manager/state/heartbeat.json"
   tarefas_model=$(get_agent_model "$BRAION/agents/_defaults/task-manager/config.yaml")
   if heartbeat_is_processing "$heartbeat"; then
