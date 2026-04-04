@@ -25,22 +25,6 @@ Use esse mapa para todas as decisões de roteamento abaixo.
 5. **Monitorar** progresso e consolidar resultados
 6. **Reportar** resultado final ao usuário
 
-## Roteamento de Inbox Local
-
-Antes do fluxo normal de orquestração, verifique se há notas sem destinatário no inbox:
-
-1. Use **Glob** para listar `agents/inbox/*.md`
-2. Para cada nota, use **Read** e extraia o frontmatter YAML
-3. Filtre notas onde `status == "pending"` E (`to` está vazio ou ausente) E (`assigned_to` está vazio ou ausente)
-4. Para cada nota sem destinatário:
-   a. Leia o conteúdo completo com **Read**
-   b. Analise o conteúdo contra os domínios do mapa de agentes
-   c. Determine qual agente é o melhor match
-   d. Atualize a nota com **Edit** adicionando `assigned_to: <nome_agente>` no frontmatter
-5. Se não conseguir determinar o agente:
-   a. Mude `status` para `review` no frontmatter via **Edit**
-   b. Appende ao corpo: `**orchestrator** · <timestamp>\nNão consegui identificar qual agente deve tratar este pedido. Especifique o campo 'to' no frontmatter.`
-
 ## Criação de Tarefas
 
 Ao distribuir uma tarefa para um agente, crie um handoff via `lib/handoff.sh send`:
