@@ -200,7 +200,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-      <div className="card" style={{ width: 480, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Novo Handoff</span>
           <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
@@ -285,7 +285,7 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-      <div className="card" style={{ width: 480, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Editar Handoff <span className="text-muted-sm">{handoff.id}</span></span>
           <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
@@ -584,8 +584,8 @@ export default function HandoffsPage() {
             <div className="flex-col">
               {items.map((ho) => (
                 <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
-                  <div className="flex-between mb-sm">
-                    <div className="flex-row">
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardInfo}>
                       <span className="mono-md font-semibold">{ho.id}</span>
                       <span className="text-muted-sm">
                         {ho.from} → {ho.to}
@@ -593,7 +593,7 @@ export default function HandoffsPage() {
                       {ho.reply_to && <span className="text-muted-xs">(reply to {ho.reply_to})</span>}
                       {ho.thread_id && <span className="text-xs text-purple-400">thread: {ho.thread_id}</span>}
                     </div>
-                    <div className="flex-row">
+                    <div className={styles.cardActions}>
                       <span className={`badge ${expectsBadge[ho.expects] || "badge-muted"}`}>{ho.expects}</span>
                       <span className={`badge ${ho.status === "pending" ? "badge-warning" : "badge-muted"}`}>{ho.status}</span>
                       <button
@@ -612,6 +612,18 @@ export default function HandoffsPage() {
                         >
                           {archiving === ho.id ? "..." : "Arquivar"}
                         </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-secondary-sm">{ho.description}</div>
+                  {ho.created && <div className="text-muted-xs mt-sm">{new Date(ho.created).toLocaleString("pt-BR")}</div>}
+                  {expanded === ho.id && (
+                    <>
+                      <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
+                        {ho.body}
+                      </pre>
+                      <ArtifactsSection agent={ho.to === "user" ? ho.from : ho.to} handoffId={ho.id} />
+                    </>
                   )}
                 </div>
               ))}
