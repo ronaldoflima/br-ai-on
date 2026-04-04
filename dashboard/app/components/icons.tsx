@@ -100,6 +100,18 @@ export function IconGithub() {
   );
 }
 
+export function IconIntegrations() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <circle cx="7" cy="7" r="3" />
+      <circle cx="17" cy="17" r="3" />
+      <path d="M7 10v1a4 4 0 004 4h1" />
+      <line x1="10" y1="7" x2="21" y2="7" />
+      <line x1="3" y1="17" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 export function IconClose() {
   return (
     <svg {...s} viewBox="0 0 24 24">
