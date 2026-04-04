@@ -7,8 +7,8 @@
 
 ### Limpeza de Canais
 
-- [ ] **CLEAN-01**: Deprecar `agents/shared/task_board.md` como canal de comunicação (remover ou marcar deprecated)
-- [ ] **CLEAN-02**: Deprecar `agents/shared/messages.jsonl` como canal de comunicação (remover ou marcar deprecated)
+- [x] **CLEAN-01**: Deprecar `agents/shared/task_board.md` como canal de comunicação (remover ou marcar deprecated)
+- [x] **CLEAN-02**: Deprecar `agents/shared/messages.jsonl` como canal de comunicação (remover ou marcar deprecated)
 
 ### Routing
 
@@ -60,8 +60,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLEAN-01 | Phase 1 | Pending |
-| CLEAN-02 | Phase 1 | Pending |
+| CLEAN-01 | Phase 1 | Complete |
+| CLEAN-02 | Phase 1 | Complete |
 | ROUTE-01 | Phase 2 | Pending |
 | ROUTE-02 | Phase 2 | Pending |
 | SCHEMA-01 | Phase 3 | Pending |
