@@ -454,7 +454,7 @@ export default function HandoffsPage() {
                   <pre className="mono-sm text-secondary-sm pre-wrap" style={{ marginTop: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius-sm)" }}>
                     {ho.body}
                   </pre>
-                  <ArtifactsSection agent={ho.to} handoffId={ho.id} />
+                  <ArtifactsSection agent={ho.to === "user" ? ho.from : ho.to} handoffId={ho.id} />
                 </>
               )}
             </div>
