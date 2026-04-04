@@ -21,7 +21,7 @@ Use esse mapa para todas as decisões de roteamento abaixo.
 1. **Receber objetivo** do usuário ou cron
 2. **Analisar** qual(is) agente(s) são necessários (baseado no mapa de domínios)
 3. **Decompor** em sub-tarefas atômicas
-4. **Distribuir** via `agents/shared/task_board.md`
+4. **Distribuir** via handoffs (`lib/handoff.sh send`)
 5. **Monitorar** progresso e consolidar resultados
 6. **Reportar** resultado final ao usuário
 
@@ -43,19 +43,20 @@ Antes do fluxo normal de orquestração, verifique se há notas sem destinatári
 
 ## Criação de Tarefas
 
-Ao criar uma tarefa no task_board.md:
+Ao distribuir uma tarefa para um agente, crie um handoff via `lib/handoff.sh send`:
 
-```markdown
-### [TASK-YYYYMMDD-NNN] Título da tarefa
-- **De:** orchestrator
-- **Para:** <nome_agente>
-- **Status:** pending
-- **Prioridade:** high | medium | low
-- **Criado:** <YYYY-MM-DD HH:MM>
-- **Detalhes:** <o que precisa ser feito>
-- **Contexto:** <apenas instrução + artefatos necessários — nunca histórico completo>
-- **Resultado:** (aguardando)
+```bash
+bash lib/handoff.sh send orchestrator <nome_agente> <expects> null \
+  "<título da tarefa>" \
+  "<contexto: apenas instrução + artefatos necessários — nunca histórico completo>" \
+  "<resultado esperado>"
 ```
+
+Campos:
+- **from:** orchestrator
+- **to:** `<nome_agente>` (domínio correto conforme mapa de agentes)
+- **expects:** `execute` | `review` | `info`
+- **Prioridade:** inclua no campo `<título>` como prefixo `[high]`, `[medium]` ou `[low]`
 
 ## Scoped Handoffs
 
@@ -76,18 +77,10 @@ Use o mapa de domínios construído no início para determinar o agente correto 
 - Liberar lock ao terminar: `lib/lock.sh release orchestrator`
 - Se lock falhar, aguardar 5s e retentar (máx 3 tentativas)
 
-## Mensagens Diretas
-
-Para comunicação urgente entre agentes, usar `agents/shared/messages.jsonl`:
-
-```json
-{"timestamp":"...","from":"orchestrator","to":"<agente>","type":"urgent","message":"..."}
-```
-
 ## Consolidação
 
 Ao final de cada ciclo:
 1. Verificar status das tarefas distribuídas
 2. Consolidar resultados
 3. Se o resultado exigir atenção do usuário, criar handoff para `user`
-4. Mover tarefas concluídas para `shared/archive/`
+4. Arquivar handoffs concluídos via `lib/handoff.sh archive`
