@@ -101,3 +101,59 @@
   color: var(--text-primary);
   border-color: var(--text-muted);
 }
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cardInfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.modalContent {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .desktopLayout {
+    flex-direction: column;
+  }
+
+  .filterSidebar {
+    width: 100%;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .cardActions {
+    align-self: flex-start;
+  }
+
+  .modalContent {
+    width: auto;
+    margin: 0 16px;
+  }
+}
