@@ -130,14 +130,38 @@ start_session() {
 }
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
-if [ -d "$OBSIDIAN_VAULT/.git" ]; then
-  git -C "$OBSIDIAN_VAULT" pull --quiet 2>/dev/null \
-    && log "Obsidian: pull OK" \
-    || log "Obsidian: pull falhou (continuando com versão local)"
+git_pull_vault() {
+  local dir=$1
+  local root
+  root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
+  git -C "$root" pull --quiet 2>/dev/null \
+    && log "Obsidian: pull OK ($root)" \
+    || log "Obsidian: pull falhou em $root (continuando com versão local)"
+}
+
+# Puxar vault padrão
+[ -d "$OBSIDIAN_VAULT" ] && git_pull_vault "$OBSIDIAN_VAULT"
+
+# Puxar repos git das pastas de integration rules (evita duplicatas)
+if [ -f "$BRAION/config/integrations.json" ] && command -v jq >/dev/null 2>&1; then
+  pulled_roots=""
+  rule_count_sync=$(jq '.obsidian_rules | length' "$BRAION/config/integrations.json" 2>/dev/null || echo 0)
+  for i in $(seq 0 $(( rule_count_sync - 1 ))); do
+    enabled_sync=$(jq -r ".obsidian_rules[$i].enabled" "$BRAION/config/integrations.json" 2>/dev/null || echo "false")
+    [ "$enabled_sync" = "true" ] || continue
+    folder_sync=$(jq -r ".obsidian_rules[$i].folder" "$BRAION/config/integrations.json" 2>/dev/null || echo "")
+    [ -d "$folder_sync" ] || continue
+    root_sync=$(git -C "$folder_sync" rev-parse --show-toplevel 2>/dev/null) || continue
+    echo "$pulled_roots" | grep -qF "$root_sync" && continue
+    [ "$root_sync" = "$OBSIDIAN_VAULT" ] && continue
+    git_pull_vault "$folder_sync"
+    pulled_roots="$pulled_roots $root_sync"
+  done
 fi
 
 # ── 1a. Obsidian inbox → roteamento via integrations.json (regras determinísticas) ──
 INTEGRATIONS_FILE="$BRAION/config/integrations.json"
+AI_ROUTE_FOLDERS=""
 
 if [ -f "$INTEGRATIONS_FILE" ] && command -v jq >/dev/null 2>&1; then
   rule_count=$(jq '.obsidian_rules | length' "$INTEGRATIONS_FILE" 2>/dev/null || echo 0)
@@ -153,6 +177,12 @@ if [ -f "$INTEGRATIONS_FILE" ] && command -v jq >/dev/null 2>&1; then
     filter_value=$(jq -r ".obsidian_rules[$i].filter.value" "$INTEGRATIONS_FILE" 2>/dev/null || echo "")
     agent=$(jq -r ".obsidian_rules[$i].agent" "$INTEGRATIONS_FILE" 2>/dev/null || echo "")
     [ -n "$agent" ] || continue
+
+    # Regras com agent=inbox-router: delegar ao AI para roteamento inteligente
+    if [ "$agent" = "inbox-router" ]; then
+      AI_ROUTE_FOLDERS="$AI_ROUTE_FOLDERS $folder"
+      continue
+    fi
 
     while IFS= read -r -d '' note_file; do
       grep -q "^assigned_to:" "$note_file" 2>/dev/null && continue
@@ -194,23 +224,34 @@ open(path, 'w').write(content)
   done
 fi
 
-# ── 1b. Obsidian inbox → fallback via skill inbox-router (AI, para notas sem regra) ──
-inbox_count=0
-if [ -d "$OBSIDIAN_INBOX" ]; then
-  inbox_count=$(grep -rL "assigned_to:" "$OBSIDIAN_INBOX" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
-fi
-if [ "${inbox_count:-0}" -gt 0 ]; then
-  log "Inbox: $inbox_count nota(s) sem regra — iniciando inbox-router AI"
-  heartbeat="$BRAION/agents/_defaults/task-manager/state/heartbeat.json"
-  tarefas_model=$(get_agent_model "$BRAION/agents/_defaults/task-manager/config.yaml")
-  if heartbeat_is_processing "$heartbeat"; then
-    start_session "braion-task-manager" "$BRAION" \
-      "Read $BRAION/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. Agent: task-manager. BR.AI.ON base: $BRAION." \
-      "${tarefas_model:-$DEFAULT_MODEL}"
-  else
-    log "SKIP braion-task-manager — heartbeat processing recente"
+# ── 1b. Obsidian inbox → roteamento AI via inbox-router (notas sem regra direta) ──
+inbox_router_model=$(get_agent_model "$BRAION/agents/inbox-router/config.yaml")
+inbox_router_heartbeat="$BRAION/agents/inbox-router/state/heartbeat.json"
+
+for check_dir in "$OBSIDIAN_INBOX" $AI_ROUTE_FOLDERS; do
+  [ -d "$check_dir" ] || continue
+  dir_count=$(grep -rL "assigned_to:" "$check_dir" --include="*.md" 2>/dev/null | grep -v '/\.' | wc -l | xargs || true)
+  [ "${dir_count:-0}" -gt 0 ] || continue
+
+  if session_running "braion-inbox-router"; then
+    log "SKIP braion-inbox-router — sessão ativa, $dir_count nota(s) em $check_dir aguardam próximo ciclo"
+    continue
   fi
-fi
+
+  if ! heartbeat_is_processing "$inbox_router_heartbeat"; then
+    log "SKIP braion-inbox-router — heartbeat processing recente"
+    continue
+  fi
+
+  folder_param=""
+  [ "$check_dir" != "$OBSIDIAN_INBOX" ] && folder_param="Folder: $check_dir. "
+
+  log "Inbox: $dir_count nota(s) em $check_dir — iniciando inbox-router AI"
+  start_session "braion-inbox-router" "$BRAION" \
+    "Read $BRAION/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. ${folder_param}Agent: inbox-router. BR.AI.ON base: $BRAION." \
+    "${inbox_router_model:-$DEFAULT_MODEL}"
+  break
+done
 
 # ── 2. Handoffs pendentes → iniciar agente responsivo ─────────────────────────
 notify_user_handoff() {
