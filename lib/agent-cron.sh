@@ -121,7 +121,7 @@ start_session() {
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode auto --allowedTools '*'" Enter
+    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode bypassPermissions" Enter
     log "START $session em $working_dir (model=$model)"
   fi
 
