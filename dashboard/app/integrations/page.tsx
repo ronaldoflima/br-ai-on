@@ -98,9 +98,10 @@ export default function IntegrationsPage() {
         r.id === editingId ? { ...r, ...form } : r
       );
     } else {
+      const newId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
       updated.obsidian_rules = [
         ...updated.obsidian_rules,
-        { id: crypto.randomUUID(), created_at: new Date().toISOString(), ...form },
+        { id: newId, created_at: new Date().toISOString(), ...form },
       ];
     }
     const ok = await save(updated);

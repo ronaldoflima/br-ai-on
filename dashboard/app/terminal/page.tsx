@@ -52,20 +52,21 @@ export default function TerminalPage() {
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
   const [directMode, setDirectMode] = useState(true);
+  const [directFocused, setDirectFocused] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
   });
   const [refreshRate, setRefreshRate] = useState(() => {
-    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "300") || 300;
-    return 300;
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "100") || 100;
+    return 100;
   });
   const outputRef = useRef<HTMLPreElement>(null);
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileDirectInputRef = useRef<HTMLInputElement>(null);
-  const [mobileDirectValue, setMobileDirectValue] = useState("");
+  const composingRef = useRef(false);
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -154,15 +155,11 @@ export default function TerminalPage() {
 
   useEffect(() => {
     if (directMode && selected) {
-      if (isMobile) {
-        mobileDirectInputRef.current?.focus();
-      } else {
-        outputRef.current?.focus();
-      }
+      mobileDirectInputRef.current?.focus();
     } else if (!directMode && selected) {
       inputRef.current?.focus();
     }
-  }, [directMode, selected, isMobile]);
+  }, [directMode, selected]);
 
   const sendKey = useCallback(async (key: string, ctrl = false, meta = false, shift = false) => {
     if (!selected) return;
@@ -197,48 +194,47 @@ export default function TerminalPage() {
     setSending(false);
   };
 
-  const handleDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+  const handleDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (composingRef.current) return;
+    const val = e.target.value;
+    e.target.value = "";
+    for (const char of val) {
+      sendKey(char);
+    }
+  }, [sendKey]);
 
-    // AltGr no Windows/Linux = Ctrl+Alt juntos — não é modificador real
+  const handleCompositionStart = useCallback(() => {
+    composingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
+    composingRef.current = false;
+    const data = e.data;
+    (e.target as HTMLInputElement).value = "";
+    if (data) {
+      for (const char of [...data]) {
+        sendKey(char);
+      }
+    }
+  }, [sendKey]);
+
+  const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
     const isAltGr = e.ctrlKey && e.altKey;
-    // No Mac, Command (metaKey) é mapeado para Ctrl no contexto de terminal
     const ctrl = isAltGr ? false : (e.ctrlKey || e.metaKey);
     const meta = isAltGr ? false : e.altKey;
     const shift = e.shiftKey;
-
-    // Teclas que têm comportamento padrão indesejado no browser
-    const shouldPrevent = ctrl || meta || [
+    const specialKeys = [
       "Tab", "Enter", "Backspace", "Escape", "Delete",
       "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
       "Home", "End", "PageUp", "PageDown",
       "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
-    ].includes(e.key);
-
-    if (shouldPrevent) e.preventDefault();
-
-    sendKey(e.key, ctrl, meta, shift);
-  };
-
-  const handleMobileDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newText = e.target.value;
-    for (const char of newText) {
-      sendKey(char);
-    }
-    setMobileDirectValue("");
-  }, [sendKey]);
-
-  const handleMobileDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
-    const specialKeys = [
-      "Backspace", "Delete", "Enter", "Escape", "Tab",
-      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-      "Home", "End", "PageUp", "PageDown",
     ];
-    if (specialKeys.includes(e.key)) {
+    if (ctrl || meta || specialKeys.includes(e.key)) {
       e.preventDefault();
-      sendKey(e.key);
+      sendKey(e.key, ctrl, meta, shift);
     }
+    // Caracteres regulares (incluindo acentuados compostos) são tratados pelo onChange
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -453,14 +449,13 @@ export default function TerminalPage() {
 
       <pre
         ref={outputRef}
-        tabIndex={directMode ? 0 : -1}
-        onKeyDown={directMode ? handleDirectKeyDown : undefined}
+        tabIndex={-1}
         onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
         onTouchEnd={isMobile ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
-        onClick={() => directMode && outputRef.current?.focus()}
+        onClick={() => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
         className={isMobile ? styles.outputMobile : styles.output}
         style={{
-          outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
+          outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent"),
           cursor: directMode ? "text" : "default",
         }}
         dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
@@ -490,22 +485,23 @@ export default function TerminalPage() {
       <div className={styles.inputRow}>
         {directMode ? (
           <>
-            {isMobile && (
-              <input
-                ref={mobileDirectInputRef}
-                value={mobileDirectValue}
-                onChange={handleMobileDirectChange}
-                onKeyDown={handleMobileDirectKeyDown}
-                autoCorrect="off"
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-                style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
-              />
-            )}
+            <input
+              ref={mobileDirectInputRef}
+              onChange={handleDirectChange}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+              onKeyDown={handleDirectInputKeyDown}
+              onFocus={() => setDirectFocused(true)}
+              onBlur={() => setDirectFocused(false)}
+              autoCorrect="off"
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+              style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+            />
             <div
               className={styles.directModeLabel}
-              onClick={() => isMobile && mobileDirectInputRef.current?.focus()}
+              onClick={() => mobileDirectInputRef.current?.focus()}
             >
               {isMobile ? "modo direto • toque aqui ou no terminal para digitar" : "modo direto • cada tecla é enviada imediatamente"}
             </div>
