@@ -125,7 +125,15 @@ start_session() {
     log "START $session em $working_dir (model=$model)"
   fi
 
-  sleep 5
+  # Aguarda Claude estar pronto (prompt "> " visível), máximo 30s
+  local waited=0
+  while [ $waited -lt 30 ]; do
+    sleep 1
+    waited=$((waited + 1))
+    if tmux capture-pane -t "$session" -p 2>/dev/null | grep -q '^>'; then
+      break
+    fi
+  done
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
 }
