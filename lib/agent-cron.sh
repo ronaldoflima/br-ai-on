@@ -136,6 +136,27 @@ start_session() {
   done
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
+
+  # Watcher em background: mata o tmux quando Claude volta ao prompt ❯ (sessão concluída)
+  local log_file="$LOG_FILE"
+  (
+    sleep 30
+    while tmux has-session -t "$session" 2>/dev/null; do
+      sleep 10
+      if tmux capture-pane -t "$session" -p 2>/dev/null \
+          | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
+          | grep -v 'auto mode' | tail -1 | grep -qP '\xe2\x9d\xaf'; then
+        sleep 5
+        if tmux capture-pane -t "$session" -p 2>/dev/null \
+            | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
+            | grep -v 'auto mode' | tail -1 | grep -qP '\xe2\x9d\xaf'; then
+          tmux kill-session -t "$session" 2>/dev/null
+          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $session — sessão encerrada automaticamente" >> "$log_file"
+          break
+        fi
+      fi
+    done
+  ) &
 }
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
