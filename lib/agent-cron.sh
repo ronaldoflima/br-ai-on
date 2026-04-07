@@ -118,7 +118,8 @@ get_agent_command() {
 }
 
 start_session() {
-  local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
+  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
+  [ -z "$working_dir" ] && working_dir="$BRAION"
 
   if session_running "$session"; then
     kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
