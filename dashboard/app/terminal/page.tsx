@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import AnsiToHtml from "ansi-to-html";
 import styles from "./terminal.module.css";
+import { FileExplorer } from "../components/FileExplorer";
+import { FileViewer } from "../components/FileViewer";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -54,6 +56,13 @@ export default function TerminalPage() {
   const [directMode, setDirectMode] = useState(true);
   const [directFocused, setDirectFocused] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null);
+  const [mobileView, setMobileView] = useState<"terminal" | "files" | "fileviewer">("terminal");
+  const [filePanelWidth, setFilePanelWidth] = useState(400);
+  const resizingRef = useRef(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
@@ -291,6 +300,34 @@ export default function TerminalPage() {
     setKilling(false);
   };
 
+  const handleFileSelect = (path: string, name: string) => {
+    setSelectedFile({ path, name });
+    if (isMobile) setMobileView("fileviewer");
+  };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = filePanelWidth;
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = resizeStartXRef.current - e.clientX;
+      const newWidth = Math.max(250, Math.min(800, resizeStartWidthRef.current + delta));
+      setFilePanelWidth(newWidth);
+    };
+    const onMouseUp = () => { resizingRef.current = false; };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
   const CURSOR_MARKER = "\uE000";
   const CURSOR_PLACEHOLDER = "__TERMINAL_CURSOR__";
   const CURSOR_HTML = '<span class="terminal-cursor"></span>';
@@ -395,6 +432,22 @@ export default function TerminalPage() {
           >
             ⚙
           </button>
+          {selected && (
+            <button
+              className={`btn ${styles.toolbarBtn} ${showFiles ? styles.toolbarBtnActive : ""}`}
+              onClick={() => {
+                if (isMobile) {
+                  setMobileView("files");
+                } else {
+                  setShowFiles((v) => !v);
+                  setSelectedFile(null);
+                }
+              }}
+              title="Explorador de arquivos"
+            >
+              📁
+            </button>
+          )}
           <button
             className={`btn ${styles.toolbarBtn}`}
             onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
@@ -555,13 +608,54 @@ export default function TerminalPage() {
 
       {isMobile ? (
         <div className={styles.mobileLayout}>
-          {showSessionList && sessionsList}
-          {showTerminal && terminalPanel}
+          {mobileView === "terminal" && showSessionList && sessionsList}
+          {mobileView === "terminal" && showTerminal && terminalPanel}
+          {mobileView === "files" && selected && (
+            <div className={styles.mobilePanelFull}>
+              <div className={styles.mobilePanelHeader}>
+                <button className={`btn ${styles.backBtn}`} onClick={() => setMobileView("terminal")}>
+                  ← Terminal
+                </button>
+                <span className={styles.mobilePanelTitle}>Arquivos</span>
+              </div>
+              <FileExplorer session={selected} onFileSelect={handleFileSelect} />
+            </div>
+          )}
+          {mobileView === "fileviewer" && selected && selectedFile && (
+            <div className={styles.mobilePanelFull}>
+              <FileViewer
+                session={selected}
+                filePath={selectedFile.path}
+                fileName={selectedFile.name}
+                onClose={() => { setSelectedFile(null); setMobileView("files"); }}
+              />
+            </div>
+          )}
         </div>
       ) : (
-        <div className={styles.desktopLayout}>
+        <div className={showFiles && selected ? styles.desktopLayoutWithFiles : styles.desktopLayout}>
           {sessionsList}
           {terminalPanel}
+          {showFiles && selected && (
+            <>
+              <div className={styles.resizeHandle} onMouseDown={handleResizeStart} />
+              <div className={styles.filePanel} style={{ width: filePanelWidth }}>
+              {selectedFile ? (
+                <FileViewer
+                  session={selected}
+                  filePath={selectedFile.path}
+                  fileName={selectedFile.name}
+                  onClose={() => setSelectedFile(null)}
+                />
+              ) : (
+                <FileExplorer
+                  session={selected}
+                  onFileSelect={handleFileSelect}
+                />
+              )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
