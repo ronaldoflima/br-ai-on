@@ -10,8 +10,10 @@ set -euo pipefail
 SESSION_PREFIX="braion-telegram"
 session="$SESSION_PREFIX" #TODO futuramente colocar com chat_id para isolar sessões por usuário, mas por enquanto só tem uma sessão global
 
-# Verifica se a sessão existe
-tmux has-session -t "$session" 2>/dev/null || exit 0
+# Verifica se o hook está rodando dentro da sessão telegram correta
+[ -n "${TMUX:-}" ] || exit 0
+current_session=$(tmux display-message -p '#S' 2>/dev/null || echo "")
+[ "$current_session" = "$session" ] || exit 0
 
 TELEGRAM_BOT_TOKEN=$(tmux show-environment -t "$session" TELEGRAM_BOT_TOKEN 2>/dev/null | cut -d= -f2-)
 TELEGRAM_CHAT_ID=$(tmux show-environment -t "$session" TELEGRAM_CHAT_ID 2>/dev/null | cut -d= -f2-)
