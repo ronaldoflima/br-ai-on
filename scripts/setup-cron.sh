@@ -33,33 +33,17 @@ echo "[ok] Script: $CRON_SCRIPT"
 mkdir -p "$(dirname "$LOG_FILE")"
 echo "[ok] Diretorio de logs: $(dirname "$LOG_FILE")"
 
-# 4. Verificar se entrada ja existe
+# 4. Instalar/verificar entrada no crontab
 if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
-  echo ""
-  echo "[ok] Entrada ja existe no crontab:"
-  crontab -l | grep "$CRON_SCRIPT"
-  echo ""
-  read -rp "Quer recriar a entrada? [s/N] " answer
-  if [[ "$(echo "$answer" | tr '[:upper:]' '[:lower:]')" != "s" ]]; then
-    echo "Nada a fazer."
-    exit 0
-  fi
-  # Remove entrada existente antes de recriar
-  crontab -l 2>/dev/null | grep -vF "$CRON_SCRIPT" | crontab -
-fi
-
-# 5. Adicionar entrada no crontab
-(crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
-
-# 6. Verificar instalacao
-if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
-  echo ""
-  echo "=== Instalado ==="
-  crontab -l | grep "$CRON_SCRIPT"
+  echo "[ok] Crontab já configurado"
 else
-  echo ""
-  echo "=== Erro: entrada nao encontrada no crontab ==="
-  exit 1
+  (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
+  if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
+    echo "[ok] Crontab instalado"
+  else
+    echo "[!] Erro ao instalar crontab"
+    exit 1
+  fi
 fi
 
 # 7. Registrar Stop hook no settings.json do Claude Code
