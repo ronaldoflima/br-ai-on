@@ -97,12 +97,13 @@ heartbeat_is_processing() {
 
 get_agent_model() {
   local config=$1
+  [ -f "$config" ] || return 0
   awk '/^model:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
 }
 
 get_agent_command() {
   local config=$1
-  # Lê campo command: do config.yaml, remove quotes
+  [ -f "$config" ] || return 0
   awk '/^command:/{gsub(/^command:[[:space:]]*/,""); gsub(/^"|"$/,""); print}' "$config" 2>/dev/null
 }
 
