@@ -242,7 +242,9 @@ handle_deploy() {
   local output errors=""
 
   tg_send "$chat_id" "📦 Fazendo checkout e pull..."
-  if ! output=$(cd "$BRAION" && git fetch origin 2>&1 && git checkout "$branch" 2>&1 && git pull origin "$branch" 2>&1); then
+  local git_cmds="git fetch origin && git checkout \"$branch\" && git pull origin \"$branch\""
+  [ "$branch" != "main" ] && git_cmds="$git_cmds && git pull origin main"
+  if ! output=$(cd "$BRAION" && eval "$git_cmds" 2>&1); then
     errors="$output"
     tg_send "$chat_id" "❌ Erro no git:
 \`\`\`
