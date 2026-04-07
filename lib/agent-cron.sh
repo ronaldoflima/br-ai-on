@@ -121,24 +121,16 @@ start_session() {
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode bypassPermissions" Enter
+    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode acceptEdits" Enter
     log "START $session em $working_dir (model=$model)"
   fi
 
-  # Aguarda Claude estar pronto (máximo 30s)
-  # bypassPermissions exibe confirmação "Yes, I accept" antes do prompt
+  # Aguarda Claude estar pronto (prompt ❯ visível), máximo 30s
   local waited=0
   while [ $waited -lt 30 ]; do
     sleep 1
     waited=$((waited + 1))
-    local pane
-    pane=$(tmux capture-pane -t "$session" -p 2>/dev/null)
-    if echo "$pane" | grep -q "Yes, I accept"; then
-      tmux send-keys -t "$session" "2" Enter
-      sleep 3
-      break
-    fi
-    if echo "$pane" | grep -q '^>'; then
+    if tmux capture-pane -t "$session" -p 2>/dev/null | grep -qP '\xe2\x9d\xaf'; then
       break
     fi
   done
