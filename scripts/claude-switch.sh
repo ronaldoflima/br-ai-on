@@ -16,9 +16,11 @@
 #   CLAUDE_RL_TTL        — segundos até expirar rate limit (padrão: 3600)
 #   CLAUDE_OLLAMA_URL    — URL do Ollama (padrão: http://localhost:11434)
 
-_CLAUDE_RATELIMIT_FLAG="/tmp/.claude_ratelimit"
+_CLAUDE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/claude-switch"
+mkdir -p "$_CLAUDE_CONFIG_DIR"
+_CLAUDE_RATELIMIT_FLAG="$_CLAUDE_CONFIG_DIR/.ratelimit"
 _CLAUDE_RATELIMIT_TTL="${CLAUDE_RL_TTL:-3600}"
-_CLAUDE_DAILY_CHECK="/tmp/.claude_check_$(date +%Y-%m-%d)"
+_CLAUDE_DAILY_CHECK="$_CLAUDE_CONFIG_DIR/.check_$(date +%Y-%m-%d)"
 _CLAUDE_OLLAMA_MODEL="${CLAUDE_OLLAMA_MODEL:-glm-5:cloud}"
 _CLAUDE_OLLAMA_URL="${CLAUDE_OLLAMA_URL:-http://localhost:11434}"
 
