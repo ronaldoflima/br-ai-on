@@ -253,7 +253,7 @@ ${errors:0:800}
   fi
 
   tg_send "$chat_id" "📦 Instalando dependências..."
-  if ! output=$(cd "$BRAION" && npm install 2>&1); then
+  if ! output=$(cd "$BRAION/dashboard" && npm install 2>&1); then
     tg_send "$chat_id" "❌ Erro no npm install:
 \`\`\`
 ${output:0:800}
@@ -263,7 +263,7 @@ ${output:0:800}
   fi
 
   tg_send "$chat_id" "🔨 Building..."
-  if ! output=$(cd "$BRAION" && npm run build 2>&1); then
+  if ! output=$(cd "$BRAION/dashboard" && npm run build 2>&1); then
     tg_send "$chat_id" "❌ Erro no npm build:
 \`\`\`
 ${output:0:800}
