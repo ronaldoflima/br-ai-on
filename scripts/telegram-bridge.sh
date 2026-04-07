@@ -20,7 +20,7 @@ echo "BRAION: $BRAION"
 [ -f "$BRAION/.env" ] && set -a && source "$BRAION/.env" && set +a
 
 BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" 
-ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"  
+ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"
 CLAUDE="claude"
 DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
 SESSION_PREFIX="braion-telegram"
@@ -95,7 +95,7 @@ ensure_session() {
   fi
 
   log "START $session"
-  tmux new-session -d -s "$session" -c "$BRAION" /bin/zsh
+  tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
 
   # Exporta variáveis de ambiente para o hook telegram
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
