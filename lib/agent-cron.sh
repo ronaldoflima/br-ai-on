@@ -139,24 +139,28 @@ start_session() {
 
   # Watcher em background: mata o tmux quando Claude volta ao prompt ❯ (sessão concluída)
   local log_file="$LOG_FILE"
+  local _session="$session"
   (
     sleep 30
-    while tmux has-session -t "$session" 2>/dev/null; do
+    while tmux has-session -t "$_session" 2>/dev/null; do
       sleep 10
-      if tmux capture-pane -t "$session" -p 2>/dev/null \
+      # Usa grep '^❯' (início de linha) — mesmo critério de session_is_idle.
+      # Confirma 2x com 5s de intervalo para evitar falso positivo durante execução.
+      if tmux capture-pane -t "$_session" -p 2>/dev/null \
           | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-          | grep -v 'auto mode' | tail -1 | grep -qP '\xe2\x9d\xaf'; then
+          | grep -v 'auto mode' | tail -1 | grep -q '^❯'; then
         sleep 5
-        if tmux capture-pane -t "$session" -p 2>/dev/null \
+        if tmux capture-pane -t "$_session" -p 2>/dev/null \
             | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-            | grep -v 'auto mode' | tail -1 | grep -qP '\xe2\x9d\xaf'; then
-          tmux kill-session -t "$session" 2>/dev/null
-          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $session — sessão encerrada automaticamente" >> "$log_file"
+            | grep -v 'auto mode' | tail -1 | grep -q '^❯'; then
+          tmux kill-session -t "$_session" 2>/dev/null
+          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada automaticamente" >> "$log_file"
           break
         fi
       fi
     done
   ) &
+  disown $!
 }
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
