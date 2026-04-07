@@ -134,7 +134,7 @@ start_session() {
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "claude --model $model --permission-mode acceptEdits" Enter
+    tmux send-keys -t "$session" "claude --model $model --permission-mode acceptEdits --add-dir $BRAION --add-dir $HOME/.config/br-ai-on" Enter
     log "START $session em $working_dir (model=$model)"
   fi
 
