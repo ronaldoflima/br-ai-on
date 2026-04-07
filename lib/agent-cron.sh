@@ -11,6 +11,14 @@
 set -euo pipefail
 
 BRAION=$(cd "$(dirname "$0")/.." && pwd)
+
+# Carrega variáveis do .env se existir
+if [ -f "$BRAION/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$BRAION/.env"
+  set +a
+fi
 OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
@@ -24,6 +32,15 @@ mkdir -p "$(dirname "$LOG_FILE")"
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
 }
+
+# ── 0a. Telegram bridge ───────────────────────────────────────────────────────
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+  if ! pgrep -f "telegram-bridge.sh" > /dev/null 2>&1; then
+    log "Telegram bridge não está rodando — iniciando em background"
+    nohup bash "$BRAION/scripts/telegram-bridge.sh" >> "$BRAION/logs/telegram-bridge.log" 2>&1 &
+    disown $!
+  fi
+fi
 
 # ── Pause check ───────────────────────────────────────────────────────────────
 if [ -f "$BRAION/.paused" ]; then
@@ -184,15 +201,6 @@ start_session() {
   ) &
   disown $!
 }
-
-# ── 0a. Telegram bridge ───────────────────────────────────────────────────────
-if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
-  if ! pgrep -f "telegram-bridge.sh" > /dev/null 2>&1; then
-    log "Telegram bridge não está rodando — iniciando em background"
-    nohup bash "$BRAION/scripts/telegram-bridge.sh" >> "$BRAION/logs/telegram-bridge.log" 2>&1 &
-    disown $!
-  fi
-fi
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
 git_pull_vault() {
