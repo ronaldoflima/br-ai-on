@@ -185,6 +185,15 @@ start_session() {
   disown $!
 }
 
+# ── 0a. Telegram bridge ───────────────────────────────────────────────────────
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+  if ! pgrep -f "telegram-bridge.sh" > /dev/null 2>&1; then
+    log "Telegram bridge não está rodando — iniciando em background"
+    nohup bash "$BRAION/scripts/telegram-bridge.sh" >> "$BRAION/logs/telegram-bridge.log" 2>&1 &
+    disown $!
+  fi
+fi
+
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
 git_pull_vault() {
   local dir=$1
