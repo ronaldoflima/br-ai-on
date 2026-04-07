@@ -17,6 +17,7 @@ agents/*
 agents/**/state/*
 !agents/**/state/.gitkeep
 agents/**/memory/episodic.jsonl
+agents/**/memory/semantic.md
 agents/**/handoffs/archive/
 agents/**/handoffs/inbox/*
 !agents/**/handoffs/inbox/.gitkeep
