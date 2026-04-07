@@ -25,8 +25,10 @@ agents/**/handoffs/artifacts/*
 agents/shared/schedule_state.json
 agents/shared/triggers.jsonl
 USER.md
-logs/
-metrics/
+/logs/
+/metrics/
+dashboard/logs/
+dashboard/metrics/
 nohup.out
 *.log
 .paused
