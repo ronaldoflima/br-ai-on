@@ -23,6 +23,8 @@ agents/shared/schedule_state.json
 agents/shared/triggers.jsonl
 USER.md
 logs/
+!dashboard/app/logs/
+!dashboard/app/api/logs/
 metrics/
 nohup.out
 *.log
