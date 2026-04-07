@@ -35,12 +35,16 @@ session_running() {
   tmux has-session -t "$1" 2>/dev/null
 }
 
+IDLE_DIR="$HOME/.config/br-ai-on/idle"
+
 session_is_idle() {
   local session=$1
   tmux has-session -t "$session" 2>/dev/null || return 1
+  [ -f "$IDLE_DIR/$session" ]
+}
 
-  tmux capture-pane -t "$session" -p 2>/dev/null \
-    | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
+session_clear_idle() {
+  rm -f "$IDLE_DIR/$1"
 }
 
 session_is_stale() {
@@ -60,6 +64,7 @@ kill_stale_session() {
   local session=$1
   if session_is_idle "$session"; then
     log "KILL $session — claude em prompt idle, sessão concluída"
+    session_clear_idle "$session"
     tmux kill-session -t "$session" 2>/dev/null
     return 0
   fi
@@ -140,30 +145,29 @@ start_session() {
   # aguarda o wrapup terminar e então mata a sessão.
   local log_file="$LOG_FILE"
   local _session="$session"
+  local _idle_dir="$IDLE_DIR"
   (
     _idle() {
-      tmux capture-pane -t "$_session" -p 2>/dev/null \
-        | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
+      [ -f "$_idle_dir/$_session" ]
     }
 
     sleep 30
     wrapup_sent=false
     while tmux has-session -t "$_session" 2>/dev/null; do
-      sleep 10
+      sleep 5
       if _idle; then
-        sleep 5
-        if _idle; then
-          if [ "$wrapup_sent" = false ]; then
-            tmux send-keys -t "$_session" -l '/braion:agent-wrapup'
-            tmux send-keys -t "$_session" Enter
-            wrapup_sent=true
-            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] WRAPUP $_session — /braion:agent-wrapup enviado" >> "$log_file"
-            sleep 60
-          else
-            tmux kill-session -t "$_session" 2>/dev/null
-            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada após wrapup" >> "$log_file"
-            break
-          fi
+        if [ "$wrapup_sent" = false ]; then
+          rm -f "$_idle_dir/$_session"
+          tmux send-keys -t "$_session" -l '/braion:agent-wrapup'
+          tmux send-keys -t "$_session" Enter
+          wrapup_sent=true
+          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] WRAPUP $_session — /braion:agent-wrapup enviado" >> "$log_file"
+          sleep 60
+        else
+          rm -f "$_idle_dir/$_session"
+          tmux kill-session -t "$_session" 2>/dev/null
+          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada após wrapup" >> "$log_file"
+          break
         fi
       fi
     done
