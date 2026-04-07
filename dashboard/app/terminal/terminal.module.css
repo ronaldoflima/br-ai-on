@@ -331,3 +331,67 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+
+/* ── File panel (desktop) ──────────────────────────────────────────── */
+
+.desktopLayoutWithFiles {
+  composes: desktopLayout;
+}
+
+.resizeHandle {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.resizeHandle:hover {
+  background: var(--accent);
+}
+
+.filePanel {
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.toolbarBtnActive {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* ── Mobile full panels ────────────────────────────────────────────── */
+
+.mobilePanelFull {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mobilePanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.mobilePanelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
