@@ -156,6 +156,16 @@ O core funciona sem nenhuma integração externa — todo estado é Markdown, YA
 |------------|-----|
 | **Obsidian** | Inbox bidirecional, notas. Opcional — funciona igualmente com pastas de arquivos locais. |
 
+## Setup do orquestrador (cron + hook)
+
+```bash
+bash scripts/setup-cron.sh
+```
+
+Instala o cron de 1min (`lib/agent-cron.sh`) e registra o Stop hook (`scripts/agent-idle-hook.sh`) no `~/.claude/settings.json`. O hook escreve uma flag em `~/.config/br-ai-on/idle/<session>` quando o Claude termina de responder em sessões `braion-*`, eliminando polling no terminal.
+
+> **Sem o hook:** o sistema funciona com fallback via grep no pane tmux, mas pode ter falsos positivos durante processamento longo.
+
 ## Scheduling
 
 O scheduler (`lib/agent-scheduler.py`) roda via cron a cada minuto:
