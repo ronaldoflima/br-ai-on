@@ -40,7 +40,13 @@ IDLE_DIR="$HOME/.config/br-ai-on/idle"
 session_is_idle() {
   local session=$1
   tmux has-session -t "$session" 2>/dev/null || return 1
-  [ -f "$IDLE_DIR/$session" ]
+  # Preferência: flag file do Stop hook
+  [ -f "$IDLE_DIR/$session" ] && return 0
+  # Fallback: grep no pane (para instalações sem o hook configurado)
+  local pane
+  pane=$(tmux capture-pane -t "$session" -p 2>/dev/null)
+  echo "$pane" | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0' || return 1
+  ! echo "$pane" | grep -qE 'Running…|Thinking|Thundering'
 }
 
 session_clear_idle() {
