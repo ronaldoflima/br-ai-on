@@ -40,8 +40,7 @@ session_is_idle() {
   tmux has-session -t "$session" 2>/dev/null || return 1
 
   tmux capture-pane -t "$session" -p 2>/dev/null \
-    | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-    | grep -v 'auto mode' | tail -1 | grep -q '^❯'
+    | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
 }
 
 session_is_stale() {
@@ -144,8 +143,7 @@ start_session() {
   (
     _idle() {
       tmux capture-pane -t "$_session" -p 2>/dev/null \
-        | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-        | grep -v 'auto mode' | tail -1 | grep -q '^❯'
+        | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
     }
 
     sleep 30
