@@ -14,7 +14,7 @@ BRAION=$(cd "$(dirname "$0")/.." && pwd)
 OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
-CLAUDE=${CLAUDE:-$(command -v claude || echo claude)}
+CLAUDE=${CLAUDE:-claude}
 DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
 LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
@@ -124,23 +124,25 @@ start_session() {
     kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
   fi
 
-  tmux new-session -d -s "$session" -c "$working_dir"
+  session_clear_idle "$session"
+  tmux new-session -d -s "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
 
   # Se tem comando customizado, usa ele; senão usa o claude padrão
   if [ -n "$custom_cmd" ]; then
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "$CLAUDE --model $model --permission-mode acceptEdits" Enter
+    tmux send-keys -t "$session" "claude --model $model --permission-mode acceptEdits" Enter
     log "START $session em $working_dir (model=$model)"
   fi
 
-  # Aguarda Claude estar pronto (prompt ❯ visível), máximo 30s
+  # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 60s
   local waited=0
-  while [ $waited -lt 30 ]; do
-    sleep 1
-    waited=$((waited + 1))
-    if tmux capture-pane -t "$session" -p 2>/dev/null | grep -qP '\xe2\x9d\xaf'; then
+  while [ $waited -lt 60 ]; do
+    sleep 2
+    waited=$((waited + 2))
+    if session_is_idle "$session"; then
+      session_clear_idle "$session"
       break
     fi
   done
