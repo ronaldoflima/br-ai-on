@@ -16,7 +16,7 @@ OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
 CLAUDE=${CLAUDE:-$(command -v claude || echo claude)}
 DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
-LOG_FILE=${LOG_FILE:-$BRAION/logs/agent-cron.log}
+LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
 
 mkdir -p "$(dirname "$LOG_FILE")"
