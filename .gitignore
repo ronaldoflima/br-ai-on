@@ -5,9 +5,10 @@
 *.tsbuildinfo
 package-lock.json
 dashboard/.next/
-.claude/settings.local.json
-.claude/tasks/
-.claude/skills/
+.claude/*
+!.claude/commands/
+.claude/commands/*
+!.claude/commands/braion/
 .playwright-mcp/
 .mcp.json
 agents/*
