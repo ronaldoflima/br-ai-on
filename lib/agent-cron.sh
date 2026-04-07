@@ -137,25 +137,35 @@ start_session() {
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
 
-  # Watcher em background: mata o tmux quando Claude volta ao prompt ❯ (sessão concluída)
+  # Watcher em background: invoca /braion:agent-wrapup quando Claude fica idle,
+  # aguarda o wrapup terminar e então mata a sessão.
   local log_file="$LOG_FILE"
   local _session="$session"
   (
+    _idle() {
+      tmux capture-pane -t "$_session" -p 2>/dev/null \
+        | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
+        | grep -v 'auto mode' | tail -1 | grep -q '^❯'
+    }
+
     sleep 30
+    wrapup_sent=false
     while tmux has-session -t "$_session" 2>/dev/null; do
       sleep 10
-      # Usa grep '^❯' (início de linha) — mesmo critério de session_is_idle.
-      # Confirma 2x com 5s de intervalo para evitar falso positivo durante execução.
-      if tmux capture-pane -t "$_session" -p 2>/dev/null \
-          | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-          | grep -v 'auto mode' | tail -1 | grep -q '^❯'; then
+      if _idle; then
         sleep 5
-        if tmux capture-pane -t "$_session" -p 2>/dev/null \
-            | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-            | grep -v 'auto mode' | tail -1 | grep -q '^❯'; then
-          tmux kill-session -t "$_session" 2>/dev/null
-          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada automaticamente" >> "$log_file"
-          break
+        if _idle; then
+          if [ "$wrapup_sent" = false ]; then
+            tmux send-keys -t "$_session" -l '/braion:agent-wrapup'
+            tmux send-keys -t "$_session" Enter
+            wrapup_sent=true
+            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] WRAPUP $_session — /braion:agent-wrapup enviado" >> "$log_file"
+            sleep 60
+          else
+            tmux kill-session -t "$_session" 2>/dev/null
+            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada após wrapup" >> "$log_file"
+            break
+          fi
         fi
       fi
     done
