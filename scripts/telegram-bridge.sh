@@ -166,14 +166,18 @@ handle_start() {
   local chat_id="$1" session="$2"
   ensure_session "$session" "$chat_id"
   tg_send "$chat_id" "🤖 *BR.AI.ON* conectado
-  Sessão: \`$session\`
+Sessão: \`$session\`
 
-  Envie qualquer mensagem para o Claude Code.
+Envie qualquer mensagem para o Claude Code.
 
-  Comandos:
-  • /clear — limpar contexto
-  • /reset — reiniciar sessão
-  • /status — estado da sessão"
+Comandos:
+• /clear — limpar contexto
+• /reset — reiniciar sessão
+• /status — estado da sessão
+• /pause — pausar agentes
+• /unpause — retomar agentes
+• /deploy — deploy da branch main
+• /deploy <branch> — deploy de branch específica"
 }
 
 handle_clear() {
@@ -210,6 +214,76 @@ handle_status() {
   else
     tg_send "$chat_id" "⏳ Sessão \`$session\` processando..."
   fi
+}
+
+handle_pause() {
+  local chat_id="$1"
+  touch "$BRAION/.paused"
+  tg_send "$chat_id" "⏸ BR.AI.ON pausado. Agentes não serão iniciados até /unpause."
+  log "PAUSE — arquivo .paused criado"
+}
+
+handle_unpause() {
+  local chat_id="$1"
+  if [ -f "$BRAION/.paused" ]; then
+    rm -f "$BRAION/.paused"
+    tg_send "$chat_id" "▶️ BR.AI.ON retomado. Agentes voltam ao ciclo normal."
+    log "UNPAUSE — arquivo .paused removido"
+  else
+    tg_send "$chat_id" "ℹ️ BR.AI.ON já estava ativo (sem arquivo .paused)."
+  fi
+}
+
+handle_deploy() {
+  local chat_id="$1" branch="${2:-main}"
+  log "DEPLOY — branch=$branch iniciado por chat_id=$chat_id"
+  tg_send "$chat_id" "🚀 Deploy iniciado (branch: \`$branch\`)..."
+
+  local output errors=""
+
+  tg_send "$chat_id" "📦 Fazendo checkout e pull..."
+  if ! output=$(cd "$BRAION" && git fetch origin 2>&1 && git checkout "$branch" 2>&1 && git pull origin "$branch" 2>&1); then
+    errors="$output"
+    tg_send "$chat_id" "❌ Erro no git:
+\`\`\`
+${errors:0:800}
+\`\`\`"
+    log "DEPLOY ERROR git: $errors"
+    return
+  fi
+
+  tg_send "$chat_id" "📦 Instalando dependências..."
+  if ! output=$(cd "$BRAION" && npm install 2>&1); then
+    tg_send "$chat_id" "❌ Erro no npm install:
+\`\`\`
+${output:0:800}
+\`\`\`"
+    log "DEPLOY ERROR npm install: $output"
+    return
+  fi
+
+  tg_send "$chat_id" "🔨 Building..."
+  if ! output=$(cd "$BRAION" && npm run build 2>&1); then
+    tg_send "$chat_id" "❌ Erro no npm build:
+\`\`\`
+${output:0:800}
+\`\`\`"
+    log "DEPLOY ERROR npm build: $output"
+    return
+  fi
+
+  tg_send "$chat_id" "🔄 Reiniciando serviço..."
+  if ! output=$(systemctl --user stop braion 2>&1 && systemctl --user start braion 2>&1); then
+    tg_send "$chat_id" "❌ Erro no systemctl:
+\`\`\`
+${output:0:800}
+\`\`\`"
+    log "DEPLOY ERROR systemctl: $output"
+    return
+  fi
+
+  tg_send "$chat_id" "✅ Deploy concluído! Branch \`$branch\` em produção."
+  log "DEPLOY OK — branch=$branch"
 }
 
 handle_message() {
@@ -290,12 +364,16 @@ main() {
       local session="${SESSION_PREFIX}" #TODO futuramente colocar com chat_id para isolar sessões por usuário, mas por enquanto só tem uma sessão global
 
       case "$text" in
-        /start)  handle_start  "$chat_id" "$session" ;;
-        /clear)  handle_clear  "$chat_id" "$session" ;;
-        /reset)  handle_reset  "$chat_id" "$session" ;;
-        /status) handle_status "$chat_id" "$session" ;;
-        /*)      tg_send "$chat_id" "Comando desconhecido. Use /start, /clear, /reset ou /status." ;;
-        *)       handle_message "$chat_id" "$session" "$text" ;;
+        /start)       handle_start   "$chat_id" "$session" ;;
+        /clear)       handle_clear   "$chat_id" "$session" ;;
+        /reset)       handle_reset   "$chat_id" "$session" ;;
+        /status)      handle_status  "$chat_id" "$session" ;;
+        /pause)       handle_pause   "$chat_id" ;;
+        /unpause)     handle_unpause "$chat_id" ;;
+        /deploy)      handle_deploy  "$chat_id" "main" ;;
+        /deploy\ *)   handle_deploy  "$chat_id" "${text#/deploy }" ;;
+        /*)           tg_send "$chat_id" "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." ;;
+        *)            handle_message "$chat_id" "$session" "$text" ;;
       esac
 
     done
