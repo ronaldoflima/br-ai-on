@@ -273,7 +273,9 @@ ${output:0:800}
   fi
 
   tg_send "$chat_id" "🔄 Reiniciando serviço..."
-  if ! output=$(systemctl --user stop braion 2>&1 && systemctl --user start braion 2>&1); then
+  local uid
+  uid=$(id -u)
+  if ! output=$(XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user stop braion 2>&1 && XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user start braion 2>&1); then
     tg_send "$chat_id" "❌ Erro no systemctl:
 \`\`\`
 ${output:0:800}
