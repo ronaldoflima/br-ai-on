@@ -4,11 +4,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
-import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconMenu, IconClose, IconGithub } from "./icons";
+import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub } from "./icons";
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: React.ComponentType; children?: NavItem[] };
+
+const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: IconDashboard },
-  { href: "/logs", label: "Logs", icon: IconLogs },
+  {
+    href: "/logs", label: "Logs", icon: IconLogs,
+    children: [
+      { href: "/logs", label: "Agentes", icon: IconLogs },
+      { href: "/logs/cron", label: "Cron", icon: IconCron },
+    ],
+  },
   { href: "/handoffs", label: "Handoffs", icon: IconHandoffs },
   { href: "/agents", label: "Agents", icon: IconAgents },
   { href: "/wizard", label: "Wizard", icon: IconWizard },
@@ -45,8 +53,9 @@ export function Sidebar() {
     router.push("/login");
   }
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, exact?: boolean) => {
     if (href === "/") return pathname === "/";
+    if (exact) return pathname === href;
     return pathname.startsWith(href);
   };
 
@@ -80,18 +89,41 @@ export function Sidebar() {
           BR.AI.ON
         </div>
         <ul className={styles.nav}>
-          {NAV.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={`${styles.navLink} ${isActive(item.href) ? styles.active : ""}`}
-                onClick={() => setOpen(false)}
-              >
-                <span className={styles.icon}><item.icon /></span>
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {NAV.map((item) =>
+            item.children ? (
+              <li key={item.href}>
+                <span className={`${styles.navLink} ${isActive(item.href) ? styles.active : ""}`} style={{ cursor: "default" }}>
+                  <span className={styles.icon}><item.icon /></span>
+                  {item.label}
+                </span>
+                <ul className={styles.subNav}>
+                  {item.children.map((child) => (
+                    <li key={child.href}>
+                      <Link
+                        href={child.href}
+                        className={`${styles.navLink} ${styles.subItem} ${isActive(child.href, true) ? styles.active : ""}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className={styles.icon}><child.icon /></span>
+                        {child.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ) : (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`${styles.navLink} ${isActive(item.href) ? styles.active : ""}`}
+                  onClick={() => setOpen(false)}
+                >
+                  <span className={styles.icon}><item.icon /></span>
+                  {item.label}
+                </Link>
+              </li>
+            )
+          )}
           <li className={styles.sectionLabel}>Claude Code</li>
           {CLAUDE_CODE_NAV.map((item) => (
             <li key={item.href}>
