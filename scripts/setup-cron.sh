@@ -46,46 +46,52 @@ else
   fi
 fi
 
-# 7. Registrar Stop hook no settings.json do Claude Code
-HOOK_SCRIPT="${PROJECT_DIR}/scripts/agent-idle-hook.sh"
+# 7. Registrar Stop hooks no settings.json do Claude Code
 SETTINGS_FILE="$HOME/.claude/settings.json"
 
 echo ""
-echo "=== Stop hook (detecção de idle) ==="
+echo "=== Stop hooks ==="
 
-if [[ ! -f "$SETTINGS_FILE" ]]; then
-  echo "[!] $SETTINGS_FILE nao encontrado — configure manualmente:"
-  echo "    Adicione agent-idle-hook.sh no bloco hooks.Stop do seu settings.json"
-elif ! command -v jq &>/dev/null; then
-  echo "[!] jq nao encontrado — verifique manualmente se o hook esta registrado em $SETTINGS_FILE"
-elif jq -e '.hooks.Stop[]?.hooks[]? | select(.command | contains("agent-idle-hook.sh"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
-  echo "[ok] agent-idle-hook.sh ja registrado em $SETTINGS_FILE"
-else
-  echo "[..] Registrando agent-idle-hook.sh em $SETTINGS_FILE"
-  python3 - "$SETTINGS_FILE" "$HOOK_SCRIPT" <<'PYEOF'
+register_stop_hook() {
+  local hook_script="$1" timeout="$2" label="$3"
+
+  if [[ ! -f "$SETTINGS_FILE" ]]; then
+    echo "[!] $SETTINGS_FILE nao encontrado — adicione $label manualmente"
+    return
+  fi
+
+  if ! command -v jq &>/dev/null; then
+    echo "[!] jq nao encontrado — verifique $label manualmente em $SETTINGS_FILE"
+    return
+  fi
+
+  local needle
+  needle=$(basename "$hook_script")
+
+  if jq -e ".hooks.Stop[]?.hooks[]? | select(.command | contains(\"$needle\"))" "$SETTINGS_FILE" >/dev/null 2>&1; then
+    echo "[ok] $label ja registrado"
+    return
+  fi
+
+  python3 - "$SETTINGS_FILE" "$hook_script" "$timeout" <<'PYEOF'
 import sys, json
-
-settings_path, hook_script = sys.argv[1], sys.argv[2]
-
+settings_path, hook_script, timeout = sys.argv[1], sys.argv[2], int(sys.argv[3])
 with open(settings_path) as f:
-    settings = json.load(f)
-
-settings.setdefault("hooks", {}).setdefault("Stop", [])
-
-stop_hooks = settings["hooks"]["Stop"]
-if not stop_hooks:
-    stop_hooks.append({"matcher": ".*", "hooks": []})
-
-new_hook = {"type": "command", "command": hook_script, "timeout": 5}
-stop_hooks[0].setdefault("hooks", []).append(new_hook)
-
+    s = json.load(f)
+s.setdefault("hooks", {}).setdefault("Stop", [])
+stop = s["hooks"]["Stop"]
+if not stop:
+    stop.append({"matcher": ".*", "hooks": []})
+stop[0].setdefault("hooks", []).append({"type": "command", "command": hook_script, "timeout": timeout})
 with open(settings_path, "w") as f:
-    json.dump(settings, f, indent=2, ensure_ascii=False)
+    json.dump(s, f, indent=2, ensure_ascii=False)
     f.write("\n")
-
-print(f"[ok] Hook registrado em {settings_path}")
 PYEOF
-fi
+  echo "[ok] $label registrado"
+}
+
+register_stop_hook "${PROJECT_DIR}/scripts/agent-idle-hook.sh"    5  "agent-idle-hook.sh"
+register_stop_hook "${PROJECT_DIR}/scripts/telegram-hook.sh"      15 "telegram-hook.sh"
 
 echo ""
 echo "Comandos uteis:"
