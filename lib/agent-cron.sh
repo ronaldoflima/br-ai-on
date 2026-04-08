@@ -35,46 +35,6 @@ session_running() {
   tmux has-session -t "$1" 2>/dev/null
 }
 
-session_is_idle() {
-  local session=$1
-  tmux has-session -t "$session" 2>/dev/null || return 1
-
-  tmux capture-pane -t "$session" -p 2>/dev/null \
-    | grep -v '^[[:space:]]*$' | grep -v '^─\+$' \
-    | grep -v 'auto mode' | tail -1 | grep -q '^❯'
-}
-
-session_is_stale() {
-  local session=$1
-  tmux has-session -t "$session" 2>/dev/null || return 1
-
-  local activity now elapsed
-  activity=$(tmux display-message -t "$session" -p '#{window_activity}' 2>/dev/null || echo 0)
-  [ "${activity:-0}" -le 0 ] && return 1
-
-  now=$(date -u +%s)
-  elapsed=$(( now - activity ))
-  [ "$elapsed" -gt "$STALE_THRESHOLD" ]
-}
-
-kill_stale_session() {
-  local session=$1
-  if session_is_idle "$session"; then
-    log "KILL $session — claude em prompt idle, sessão concluída"
-    tmux kill-session -t "$session" 2>/dev/null
-    return 0
-  fi
-  if session_is_stale "$session"; then
-    local activity elapsed
-    activity=$(tmux display-message -t "$session" -p '#{window_activity}' 2>/dev/null || echo 0)
-    elapsed=$(( $(date -u +%s) - activity ))
-    log "KILL $session — sem atividade há ${elapsed}s (> ${STALE_THRESHOLD}s)"
-    tmux kill-session -t "$session" 2>/dev/null
-    return 0
-  fi
-  return 1
-}
-
 heartbeat_is_processing() {
   local heartbeat_file=$1
   [ -f "$heartbeat_file" ] || return 0
@@ -110,7 +70,8 @@ start_session() {
   local session=$1 working_dir=$2 prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
 
   if session_running "$session"; then
-    kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
+    log "SKIP $session — sessão tmux ativa"
+    return 0
   fi
 
   tmux new-session -d -s "$session" -c "$working_dir"
@@ -124,7 +85,7 @@ start_session() {
     log "START $session em $working_dir (model=$model)"
   fi
 
-  sleep 5
+  sleep 10
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
 }
@@ -204,17 +165,14 @@ for config in "$BRAION/agents"/*/config.yaml; do
     session="braion-${agent}-${ho_id}"
 
     if session_running "$session"; then
-      kill_stale_session "$session" || { log "SKIP $session — sessão ativa"; continue; }
+      log "SKIP $session — sessão ativa"
+      continue
     fi
-
-    # if [ -f "$agent_dir/handoffs/in_progress/$filename" ]; then
-    #   log "SKIP $session — handoff em in_progress (possível crash em recuperação)"
-    #   continue
-    # fi
 
     # Se o agente tem sessão alive ativa, aguarda ela terminar para evitar escrita concorrente em state/
     if session_running "braion-${agent}"; then
-      kill_stale_session "braion-${agent}" || { log "SKIP $session — sessão alive braion-${agent} ativa, handoff será processado no próximo ciclo"; continue; }
+      log "SKIP $session — sessão alive braion-${agent} ativa, handoff será processado no próximo ciclo"
+      continue
     fi
 
     log "Handoff: iniciando $session para $handoff_file"
