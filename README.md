@@ -2,10 +2,10 @@
 
 Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui identidade persistente (IDENTITY), estado entre sessões, memória de longo prazo e integração opcional com serviços externos via MCP.
 
-## Quickstart
+## Quickstart - Instalação e atualização
 
 ```bash
-# Instala, faz build e sobe o serviço de produção automaticamente
+# Instala/atualiza, faz build e sobe o serviço de produção automaticamente
 bash <(curl -fsSL https://raw.githubusercontent.com/ronaldoflima/br-ai-on/main/scripts/install.sh)
 ```
 
