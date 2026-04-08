@@ -1,6 +1,9 @@
 name: agent-builder
 display_name: AgentBuilder
-domain: Meta/Infraestrutura — Criacao de Agentes
+domain:
+  - meta
+  - infraestrutura
+  - criacao-de-agentes
 version: "0.1.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
