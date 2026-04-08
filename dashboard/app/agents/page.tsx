@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { SkeletonCards } from "../components/Skeleton";
 import type { AgentSummary } from "../lib/types";
+import { getAvailableTags } from "../lib/domain";
 import styles from "./agents.module.css";
 
 export default function AgentsPage() {
@@ -52,9 +53,14 @@ export default function AgentsPage() {
     setCreating(false);
   };
 
-  const uniqueDomains = useMemo(
-    () => [...new Set(agents.map((a) => a.domain).filter(Boolean))].sort(),
+  const allAgentTags = useMemo(
+    () => agents.map((a) => a.domain).filter((d) => d.length > 0),
     [agents]
+  );
+
+  const availableDomains = useMemo(
+    () => getAvailableTags(allAgentTags, domainFilter),
+    [allAgentTags, domainFilter]
   );
 
   const uniqueModels = useMemo(
@@ -79,7 +85,9 @@ export default function AgentsPage() {
     }
 
     if (domainFilter.size > 0) {
-      result = result.filter((a) => domainFilter.has(a.domain));
+      result = result.filter((a) =>
+        a.domain.some((tag) => domainFilter.has(tag)),
+      );
     }
 
     if (modelFilter.size > 0) {
@@ -143,10 +151,10 @@ export default function AgentsPage() {
             </label>
           ))}
 
-          {uniqueDomains.length > 0 && (
+          {availableDomains.length > 0 && (
             <>
               <div className={styles.sidebarLabel}>Domínio</div>
-              {uniqueDomains.map((d) => (
+              {availableDomains.map((d) => (
                 <label key={d} className={styles.checkRow}>
                   <input
                     type="checkbox"
@@ -242,7 +250,11 @@ export default function AgentsPage() {
                       </span>
                       <span className="text-muted-xs">v{agent.version}</span>
                     </div>
-                    <div className="text-secondary-sm mb-sm">{agent.domain}</div>
+                    <div className="text-secondary-sm mb-sm" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {agent.domain.map((tag) => (
+                        <span key={tag} className="badge badge-muted" style={{ fontSize: 11 }}>{tag}</span>
+                      ))}
+                    </div>
                     <div className="flex-row" style={{ gap: 8 }}>
                       <span
                         className={`badge ${

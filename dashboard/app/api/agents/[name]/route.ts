@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, rmSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
+import { parseDomainTags } from "../../../lib/domain";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -90,6 +91,8 @@ export async function GET(
       // ignore parse errors
     }
   }
+
+  config.domain = parseDomainTags(config.domain);
 
   return NextResponse.json({
     name,
