@@ -101,8 +101,8 @@ ensure_session() {
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
   tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$BOT_TOKEN" 2>/dev/null || true
 
-  # Prompt curto para respostas limpas no Telegram
-  local tg_prompt='Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.'
+  # System prompt carregado de arquivo (fallback inline se arquivo não existir)
+  local tg_prompt=$(cat $BRAION/prompts/system-prompts/chat-telegram.md 2>/dev/null || echo "You are a helpful assistant. Keep responses concise for Telegram/chat, format for mobile, NO tables/ASCII art. Use bullets and short paragraphs. Be concise.")
   log "tmux send-keys -t \"$session\" \"$CLAUDE --permission-mode acceptEdits --append-system-prompt '$tg_prompt'\" Enter"
   tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
 

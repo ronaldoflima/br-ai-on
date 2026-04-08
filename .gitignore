@@ -23,6 +23,8 @@ agents/**/handoffs/artifacts/*
 agents/shared/schedule_state.json
 agents/shared/triggers.jsonl
 USER.md
+prompts/system-prompts/*.md
+!prompts/system-prompts/README.md
 /logs/
 /metrics/
 dashboard/logs/
