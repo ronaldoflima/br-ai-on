@@ -321,7 +321,7 @@ for check_dir in "$OBSIDIAN_INBOX" $AI_ROUTE_FOLDERS; do
 
   log "Inbox: $dir_count nota(s) em $check_dir — iniciando inbox-router AI"
   start_session "braion-inbox-router" "$BRAION" \
-    "Read $BRAION/skills/agent-inbox-router/SKILL.md and follow the instructions exactly. ${folder_param}Agent: inbox-router. BR.AI.ON base: $BRAION." \
+    "Read $BRAION/commands/braion/agent-inbox-router.md and follow the instructions exactly. ${folder_param}Agent: inbox-router. BR.AI.ON base: $BRAION." \
     "${inbox_router_model:-$DEFAULT_MODEL}"
   break
 done
@@ -391,7 +391,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     log "Handoff: iniciando $session para $handoff_file"
 
-    prompt="Read $BRAION/skills/agent-handoff/SKILL.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. BR.AI.ON base: $BRAION. Working directory: $working_dir."
+    prompt="Read $BRAION/commands/braion/agent-handoff.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. BR.AI.ON base: $BRAION. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
     agent_cmd=$(get_agent_command "$config")
 
@@ -437,7 +437,7 @@ if [ "$due_count" -gt 0 ]; then
 
     [ -z "$agent_dir" ] && agent_dir="$BRAION"
 
-    prompt="Read $BRAION/skills/agent-init/SKILL.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
+    prompt="Read $BRAION/commands/braion/agent-init.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
     start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
 

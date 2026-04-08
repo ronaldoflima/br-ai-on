@@ -241,6 +241,6 @@ Quando `command` está definido, o orquestrador usa esse comando em vez de `$CLA
 
 ## Orquestrador
 
-- Skill: `skills/orchestrator/SKILL.md`
+- Command: `commands/braion/orchestrator.md`
 - Responsável por rodar o scheduler e spawnar subagentes
 - Único com permissão de escrita em `agents/shared/`
