@@ -5,7 +5,7 @@ description: Lê notas do Obsidian inbox, determina o agente responsável via co
 
 # Agent Inbox Router
 
-Este skill é o **único responsável** por converter notas do Obsidian inbox em handoffs. Nenhum outro agente ou skill deve fazer esta conversão.
+Este command é o **único responsável** por converter notas do Obsidian inbox em handoffs. Nenhum outro agente ou command deve fazer esta conversão.
 
 O prompt contém `Agent: <nome>` — use esse nome como agente roteador em todos os paths e comandos abaixo.
 
