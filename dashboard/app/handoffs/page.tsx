@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Handoff } from "../lib/types";
 import { useAgentListFull } from "../lib/useAgentList";
+import { getAvailableTags } from "../lib/domain";
 import styles from "./handoffs.module.css";
 
 interface ArtifactFile {
@@ -383,14 +384,19 @@ export default function HandoffsPage() {
   const allHandoffs = [...inbox, ...inProgress, ...archive];
   const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, inProgress, archive]);
   const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, inProgress, archive]);
-  const uniqueDomains = useMemo(() => {
-    const domains = agents.map((a) => a.domain).filter(Boolean);
-    return [...new Set(domains)].sort();
-  }, [agents]);
+  const allAgentTags = useMemo(
+    () => agents.map((a) => a.domain).filter((d) => d.length > 0),
+    [agents]
+  );
+
+  const availableDomains = useMemo(
+    () => getAvailableTags(allAgentTags, filterDomain),
+    [allAgentTags, filterDomain]
+  );
 
   const agentDomainMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    agents.forEach((a) => { if (a.domain) map[a.name] = a.domain; });
+    const map: Record<string, string[]> = {};
+    agents.forEach((a) => { if (a.domain.length > 0) map[a.name] = a.domain; });
     return map;
   }, [agents]);
 
@@ -421,9 +427,9 @@ export default function HandoffsPage() {
     }
     if (filterDomain.size > 0) {
       result = result.filter((h) => {
-        const fromDomain = agentDomainMap[h.from];
-        const toDomain = agentDomainMap[h.to];
-        return (fromDomain && filterDomain.has(fromDomain)) || (toDomain && filterDomain.has(toDomain));
+        const fromTags = agentDomainMap[h.from] || [];
+        const toTags = agentDomainMap[h.to] || [];
+        return fromTags.some((t) => filterDomain.has(t)) || toTags.some((t) => filterDomain.has(t));
       });
     }
     if (filterSchedule.size > 0) {
@@ -521,10 +527,10 @@ export default function HandoffsPage() {
             </>
           )}
 
-          {uniqueDomains.length > 0 && (
+          {availableDomains.length > 0 && (
             <>
               <div className={styles.sectionLabel}>Domínio</div>
-              {uniqueDomains.map((d) => (
+              {availableDomains.map((d) => (
                 <label key={`dom-${d}`} className={styles.checkItem}>
                   <input
                     type="checkbox"
