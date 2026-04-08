@@ -6,9 +6,6 @@
 package-lock.json
 dashboard/.next/
 .claude/*
-!.claude/commands/
-.claude/commands/*
-!.claude/commands/tasks/
 .playwright-mcp/
 .mcp.json
 agents/*

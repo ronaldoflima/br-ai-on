@@ -51,7 +51,7 @@ handoff_send() {
         [ -f "$f" ] || continue
         if grep -q "^id: $reply_to" "$f" 2>/dev/null; then
           local found_thread
-          found_thread=$(grep '^thread_id:' "$f" | sed 's/thread_id: //')
+          found_thread=$(grep '^thread_id:' "$f" | sed 's/thread_id: //') || true
           if [ -n "$found_thread" ]; then
             thread_id="$found_thread"
           fi
