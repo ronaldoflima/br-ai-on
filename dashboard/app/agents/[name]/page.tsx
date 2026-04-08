@@ -145,9 +145,12 @@ export default function AgentDetailPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{(config.display_name as string) || name}</h1>
-          <span className="text-muted-sm">
-            {config.domain as string} — v{config.version as string}
-          </span>
+          <div className="text-muted-sm" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            {(Array.isArray(config.domain) ? config.domain : []).map((tag: string) => (
+              <span key={tag} className="badge badge-muted" style={{ fontSize: 11 }}>{tag}</span>
+            ))}
+            <span>— v{config.version as string}</span>
+          </div>
         </div>
         <div className="flex-row">
           {saveStatus && (
