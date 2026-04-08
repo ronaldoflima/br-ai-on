@@ -1,1 +1,0 @@
-../../../skills/agent-inbox-router/SKILL.md
