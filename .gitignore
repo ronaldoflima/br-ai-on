@@ -8,7 +8,7 @@ dashboard/.next/
 .claude/*
 !.claude/commands/
 .claude/commands/*
-!.claude/commands/braion/
+!.claude/commands/tasks/
 .playwright-mcp/
 .mcp.json
 agents/*

@@ -8,7 +8,7 @@ Ecossistema de agentes AI pessoais orquestrado pelo Claude Code. Cada agente tem
 
 ```
 agents/<nome>/         — Agente com IDENTITY.md, config.yaml e state/
-skills/                — Skills do Claude Code (init, wrapup, etc.)
+commands/braion/       — Commands do Claude Code (init, wrapup, etc.)
 lib/                   — Scripts utilitários (logger.sh)
 logs/                  — Logs estruturados JSONL por agente/dia
 USER.md                — Perfil do usuário (compartilhado entre agentes)
@@ -17,9 +17,9 @@ AGENTS.md              — Regras operacionais de todos os agentes
 
 ## Ciclo de Sessão
 
-1. `/agent-init` — carrega IDENTITY + estado + tarefas do Notion
+1. `/braion:agent-init` — carrega IDENTITY + estado + tarefas do Notion
 2. Executa tarefas conforme objetivo
-3. `/agent-wrapup` — salva estado + decisões + log
+3. `/braion:agent-wrapup` — salva estado + decisões + log
 
 ## MCP Tools Disponíveis
 

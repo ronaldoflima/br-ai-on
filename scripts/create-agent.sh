@@ -204,4 +204,4 @@ success "handoffs/archive/"
 header "Agente '$display_name' criado com sucesso!"
 
 echo "Proximo passo: edite $base/IDENTITY.md para refinar a personalidade."
-echo "Para iniciar: use /agent-init com o agente '$agent_name'."
+echo "Para iniciar: use /braion:agent-init com o agente '$agent_name'."
