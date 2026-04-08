@@ -341,8 +341,9 @@ function toggleSet(set: Set<string>, val: string): Set<string> {
 export default function HandoffsPage() {
   const agents = useAgentListFull(false);
   const [inbox, setInbox] = useState<Handoff[]>([]);
+  const [inProgress, setInProgress] = useState<Handoff[]>([]);
   const [archive, setArchive] = useState<Handoff[]>([]);
-  const [tab, setTab] = useState<"inbox" | "archive">("inbox");
+  const [tab, setTab] = useState<"inbox" | "in_progress" | "archive">("inbox");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -360,7 +361,7 @@ export default function HandoffsPage() {
     setLoading(true);
     fetch("/api/handoffs?agent=all")
       .then((r) => r.json())
-      .then((data) => { setInbox(data.inbox || []); setArchive(data.archive || []); })
+      .then((data) => { setInbox(data.inbox || []); setInProgress(data.in_progress || []); setArchive(data.archive || []); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
@@ -379,9 +380,9 @@ export default function HandoffsPage() {
     load();
   }
 
-  const allHandoffs = [...inbox, ...archive];
-  const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, archive]);
-  const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, archive]);
+  const allHandoffs = [...inbox, ...inProgress, ...archive];
+  const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, inProgress, archive]);
+  const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, inProgress, archive]);
   const uniqueDomains = useMemo(() => {
     const domains = agents.map((a) => a.domain).filter(Boolean);
     return [...new Set(domains)].sort();
@@ -443,8 +444,9 @@ export default function HandoffsPage() {
   }, [search, filterFrom, filterTo, filterDomain, filterSchedule, sortOrder, agentDomainMap, agentScheduleMap]);
 
   const filteredInbox = useMemo(() => filterItems(inbox), [inbox, filterItems]);
+  const filteredInProgress = useMemo(() => filterItems(inProgress), [inProgress, filterItems]);
   const filteredArchive = useMemo(() => filterItems(archive), [archive, filterItems]);
-  const items = tab === "inbox" ? filteredInbox : filteredArchive;
+  const items = tab === "inbox" ? filteredInbox : tab === "in_progress" ? filteredInProgress : filteredArchive;
 
   const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0;
 
@@ -471,7 +473,7 @@ export default function HandoffsPage() {
   return (
     <div className={styles.wrapper}>
       {showNew && <NewHandoffModal agents={agents} onClose={() => setShowNew(false)} onCreated={load} />}
-      {editing && <EditHandoffModal handoff={editing} isArchived={tab === "archive"} onClose={() => setEditing(null)} onSaved={load} />}
+      {editing && <EditHandoffModal handoff={editing} isArchived={tab !== "inbox"} onClose={() => setEditing(null)} onSaved={load} />}
 
       <div className="page-header">
         <h1 className="page-title">Handoffs</h1>
@@ -569,6 +571,9 @@ export default function HandoffsPage() {
             <button className={`tab ${tab === "inbox" ? "active" : ""}`} onClick={() => setTab("inbox")}>
               Inbox ({filteredInbox.length})
             </button>
+            <button className={`tab ${tab === "in_progress" ? "active" : ""}`} onClick={() => setTab("in_progress")}>
+              In Progress ({filteredInProgress.length})
+            </button>
             <button className={`tab ${tab === "archive" ? "active" : ""}`} onClick={() => setTab("archive")}>
               Archive ({filteredArchive.length})
             </button>
@@ -578,7 +583,7 @@ export default function HandoffsPage() {
             <div className="empty-state">Carregando...</div>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              {hasFilters ? "Nenhum handoff corresponde aos filtros" : `Nenhum handoff ${tab === "inbox" ? "pendente" : "arquivado"}`}
+              {hasFilters ? "Nenhum handoff corresponde aos filtros" : `Nenhum handoff ${tab === "inbox" ? "pendente" : tab === "in_progress" ? "em processamento" : "arquivado"}`}
             </div>
           ) : (
             <div className="flex-col">
