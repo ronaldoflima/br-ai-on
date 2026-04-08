@@ -155,6 +155,7 @@ O core funciona sem nenhuma integração externa — todo estado é Markdown, YA
 | Integração | Uso |
 |------------|-----|
 | **Obsidian** | Inbox bidirecional, notas. Opcional — funciona igualmente com pastas de arquivos locais. |
+| **Telegram** | Bridge para enviar mensagens ao Claude Code e receber respostas pelo Telegram. Ver [docs/telegram.md](docs/telegram.md). |
 
 ## Setup do orquestrador (cron + hook)
 
