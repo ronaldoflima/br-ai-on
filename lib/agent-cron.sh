@@ -329,11 +329,53 @@ done
 # ── 2. Handoffs pendentes → iniciar agente responsivo ─────────────────────────
 notify_user_handoff() {
   local handoff_file=$1
-  local from description
+  local from ho_id description
   from=$(awk '/^from:/{print $2}' "$handoff_file" 2>/dev/null || echo "?")
+  ho_id=$(awk '/^id:/{print $2}' "$handoff_file" 2>/dev/null || echo "?")
   description=$(sed -n '/^## Descricao/,/^## /p' "$handoff_file" 2>/dev/null \
     | grep -v '^##' | sed '/^[[:space:]]*$/d' | head -3 | tr '\n' ' ')
   log "Handoff to user from $from: $description"
+
+  [ -z "${TELEGRAM_BOT_TOKEN:-}" ] && return 0
+
+  local session="braion-telegram"
+
+  if ! session_running "$session"; then
+    log "Telegram session $session não ativa — iniciando"
+    tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+    tmux set-environment -t "$session" TELEGRAM_CHAT_ID "${TELEGRAM_ALLOWED_CHAT_ID:-}" 2>/dev/null || true
+    tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN" 2>/dev/null || true
+    local tg_prompt='Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.'
+    tmux send-keys -t "$session" \
+      "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
+    local waited=0
+    while [ $waited -lt 30 ]; do
+      sleep 2; waited=$((waited + 2))
+      if session_is_idle "$session"; then
+        session_clear_idle "$session"
+        break
+      fi
+    done
+  fi
+
+  if ! session_is_idle "$session"; then
+    log "Handoff $ho_id → telegram direto (sessão $session ocupada)"
+    local chat_id="${TELEGRAM_ALLOWED_CHAT_ID:-}"
+    if [ -n "$chat_id" ]; then
+      local msg="📬 Handoff ${ho_id} de ${from}: ${description}"
+      curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${chat_id}" --data-urlencode "text=${msg}" \
+        -d "disable_web_page_preview=true" > /dev/null
+    fi
+    return 0
+  fi
+
+  session_clear_idle "$session"
+  local prompt="Leia o handoff em ${handoff_file} e comunique ao usuário. É de ${from} (${ho_id}). Resuma de forma concisa para Telegram."
+  tmux send-keys -t "$session" -l "$prompt"
+  tmux send-keys -t "$session" Enter
+  log "Handoff $ho_id → sessão $session para processamento"
+  return 0
 }
 
 for config in "$BRAION/agents"/*/config.yaml; do
@@ -356,12 +398,12 @@ for config in "$BRAION/agents"/*/config.yaml; do
     expects=$(awk '/^expects:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
     to=$(awk '/^to:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
 
-    # Handoffs para o usuário: notifica e arquiva sem iniciar sessão
+    # Handoffs para o usuário: arquiva e envia ao braion-telegram para comunicar
     if [ "$to" = "user" ]; then
-      log "Handoff $ho_id → user: notificando e arquivando"
-      notify_user_handoff "$handoff_file"
+      log "Handoff $ho_id → user: arquivando e notificando via telegram"
       mkdir -p "$agent_dir/handoffs/archive"
       mv "$handoff_file" "$agent_dir/handoffs/archive/$filename"
+      notify_user_handoff "$agent_dir/handoffs/archive/$filename"
       continue
     fi
 
