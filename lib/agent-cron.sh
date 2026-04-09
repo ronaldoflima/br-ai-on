@@ -464,7 +464,13 @@ for config in "$BRAION/agents"/*/config.yaml; do
     fi
 
     # Reply de job — checar se job completou antes de acordar
+    # Apenas se o handoff é um REPLY (from != criador do job), não handoff de saída
+    from_agent=$(awk '/^from:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
+    job_created_by=""
     if [ -n "$job_id" ]; then
+      job_created_by=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.created_by' 2>/dev/null || echo "")
+    fi
+    if [ -n "$job_id" ] && [ "$from_agent" != "$job_created_by" ]; then
       heartbeat="$agent_dir/state/heartbeat.json"
 
       # Se sessão ativa e waiting — injetar reply quando job completo
