@@ -50,9 +50,20 @@ export function validateAgentConfig(raw: string): ValidationResult {
     }
   }
 
-  for (const field of ["name", "display_name", "domain", "version", "model", "fallback_model"] as const) {
+  for (const field of ["name", "display_name", "version", "model", "fallback_model"] as const) {
     if (!cfg[field] || typeof cfg[field] !== "string") {
       errors.push({ field, message: `Campo obrigatório ausente ou inválido: ${field}` });
+    }
+  }
+
+  if (!cfg.domain) {
+    errors.push({ field: "domain", message: "Campo obrigatório ausente ou inválido: domain" });
+  } else if (typeof cfg.domain !== "string" && !Array.isArray(cfg.domain)) {
+    errors.push({ field: "domain", message: "domain deve ser uma string ou array de strings" });
+  } else if (Array.isArray(cfg.domain)) {
+    const invalid = cfg.domain.filter((t: unknown) => typeof t !== "string" || !(t as string).trim());
+    if (invalid.length > 0) {
+      errors.push({ field: "domain", message: "Todos os itens de domain devem ser strings não-vazias" });
     }
   }
 

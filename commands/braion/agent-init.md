@@ -115,4 +115,4 @@ Após carregar tudo, resuma brevemente:
 - Tarefas prioritárias
 - Decisões recentes relevantes
 
-Ao terminar a sessão, chame `/agent-wrapup`.
+Ao terminar a sessão, chame `/braion:agent-wrapup`.

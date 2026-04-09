@@ -79,6 +79,32 @@ check_deps() {
 
 check_deps
 
+setup_commands() {
+  local commands_dir="$REPO_DIR/commands/braion"
+  local target_dir="$HOME/.claude/commands/braion"
+
+  if [ ! -d "$commands_dir" ]; then
+    echo "WARN: $commands_dir não encontrado — pulando setup de commands"
+    return
+  fi
+
+  mkdir -p "$HOME/.claude/commands"
+
+  if [ -L "$target_dir" ]; then
+    rm "$target_dir"
+  elif [ -d "$target_dir" ]; then
+    rm -rf "$target_dir"
+  fi
+
+  ln -sf "$commands_dir" "$target_dir"
+  echo "Commands linkados: $target_dir -> $commands_dir"
+
+  if [ -d "$REPO_DIR/.claude/commands/braion" ]; then
+    rm -rf "$REPO_DIR/.claude/commands/braion"
+    echo "Symlinks antigos removidos de .claude/commands/braion"
+  fi
+}
+
 log() {
   mkdir -p "$LOG_DIR"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -138,6 +164,8 @@ else
   git -C "$REPO_DIR" checkout main
   log "Repositório clonado"
 
+  setup_commands
+
   if [ ! -f "$REPO_DIR/.env" ]; then
     cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
     log ".env criado a partir do .env.example — configure antes de continuar"
@@ -192,6 +220,8 @@ if [ "$HAS_STASH" = true ]; then
 fi
 
 log "Atualização concluída"
+
+setup_commands
 
 cd "$DASHBOARD_DIR"
 node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"
