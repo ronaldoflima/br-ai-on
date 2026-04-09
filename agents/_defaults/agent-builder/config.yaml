@@ -4,9 +4,16 @@ domain:
   - meta
   - infraestrutura
   - criacao-de-agentes
+layer: infrastructure
 version: "0.1.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
+
+capabilities:
+  - Criar novos agentes com IDENTITY, config e estrutura
+  - Scaffold de diretórios e templates padrão
+  - Definir identidade e regras de comportamento
+  - Configurar integrações e collaborators
 
 schedule:
   mode: handoff-only

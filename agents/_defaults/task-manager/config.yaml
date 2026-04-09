@@ -3,9 +3,16 @@ display_name: TaskManager
 domain:
   - tarefas
   - produtividade
+layer: productivity
 version: "1.0.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
+
+capabilities:
+  - Sincronizar tarefas com Notion
+  - Priorizar e organizar backlog
+  - Extrair tarefas de conversas e handoffs
+  - Monitorar deadlines e progresso
 
 schedule:
   mode: alive
