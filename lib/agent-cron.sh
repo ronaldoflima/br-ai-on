@@ -180,7 +180,8 @@ start_session() {
   [ -d "$working_dir" ] || { log "WARN $session — diretório '$working_dir' não existe, usando $BRAION"; working_dir="$BRAION"; }
 
   if session_running "$session"; then
-    kill_stale_session "$session" || { log "SKIP $session — sessão tmux ativa"; return 0; }
+    log "SKIP $session — sessão tmux ativa"
+    return 0
   fi
 
   session_clear_idle "$session"
@@ -504,12 +505,14 @@ for config in "$BRAION/agents"/*/config.yaml; do
     session="braion-${agent}-${ho_id}"
 
     if session_running "$session"; then
-      kill_stale_session "$session" || { log "SKIP $session — sessão ativa"; continue; }
+      log "SKIP $session — sessão ativa"
+      continue
     fi
 
     # Se o agente tem sessão alive ativa, aguarda ela terminar para evitar escrita concorrente em state/
     if session_running "braion-${agent}"; then
-      kill_stale_session "braion-${agent}" || { log "SKIP $session — sessão alive braion-${agent} ativa, handoff será processado no próximo ciclo"; continue; }
+      log "SKIP $session — sessão alive braion-${agent} ativa, handoff será processado no próximo ciclo"
+      continue
     fi
 
     log "Handoff: iniciando $session para $handoff_file"
