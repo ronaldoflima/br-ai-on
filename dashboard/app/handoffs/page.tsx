@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Handoff } from "../lib/types";
 import { useAgentListFull } from "../lib/useAgentList";
+import { FilterSection, FilterSidebar } from "../components/FilterSection";
+import type { FilterOption } from "../components/FilterSection";
 import styles from "./handoffs.module.css";
 
 interface ArtifactFile {
@@ -68,7 +70,7 @@ function ArtifactViewer({ agent, id, file, onClose }: {
               {copied ? "Copiado!" : "Copiar"}
             </button>
             <button className="badge badge-info pointer" onClick={download}>Baixar</button>
-            <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+            <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
           </div>
         </div>
         <div className="modal-body">
@@ -158,7 +160,7 @@ function ArtifactsSection({ agent, handoffId }: { agent: string; handoffId: stri
                 <button className="badge badge-info pointer" onClick={() => setViewing(f)} title="Visualizar">
                   Ver
                 </button>
-                <button className="badge badge-muted pointer" onClick={() => copyFile(f)} title="Copiar conteúdo">
+                <button className="badge badge-muted pointer" onClick={() => copyFile(f)} title="Copiar conteudo">
                   Copiar
                 </button>
                 <button className="badge badge-muted pointer" onClick={() => downloadFile(f)} title="Baixar arquivo">
@@ -203,7 +205,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
       <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Novo Handoff</span>
-          <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+          <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
         </div>
 
         <div className="flex-row" style={{ gap: 8 }}>
@@ -226,7 +228,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
         </div>
 
         {[
-          { label: "Descrição", value: description, set: setDescription, required: true },
+          { label: "Descricao", value: description, set: setDescription, required: true },
           { label: "Contexto", value: context, set: setContext },
           { label: "Esperado", value: expected, set: setExpected },
         ].map(({ label, value, set, required }) => (
@@ -288,7 +290,7 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
       <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Editar Handoff <span className="text-muted-sm">{handoff.id}</span></span>
-          <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+          <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
         </div>
 
         <div>
@@ -302,7 +304,7 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
         </div>
 
         {[
-          { label: "Descrição", value: description, set: setDescription, required: true },
+          { label: "Descricao", value: description, set: setDescription, required: true },
           { label: "Contexto", value: context, set: setContext },
           { label: "Esperado", value: expected, set: setExpected },
         ].map(({ label, value, set, required }) => (
@@ -380,12 +382,18 @@ export default function HandoffsPage() {
   }
 
   const allHandoffs = [...inbox, ...archive];
-  const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, archive]);
-  const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, archive]);
-  const uniqueDomains = useMemo(() => {
-    const domains = agents.map((a) => a.domain).filter(Boolean);
-    return [...new Set(domains)].sort();
-  }, [agents]);
+
+  const fromOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => { counts[h.from] = (counts[h.from] || 0) + 1; });
+    return Object.entries(counts).map(([name, count]) => ({ value: name, label: name, count }));
+  }, [inbox, archive]);
+
+  const toOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => { counts[h.to] = (counts[h.to] || 0) + 1; });
+    return Object.entries(counts).map(([name, count]) => ({ value: name, label: name, count }));
+  }, [inbox, archive]);
 
   const agentDomainMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -398,6 +406,38 @@ export default function HandoffsPage() {
     agents.forEach((a) => { map[a.name] = a.schedule_mode; });
     return map;
   }, [agents]);
+
+  const domainOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fd = agentDomainMap[h.from];
+      const td = agentDomainMap[h.to];
+      if (fd) counts[fd] = (counts[fd] || 0) + 1;
+      if (td && td !== fd) counts[td] = (counts[td] || 0) + 1;
+    });
+    return Object.entries(counts).map(([d, count]) => ({ value: d, label: d, count }));
+  }, [inbox, archive, agentDomainMap]);
+
+  const scheduleLabels: Record<string, string> = {
+    alive: "Alive",
+    "handoff-only": "Handoff-only",
+    disabled: "Disabled",
+  };
+
+  const scheduleOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fm = agentScheduleMap[h.from];
+      const tm = agentScheduleMap[h.to];
+      if (fm) counts[fm] = (counts[fm] || 0) + 1;
+      if (tm && tm !== fm) counts[tm] = (counts[tm] || 0) + 1;
+    });
+    return ["alive", "handoff-only", "disabled"].map((mode) => ({
+      value: mode,
+      label: scheduleLabels[mode],
+      count: counts[mode] || 0,
+    }));
+  }, [inbox, archive, agentScheduleMap]);
 
   const filterItems = useCallback((items: Handoff[]) => {
     let result = items;
@@ -462,12 +502,6 @@ export default function HandoffsPage() {
     review: "badge-warning",
   };
 
-  const scheduleLabels: Record<string, string> = {
-    alive: "Alive",
-    "handoff-only": "Handoff-only",
-    disabled: "Disabled",
-  };
-
   return (
     <div className={styles.wrapper}>
       {showNew && <NewHandoffModal agents={agents} onClose={() => setShowNew(false)} onCreated={load} />}
@@ -479,7 +513,7 @@ export default function HandoffsPage() {
       </div>
 
       <div className={styles.desktopLayout}>
-        <div className={styles.filterSidebar}>
+        <FilterSidebar mobileLabel="Filtros">
           <input
             className={styles.sidebarSearch}
             placeholder="Buscar..."
@@ -487,82 +521,60 @@ export default function HandoffsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          {uniqueFrom.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>From</div>
-              {uniqueFrom.map((name) => (
-                <label key={`from-${name}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterFrom.has(name)}
-                    onChange={() => setFilterFrom(toggleSet(filterFrom, name))}
-                  />
-                  {name}
-                </label>
-              ))}
-            </>
+          {fromOptions.length > 0 && (
+            <FilterSection
+              title="From"
+              options={fromOptions}
+              selected={filterFrom}
+              onToggle={(v) => setFilterFrom(toggleSet(filterFrom, v))}
+            />
           )}
 
-          {uniqueTo.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>To</div>
-              {uniqueTo.map((name) => (
-                <label key={`to-${name}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterTo.has(name)}
-                    onChange={() => setFilterTo(toggleSet(filterTo, name))}
-                  />
-                  {name}
-                </label>
-              ))}
-            </>
+          {toOptions.length > 0 && (
+            <FilterSection
+              title="To"
+              options={toOptions}
+              selected={filterTo}
+              onToggle={(v) => setFilterTo(toggleSet(filterTo, v))}
+            />
           )}
 
-          {uniqueDomains.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>Domínio</div>
-              {uniqueDomains.map((d) => (
-                <label key={`dom-${d}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterDomain.has(d)}
-                    onChange={() => setFilterDomain(toggleSet(filterDomain, d))}
-                  />
-                  {d}
-                </label>
-              ))}
-            </>
+          {domainOptions.length > 0 && (
+            <FilterSection
+              title="Dominio"
+              options={domainOptions}
+              selected={filterDomain}
+              onToggle={(v) => setFilterDomain(toggleSet(filterDomain, v))}
+              defaultOpen={false}
+            />
           )}
 
-          <div className={styles.sectionLabel}>Schedule Mode</div>
-          {["alive", "handoff-only", "disabled"].map((mode) => (
-            <label key={`sched-${mode}`} className={styles.checkItem}>
-              <input
-                type="checkbox"
-                checked={filterSchedule.has(mode)}
-                onChange={() => setFilterSchedule(toggleSet(filterSchedule, mode))}
-              />
-              {scheduleLabels[mode]}
-            </label>
-          ))}
+          <FilterSection
+            title="Schedule Mode"
+            options={scheduleOptions}
+            selected={filterSchedule}
+            onToggle={(v) => setFilterSchedule(toggleSet(filterSchedule, v))}
+            defaultOpen={false}
+          />
 
-          <div className={styles.sectionLabel}>Ordenação</div>
-          <select
-            className={styles.sortSelect}
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-          >
-            <option value="newest">Mais recente</option>
-            <option value="oldest">Mais antigo</option>
-          </select>
+          <div className={styles.sortRow}>
+            <span className={styles.sortLabel}>Ordenar</span>
+            <select
+              className={styles.sortSelect}
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+            >
+              <option value="newest">Mais recente</option>
+              <option value="oldest">Mais antigo</option>
+            </select>
+          </div>
 
           {hasFilters && (
             <button className={styles.clearBtn} onClick={clearFilters}>
               Limpar filtros
             </button>
           )}
-        </div>
+        </FilterSidebar>
 
         <div className={styles.mainPanel}>
           <div className="tabs">
@@ -588,7 +600,7 @@ export default function HandoffsPage() {
                     <div className={styles.cardInfo}>
                       <span className="mono-md font-semibold">{ho.id}</span>
                       <span className="text-muted-sm">
-                        {ho.from} → {ho.to}
+                        {ho.from} &rarr; {ho.to}
                       </span>
                       {ho.reply_to && <span className="text-muted-xs">(reply to {ho.reply_to})</span>}
                       {ho.thread_id && <span className="text-xs text-purple-400">thread: {ho.thread_id}</span>}
