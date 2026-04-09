@@ -413,8 +413,8 @@ export default function HandoffsPage() {
     allHandoffs.forEach((h) => {
       const fd = agentDomainMap[h.from];
       const td = agentDomainMap[h.to];
-      if (fd) counts[fd] = (counts[fd] || 0) + 1;
-      if (td && td !== fd) counts[td] = (counts[td] || 0) + 1;
+      const tags = new Set([...(fd || []), ...(td || [])]);
+      tags.forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; });
     });
     return Object.entries(counts).map(([d, count]) => ({ value: d, label: d, count }));
   }, [inbox, archive, agentDomainMap]);

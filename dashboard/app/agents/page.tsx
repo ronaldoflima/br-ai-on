@@ -72,7 +72,7 @@ export default function AgentsPage() {
 
   const domainOptions: FilterOption[] = useMemo(() => {
     const counts: Record<string, number> = {};
-    agents.forEach((a) => { if (a.domain) counts[a.domain] = (counts[a.domain] || 0) + 1; });
+    agents.forEach((a) => { (a.domain || []).forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; }); });
     return Object.entries(counts).map(([d, count]) => ({ value: d, label: d, count }));
   }, [agents]);
 
