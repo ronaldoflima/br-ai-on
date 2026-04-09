@@ -76,11 +76,11 @@ Para notificar o usuário (quando o resultado exige ação humana):
 bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<resultado>" "<próximos passos>"
 ```
 
-Se o handoff original tinha `thread_id`, passe-o como parametro 8 ao responder:
+Se o handoff original tinha `thread_id` e/ou `job_id`, passe-os como parâmetros 8 e 9 ao responder:
 ```bash
-bash "$BRAION/lib/handoff.sh" send "$AGENT" "<from>" info "<ho_id>" "<resumo>" "<resultado>" "<proximos passos>" "<thread_id>"
+bash "$BRAION/lib/handoff.sh" send "$AGENT" "<from>" info "<ho_id>" "<resumo>" "<resultado>" "<proximos passos>" "<thread_id>" "<job_id>"
 ```
-Isso garante que a thread continua rastreavel.
+Isso garante que a thread continua rastreável e que o job pode ser monitorado pelo cron.
 
 > **NUNCA responda a handoffs com `expects: info`** — são notificações unidirecionais. O cron arquiva automaticamente sem iniciar sessão. Responder cria loop infinito de ACKs.
 >
