@@ -1,0 +1,24 @@
+name: orchestrator
+display_name: Orchestrator
+domain: orquestração, coordenação, decomposição, multi-agente, fan-out, fan-in
+version: "1.0"
+
+model: claude-sonnet-4-6
+fallback_model: claude-haiku-4-5
+
+schedule:
+  mode: handoff-only
+  priority: 0
+  run_alone: false
+
+budget:
+  max_tokens_per_session: 150000
+  max_sessions_per_day: 20
+
+integrations:
+  telegram:
+    enabled: true
+  notion:
+    enabled: false
+  obsidian:
+    enabled: false
