@@ -10,6 +10,12 @@
   display: flex;
   flex-direction: column;
   z-index: 100;
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.collapsed {
+  width: 56px;
 }
 
 .brand {
@@ -23,6 +29,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
+}
+
+.brandText {
+  overflow: hidden;
+}
+
+.collapsed .brand {
+  padding: 0 8px 16px;
+  justify-content: center;
+}
+
+.collapsed .brandText {
+  display: none;
 }
 
 .brandIcon {
@@ -46,6 +66,20 @@
   font-size: 13px;
   transition: all 0.15s;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.navLabel {
+  overflow: hidden;
+}
+
+.collapsed .navLink {
+  justify-content: center;
+  padding: 8px;
+}
+
+.collapsed .navLabel {
+  display: none;
 }
 
 .navLink:hover {
@@ -111,6 +145,31 @@
   display: none;
 }
 
+.collapseBtn {
+  margin: 0 12px 4px;
+  padding: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  width: calc(100% - 24px);
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.collapseBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.collapsed .collapseBtn {
+  width: calc(100% - 16px);
+  margin: 0 8px 4px;
+}
+
 .logoutBtn {
   margin: 0 12px 8px;
   padding: 6px;
@@ -122,11 +181,24 @@
   cursor: pointer;
   width: calc(100% - 24px);
   text-align: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .logoutBtn:hover {
   border-color: var(--error);
   color: var(--error);
+}
+
+.collapsed .logoutBtn {
+  width: calc(100% - 16px);
+  margin: 0 8px 8px;
+}
+
+.collapsed .versionStrip,
+.collapsed .healthStrip {
+  display: none;
 }
 
 .versionStrip {
