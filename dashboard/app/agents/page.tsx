@@ -19,6 +19,7 @@ export default function AgentsPage() {
   const [scheduleFilter, setScheduleFilter] = useState<Set<string>>(new Set());
   const [domainFilter, setDomainFilter] = useState<Set<string>>(new Set());
   const [modelFilter, setModelFilter] = useState<Set<string>>(new Set());
+  const [layerFilter, setLayerFilter] = useState<Set<string>>(new Set());
 
   const fetchAgents = () => {
     setLoading(true);
@@ -82,6 +83,12 @@ export default function AgentsPage() {
     return Object.entries(counts).map(([m, count]) => ({ value: m, label: m, count }));
   }, [agents]);
 
+  const layerOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    agents.forEach((a) => { if (a.layer) counts[a.layer] = (counts[a.layer] || 0) + 1; });
+    return Object.entries(counts).map(([l, count]) => ({ value: l, label: l, count }));
+  }, [agents]);
+
   const filteredAgents = useMemo(() => {
     let result = agents;
 
@@ -108,8 +115,12 @@ export default function AgentsPage() {
       result = result.filter((a) => modelFilter.has(a.model));
     }
 
+    if (layerFilter.size > 0) {
+      result = result.filter((a) => layerFilter.has(a.layer));
+    }
+
     return result;
-  }, [agents, search, scheduleFilter, domainFilter, modelFilter]);
+  }, [agents, search, scheduleFilter, domainFilter, modelFilter, layerFilter]);
 
   function toggleSet(set: Set<string>, val: string): Set<string> {
     const next = new Set(set);
@@ -155,6 +166,15 @@ export default function AgentsPage() {
               options={modelOptions}
               selected={modelFilter}
               onToggle={(v) => setModelFilter(toggleSet(modelFilter, v))}
+            />
+          )}
+
+          {layerOptions.length > 0 && (
+            <FilterSection
+              title="Layer"
+              options={layerOptions}
+              selected={layerFilter}
+              onToggle={(v) => setLayerFilter(toggleSet(layerFilter, v))}
             />
           )}
         </FilterSidebar>

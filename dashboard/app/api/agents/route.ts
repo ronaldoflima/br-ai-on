@@ -62,6 +62,7 @@ export async function GET() {
         schedule_mode: mode,
         model: config.model || "claude-sonnet-4-6",
         soul_preview: soulPreview,
+        layer: (config.layer as string) || "",
       };
     });
 

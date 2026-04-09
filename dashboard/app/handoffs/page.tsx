@@ -357,6 +357,7 @@ export default function HandoffsPage() {
   const [filterTo, setFilterTo] = useState<Set<string>>(new Set());
   const [filterDomain, setFilterDomain] = useState<Set<string>>(new Set());
   const [filterSchedule, setFilterSchedule] = useState<Set<string>>(new Set());
+  const [filterLayer, setFilterLayer] = useState<Set<string>>(new Set());
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   function load() {
@@ -407,6 +408,23 @@ export default function HandoffsPage() {
     agents.forEach((a) => { map[a.name] = a.schedule_mode; });
     return map;
   }, [agents]);
+
+  const agentLayerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    agents.forEach((a) => { if (a.layer) map[a.name] = a.layer; });
+    return map;
+  }, [agents]);
+
+  const layerOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fl = agentLayerMap[h.from];
+      const tl = agentLayerMap[h.to];
+      if (fl) counts[fl] = (counts[fl] || 0) + 1;
+      if (tl && tl !== fl) counts[tl] = (counts[tl] || 0) + 1;
+    });
+    return Object.entries(counts).map(([l, count]) => ({ value: l, label: l, count }));
+  }, [inbox, archive, agentLayerMap]);
 
   const domainOptions: FilterOption[] = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -473,6 +491,13 @@ export default function HandoffsPage() {
         return (fromMode && filterSchedule.has(fromMode)) || (toMode && filterSchedule.has(toMode));
       });
     }
+    if (filterLayer.size > 0) {
+      result = result.filter((h) => {
+        const fromLayer = agentLayerMap[h.from];
+        const toLayer = agentLayerMap[h.to];
+        return (fromLayer && filterLayer.has(fromLayer)) || (toLayer && filterLayer.has(toLayer));
+      });
+    }
 
     result = [...result].sort((a, b) => {
       const da = new Date(a.created).getTime();
@@ -481,14 +506,14 @@ export default function HandoffsPage() {
     });
 
     return result;
-  }, [search, filterFrom, filterTo, filterDomain, filterSchedule, sortOrder, agentDomainMap, agentScheduleMap]);
+  }, [search, filterFrom, filterTo, filterDomain, filterSchedule, filterLayer, sortOrder, agentDomainMap, agentScheduleMap, agentLayerMap]);
 
   const filteredInbox = useMemo(() => filterItems(inbox), [inbox, filterItems]);
   const filteredInProgress = useMemo(() => filterItems(inProgress), [inProgress, filterItems]);
   const filteredArchive = useMemo(() => filterItems(archive), [archive, filterItems]);
   const items = tab === "inbox" ? filteredInbox : tab === "in_progress" ? filteredInProgress : filteredArchive;
 
-  const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0;
+  const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0 || filterLayer.size > 0;
 
   function clearFilters() {
     setSearch("");
@@ -496,6 +521,7 @@ export default function HandoffsPage() {
     setFilterTo(new Set());
     setFilterDomain(new Set());
     setFilterSchedule(new Set());
+    setFilterLayer(new Set());
   }
 
   const expectsBadge: Record<string, string> = {
@@ -558,6 +584,16 @@ export default function HandoffsPage() {
             onToggle={(v) => setFilterSchedule(toggleSet(filterSchedule, v))}
             defaultOpen={false}
           />
+
+          {layerOptions.length > 0 && (
+            <FilterSection
+              title="Layer"
+              options={layerOptions}
+              selected={filterLayer}
+              onToggle={(v) => setFilterLayer(toggleSet(filterLayer, v))}
+              defaultOpen={false}
+            />
+          )}
 
           <div className={styles.sortRow}>
             <span className={styles.sortLabel}>Ordenar</span>
