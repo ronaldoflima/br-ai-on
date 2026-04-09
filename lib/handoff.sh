@@ -3,12 +3,13 @@ set -euo pipefail
 
 # lib/handoff.sh — Helper para handoffs entre agentes
 # Uso:
-#   handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id]
+#   handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id] [job_id]
 #   handoff.sh list <agent>
 #   handoff.sh claim <agent> <handoff_file>
 #   handoff.sh archive <agent> <handoff_file>
 #   handoff.sh next_id
 #   handoff.sh thread-history <thread_id>
+#   handoff.sh job-agent <handoff_file>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -43,6 +44,7 @@ handoff_send() {
   local context="${6:-}"
   local expected="${7:-}"
   local thread_id="${8:-}"
+  local job_id="${9:-}"
 
   if [ -z "$thread_id" ] && [ "$reply_to" != "null" ]; then
     for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/in_progress "$AGENTS_DIR"/*/handoffs/archive; do
@@ -81,6 +83,7 @@ status: pending
 expects: $expects
 reply_to: $reply_to
 $([ -n "$thread_id" ] && echo "thread_id: $thread_id")
+$([ -n "$job_id" ] && echo "job_id: $job_id")
 ---
 
 ## Descricao
@@ -96,7 +99,7 @@ HANDOFF_EOF
   echo "$filepath"
 
   AGENT_NAME="$from" bash "$SCRIPT_DIR/logger.sh" handoff_sent "Handoff $ho_id enviado para $to" \
-    "{\"handoff_id\":\"$ho_id\",\"to\":\"$to\",\"expects\":\"$expects\",\"reply_to\":\"$reply_to\",\"thread_id\":\"$thread_id\"}" 2>/dev/null || true
+    "{\"handoff_id\":\"$ho_id\",\"to\":\"$to\",\"expects\":\"$expects\",\"reply_to\":\"$reply_to\",\"thread_id\":\"$thread_id\",\"job_id\":\"$job_id\"}" 2>/dev/null || true
 }
 
 handoff_list() {
@@ -187,7 +190,13 @@ handoff_thread_history() {
   done
 }
 
-command="${1:?Uso: handoff.sh <send|list|claim|archive|artifacts-dir|next_id|thread-history> [args...]}"
+handoff_job_agent() {
+  local handoff_file="${1:?Uso: handoff.sh job-agent <handoff_file>}"
+  [ -f "$handoff_file" ] || return 0
+  grep '^job_id:' "$handoff_file" 2>/dev/null | sed 's/job_id: //' | xargs
+}
+
+command="${1:?Uso: handoff.sh <send|list|claim|archive|artifacts-dir|next_id|thread-history|job-agent> [args...]}"
 shift
 case "$command" in
   send)          handoff_send "$@" ;;
@@ -197,5 +206,6 @@ case "$command" in
   artifacts-dir)   handoff_artifacts_dir "$@" ;;
   next_id)         handoff_next_id ;;
   thread-history)  handoff_thread_history "$@" ;;
+  job-agent)       handoff_job_agent "$@" ;;
   *)               echo "Comando desconhecido: $command" >&2; exit 1 ;;
 esac
