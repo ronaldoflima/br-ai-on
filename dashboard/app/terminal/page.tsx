@@ -4,6 +4,7 @@ import AnsiToHtml from "ansi-to-html";
 import styles from "./terminal.module.css";
 import { FileExplorer } from "../components/FileExplorer";
 import { FileViewer } from "../components/FileViewer";
+import { IconChevronLeft, IconChevronRight } from "../components/icons";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -377,7 +378,7 @@ export default function TerminalPage() {
     </div>
   ) : sessionsCollapsed ? (
     <div className={styles.sessionsListCollapsed}>
-      <button className={styles.sessionsCollapseToggle} onClick={() => setSessionsCollapsed(false)} title="Expandir sessões">›</button>
+      <button className={styles.sessionsCollapseToggle} onClick={() => setSessionsCollapsed(false)} title="Expandir sessões"><IconChevronRight /></button>
       {sessions.map((s) => (
         <button
           key={s.name}
@@ -393,7 +394,7 @@ export default function TerminalPage() {
         <span className={styles.sessionsLabel}>Sessões tmux</span>
         <div style={{ display: "flex", gap: 4 }}>
           <button className={`btn ${styles.newSessionBtn}`} onClick={() => setShowNewSession((v) => !v)} title="Nova sessão">+</button>
-          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setSessionsCollapsed(true)} title="Recolher">‹</button>
+          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setSessionsCollapsed(true)} title="Recolher"><IconChevronLeft /></button>
         </div>
       </div>
       {showNewSession && (

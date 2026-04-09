@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
-import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub } from "./icons";
+import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub, IconChevronLeft, IconChevronRight } from "./icons";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType; children?: NavItem[] };
 
@@ -156,7 +156,7 @@ export function Sidebar() {
           onClick={() => setCollapsed((v) => !v)}
           title={collapsed ? "Expandir menu" : "Recolher menu"}
         >
-          {collapsed ? "›" : "‹"}
+          {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
         </button>
         <button onClick={handleLogout} className={styles.logoutBtn}>
           {collapsed ? "↪" : "Sair"}

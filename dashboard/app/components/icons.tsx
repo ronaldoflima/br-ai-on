@@ -129,3 +129,19 @@ export function IconClose() {
     </svg>
   );
 }
+
+export function IconChevronLeft() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="15,18 9,12 15,6" />
+    </svg>
+  );
+}
+
+export function IconChevronRight() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="9,18 15,12 9,6" />
+    </svg>
+  );
+}
