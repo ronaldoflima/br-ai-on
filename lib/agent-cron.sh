@@ -26,6 +26,7 @@ CLAUDE=${CLAUDE:-claude}
 DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
 LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
+WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -91,6 +92,26 @@ kill_stale_session() {
     tmux kill-session -t "$session" 2>/dev/null
     return 0
   fi
+
+  local agent_name
+  agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
+  local heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
+
+  if heartbeat_is_waiting "$heartbeat"; then
+    if heartbeat_waiting_expired "$heartbeat"; then
+      log "KILL $session — waiting timeout expirado (> ${WAITING_TIMEOUT}s)"
+      local waiting_for
+      waiting_for=$(jq -r '.waiting_for // ""' "$heartbeat" 2>/dev/null || echo "")
+      if [[ "$waiting_for" == JOB-* ]]; then
+        bash "$BRAION/lib/job.sh" fail "$waiting_for" "$agent_name" "waiting_timeout" 2>/dev/null || true
+        log "JOB $waiting_for — $agent_name marcado como falha (timeout)"
+      fi
+      tmux kill-session -t "$session" 2>/dev/null
+      return 0
+    fi
+    return 1
+  fi
+
   if session_is_stale "$session"; then
     local activity elapsed
     activity=$(tmux display-message -t "$session" -p '#{window_activity}' 2>/dev/null || echo 0)
@@ -120,6 +141,25 @@ heartbeat_is_processing() {
     return 1
   fi
   return 0
+}
+
+heartbeat_is_waiting() {
+  local heartbeat_file=$1
+  [ -f "$heartbeat_file" ] || return 1
+  local status
+  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  [ "$status" = "waiting" ]
+}
+
+heartbeat_waiting_expired() {
+  local heartbeat_file=$1
+  [ -f "$heartbeat_file" ] || return 0
+  local waiting_since now elapsed
+  waiting_since=$(jq -r '.waiting_since // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  [ -z "$waiting_since" ] && return 0
+  now=$(date -u +%s)
+  elapsed=$(( now - $(date -u -d "$waiting_since" +%s 2>/dev/null || echo 0) ))
+  [ "$elapsed" -gt "$WAITING_TIMEOUT" ]
 }
 
 get_agent_model() {
@@ -397,6 +437,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     expects=$(awk '/^expects:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
     to=$(awk '/^to:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
+    job_id=$(awk '/^job_id:/{print $2}' "$handoff_file" 2>/dev/null || echo "")
 
     # Handoffs para o usuário: arquiva e envia ao braion-telegram para comunicar
     if [ "$to" = "user" ]; then
@@ -407,12 +448,56 @@ for config in "$BRAION/agents"/*/config.yaml; do
       continue
     fi
 
-    # Handoffs expects:info são notificações — arquiva sem iniciar sessão
-    if [ "$expects" = "info" ]; then
+    # Handoffs expects:info — checar se é reply para sessão waiting antes de arquivar
+    if [ "$expects" = "info" ] && [ -z "$job_id" ]; then
+      local heartbeat="$agent_dir/state/heartbeat.json"
+      if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
+        log "Handoff $ho_id → injetando em sessão waiting braion-${agent}"
+        local claimed_path
+        claimed_path=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$handoff_file" 2>/dev/null || echo "")
+        tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_path}" Enter
+        continue
+      fi
       log "Handoff $ho_id expects:info — arquivando sem sessão"
       mkdir -p "$agent_dir/handoffs/archive"
       mv "$handoff_file" "$agent_dir/handoffs/archive/$filename"
       continue
+    fi
+
+    # Reply de job — checar se job completou antes de acordar
+    if [ -n "$job_id" ]; then
+      local heartbeat="$agent_dir/state/heartbeat.json"
+
+      # Se sessão ativa e waiting — injetar reply quando job completo
+      if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
+        local job_status_val
+        job_status_val=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
+        if [ "$job_status_val" = "completed" ] || [ "$job_status_val" = "partial_failure" ]; then
+          log "JOB $job_id $job_status_val — injetando replies em braion-${agent}"
+          for reply_file in "$inbox_dir"/HO-*.md; do
+            [ -f "$reply_file" ] || continue
+            local reply_job
+            reply_job=$(awk '/^job_id:/{print $2}' "$reply_file" 2>/dev/null || echo "")
+            if [ "$reply_job" = "$job_id" ]; then
+              local claimed_reply
+              claimed_reply=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$reply_file" 2>/dev/null || echo "")
+              tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_reply}" Enter
+              sleep 2
+            fi
+          done
+          continue
+        fi
+        log "JOB $job_id still $job_status_val — aguardando mais replies para $agent"
+        continue
+      fi
+
+      # Se sessão NÃO ativa e job incompleto — aguarda
+      local job_status_val
+      job_status_val=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
+      if [ "$job_status_val" != "completed" ] && [ "$job_status_val" != "partial_failure" ]; then
+        log "JOB $job_id still $job_status_val — aguardando mais replies"
+        continue
+      fi
     fi
 
     session="braion-${agent}-${ho_id}"
@@ -420,11 +505,6 @@ for config in "$BRAION/agents"/*/config.yaml; do
     if session_running "$session"; then
       kill_stale_session "$session" || { log "SKIP $session — sessão ativa"; continue; }
     fi
-
-    # if [ -f "$agent_dir/handoffs/in_progress/$filename" ]; then
-    #   log "SKIP $session — handoff em in_progress (possível crash em recuperação)"
-    #   continue
-    # fi
 
     # Se o agente tem sessão alive ativa, aguarda ela terminar para evitar escrita concorrente em state/
     if session_running "braion-${agent}"; then
