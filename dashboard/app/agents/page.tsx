@@ -99,7 +99,9 @@ export default function AgentsPage() {
     }
 
     if (domainFilter.size > 0) {
-      result = result.filter((a) => domainFilter.has(a.domain));
+      result = result.filter((a) =>
+        a.domain.some((tag) => domainFilter.has(tag)),
+      );
     }
 
     if (modelFilter.size > 0) {
@@ -223,7 +225,11 @@ export default function AgentsPage() {
                       </span>
                       <span className="text-muted-xs">v{agent.version}</span>
                     </div>
-                    <div className="text-secondary-sm mb-sm">{agent.domain}</div>
+                    <div className="text-secondary-sm mb-sm" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {agent.domain.map((tag) => (
+                        <span key={tag} className="badge badge-muted" style={{ fontSize: 11 }}>{tag}</span>
+                      ))}
+                    </div>
                     <div className="flex-row" style={{ gap: 8 }}>
                       <span
                         className={`badge ${

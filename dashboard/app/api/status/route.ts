@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
+import { parseDomainTags } from "../../lib/domain";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -45,7 +46,7 @@ export async function GET() {
     const stateDir = join(agentDir, "state");
 
     let displayName = name;
-    let domain = "";
+    let domain: string[] = [];
     let version = "0.0.0";
     let intervalMs = 3600000;
     let scheduleMode = "handoff-only";
@@ -55,7 +56,7 @@ export async function GET() {
       try {
         const config = parse(readFileSync(configPath, "utf-8"));
         displayName = config.display_name || name;
-        domain = config.domain || "";
+        domain = parseDomainTags(config.domain);
         version = config.version || "0.0.0";
         model = config.model || "claude-sonnet-4-6";
         const sched = config?.schedule || {};
