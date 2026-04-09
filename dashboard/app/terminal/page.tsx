@@ -2,6 +2,9 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import AnsiToHtml from "ansi-to-html";
 import styles from "./terminal.module.css";
+import { FileExplorer } from "../components/FileExplorer";
+import { FileViewer } from "../components/FileViewer";
+import { IconChevronLeft, IconChevronRight } from "../components/icons";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -54,6 +57,14 @@ export default function TerminalPage() {
   const [directMode, setDirectMode] = useState(true);
   const [directFocused, setDirectFocused] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [sessionsCollapsed, setSessionsCollapsed] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null);
+  const [mobileView, setMobileView] = useState<"terminal" | "files" | "fileviewer">("terminal");
+  const [filePanelWidth, setFilePanelWidth] = useState(400);
+  const resizingRef = useRef(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
@@ -291,6 +302,41 @@ export default function TerminalPage() {
     setKilling(false);
   };
 
+  const handleFileSelect = (path: string, name: string) => {
+    setSelectedFile({ path, name });
+    if (isMobile) setMobileView("fileviewer");
+  };
+
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    resizeStartXRef.current = clientX;
+    resizeStartWidthRef.current = filePanelWidth;
+  };
+
+  useEffect(() => {
+    const onMove = (clientX: number) => {
+      if (!resizingRef.current) return;
+      const delta = resizeStartXRef.current - clientX;
+      const newWidth = Math.max(250, Math.min(800, resizeStartWidthRef.current + delta));
+      setFilePanelWidth(newWidth);
+    };
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onMove(e.touches[0].clientX); };
+    const onEnd = () => { resizingRef.current = false; };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onEnd);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onEnd);
+    };
+  }, []);
+
   const CURSOR_MARKER = "\uE000";
   const CURSOR_PLACEHOLDER = "__TERMINAL_CURSOR__";
   const CURSOR_HTML = '<span class="terminal-cursor"></span>';
@@ -312,66 +358,60 @@ export default function TerminalPage() {
   const showSessionList = !isMobile || !selected;
   const showTerminal = !isMobile || !!selected;
 
-  const sessionsList = (
-    <div className={isMobile ? styles.sessionsListMobile : styles.sessionsList}>
+  const sessionsList = isMobile ? (
+    <div className={styles.sessionsListMobile}>
       <div className={styles.sessionsHeader}>
-        <span className={styles.sessionsLabel}>
-          Sessões tmux
-        </span>
-        <button
-          className={`btn ${styles.newSessionBtn}`}
-          onClick={() => setShowNewSession((v) => !v)}
-          title="Nova sessão"
-        >
-          +
-        </button>
+        <span className={styles.sessionsLabel}>Sessões tmux</span>
+        <button className={`btn ${styles.newSessionBtn}`} onClick={() => setShowNewSession((v) => !v)} title="Nova sessão">+</button>
       </div>
       {showNewSession && (
         <div className={styles.newSessionRow}>
-          <input
-            className={`input ${styles.newSessionInput}`}
-            placeholder="Nome da sessão"
-            value={newSessionName}
-            onChange={(e) => setNewSessionName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }}
-            autoFocus
-          />
-          <button
-            className={`btn btn-primary ${styles.newSessionSubmit}`}
-            onClick={createSession}
-            disabled={creating || !newSessionName.trim()}
-          >
-            {creating ? "..." : "Criar"}
-          </button>
+          <input className={`input ${styles.newSessionInput}`} placeholder="Nome da sessão" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }} autoFocus />
+          <button className={`btn btn-primary ${styles.newSessionSubmit}`} onClick={createSession} disabled={creating || !newSessionName.trim()}>{creating ? "..." : "Criar"}</button>
+        </div>
+      )}
+      {loadingSessions ? <div className={styles.statusMsg}>Carregando...</div> : sessions.length === 0 ? <div className={styles.statusMsg}>Nenhuma sessão ativa</div> : (
+        <div className={styles.mobileChips}>
+          {sessions.map((s) => <button key={s.name} onClick={() => setSelected(s.name)} className={selected === s.name ? styles.mobileChipActive : styles.mobileChip}>{s.name}</button>)}
+        </div>
+      )}
+    </div>
+  ) : sessionsCollapsed ? (
+    <div className={styles.sessionsListCollapsed}>
+      <button className={styles.sessionsCollapseToggle} onClick={() => setSessionsCollapsed(false)} title="Expandir sessões"><IconChevronRight /></button>
+      {sessions.map((s) => (
+        <button
+          key={s.name}
+          onClick={() => setSelected(s.name)}
+          className={selected === s.name ? styles.sessionDotActive : styles.sessionDot}
+          title={s.name}
+        />
+      ))}
+    </div>
+  ) : (
+    <div className={styles.sessionsList}>
+      <div className={styles.sessionsHeader}>
+        <span className={styles.sessionsLabel}>Sessões tmux</span>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setShowNewSession((v) => !v)} title="Nova sessão">+</button>
+          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setSessionsCollapsed(true)} title="Recolher"><IconChevronLeft /></button>
+        </div>
+      </div>
+      {showNewSession && (
+        <div className={styles.newSessionRow}>
+          <input className={`input ${styles.newSessionInput}`} placeholder="Nome da sessão" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }} autoFocus />
+          <button className={`btn btn-primary ${styles.newSessionSubmit}`} onClick={createSession} disabled={creating || !newSessionName.trim()}>{creating ? "..." : "Criar"}</button>
         </div>
       )}
       {loadingSessions ? (
         <div className={styles.statusMsg}>Carregando...</div>
       ) : sessions.length === 0 ? (
         <div className={styles.statusMsg}>Nenhuma sessão ativa</div>
-      ) : isMobile ? (
-        <div className={styles.mobileChips}>
-          {sessions.map((s) => (
-            <button
-              key={s.name}
-              onClick={() => setSelected(s.name)}
-              className={selected === s.name ? styles.mobileChipActive : styles.mobileChip}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
       ) : (
         sessions.map((s) => (
-          <button
-            key={s.name}
-            onClick={() => setSelected(s.name)}
-            className={selected === s.name ? styles.sessionItemActive : styles.sessionItem}
-          >
+          <button key={s.name} onClick={() => setSelected(s.name)} className={selected === s.name ? styles.sessionItemActive : styles.sessionItem}>
             <span className={selected === s.name ? styles.sessionNameActive : styles.sessionName}>{s.name}</span>
-            <span className={styles.sessionMeta}>
-              {s.windows}w {s.attached ? "· anexada" : ""}
-            </span>
+            <span className={styles.sessionMeta}>{s.windows}w {s.attached ? "· anexada" : ""}</span>
           </button>
         ))
       )}
@@ -395,6 +435,22 @@ export default function TerminalPage() {
           >
             ⚙
           </button>
+          {selected && (
+            <button
+              className={`btn ${styles.toolbarBtn} ${showFiles ? styles.toolbarBtnActive : ""}`}
+              onClick={() => {
+                if (isMobile) {
+                  setMobileView("files");
+                } else {
+                  setShowFiles((v) => !v);
+                  setSelectedFile(null);
+                }
+              }}
+              title="Explorador de arquivos"
+            >
+              📁
+            </button>
+          )}
           <button
             className={`btn ${styles.toolbarBtn}`}
             onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
@@ -555,13 +611,54 @@ export default function TerminalPage() {
 
       {isMobile ? (
         <div className={styles.mobileLayout}>
-          {showSessionList && sessionsList}
-          {showTerminal && terminalPanel}
+          {mobileView === "terminal" && showSessionList && sessionsList}
+          {mobileView === "terminal" && showTerminal && terminalPanel}
+          {mobileView === "files" && selected && (
+            <div className={styles.mobilePanelFull}>
+              <div className={styles.mobilePanelHeader}>
+                <button className={`btn ${styles.backBtn}`} onClick={() => setMobileView("terminal")}>
+                  ← Terminal
+                </button>
+                <span className={styles.mobilePanelTitle}>Arquivos</span>
+              </div>
+              <FileExplorer session={selected} onFileSelect={handleFileSelect} />
+            </div>
+          )}
+          {mobileView === "fileviewer" && selected && selectedFile && (
+            <div className={styles.mobilePanelFull}>
+              <FileViewer
+                session={selected}
+                filePath={selectedFile.path}
+                fileName={selectedFile.name}
+                onClose={() => { setSelectedFile(null); setMobileView("files"); }}
+              />
+            </div>
+          )}
         </div>
       ) : (
-        <div className={styles.desktopLayout}>
+        <div className={showFiles && selected ? styles.desktopLayoutWithFiles : styles.desktopLayout}>
           {sessionsList}
           {terminalPanel}
+          {showFiles && selected && (
+            <>
+              <div className={styles.resizeHandle} onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} />
+              <div className={styles.filePanel} style={{ width: filePanelWidth }}>
+              {selectedFile ? (
+                <FileViewer
+                  session={selected}
+                  filePath={selectedFile.path}
+                  fileName={selectedFile.name}
+                  onClose={() => setSelectedFile(null)}
+                />
+              ) : (
+                <FileExplorer
+                  session={selected}
+                  onFileSelect={handleFileSelect}
+                />
+              )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
