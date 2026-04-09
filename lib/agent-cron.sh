@@ -450,10 +450,9 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     # Handoffs expects:info — checar se é reply para sessão waiting antes de arquivar
     if [ "$expects" = "info" ] && [ -z "$job_id" ]; then
-      local heartbeat="$agent_dir/state/heartbeat.json"
+      heartbeat="$agent_dir/state/heartbeat.json"
       if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
         log "Handoff $ho_id → injetando em sessão waiting braion-${agent}"
-        local claimed_path
         claimed_path=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$handoff_file" 2>/dev/null || echo "")
         tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_path}" Enter
         continue
@@ -466,20 +465,17 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     # Reply de job — checar se job completou antes de acordar
     if [ -n "$job_id" ]; then
-      local heartbeat="$agent_dir/state/heartbeat.json"
+      heartbeat="$agent_dir/state/heartbeat.json"
 
       # Se sessão ativa e waiting — injetar reply quando job completo
       if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
-        local job_status_val
         job_status_val=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
         if [ "$job_status_val" = "completed" ] || [ "$job_status_val" = "partial_failure" ]; then
           log "JOB $job_id $job_status_val — injetando replies em braion-${agent}"
           for reply_file in "$inbox_dir"/HO-*.md; do
             [ -f "$reply_file" ] || continue
-            local reply_job
             reply_job=$(awk '/^job_id:/{print $2}' "$reply_file" 2>/dev/null || echo "")
             if [ "$reply_job" = "$job_id" ]; then
-              local claimed_reply
               claimed_reply=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$reply_file" 2>/dev/null || echo "")
               tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_reply}" Enter
               sleep 2
@@ -492,7 +488,6 @@ for config in "$BRAION/agents"/*/config.yaml; do
       fi
 
       # Se sessão NÃO ativa e job incompleto — aguarda
-      local job_status_val
       job_status_val=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
       if [ "$job_status_val" != "completed" ] && [ "$job_status_val" != "partial_failure" ]; then
         log "JOB $job_id still $job_status_val — aguardando mais replies"
