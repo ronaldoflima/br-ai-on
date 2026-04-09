@@ -59,6 +59,57 @@
   max-height: 180px;
 }
 
+.sessionsListCollapsed {
+  width: 36px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.sessionsCollapseToggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sessionsCollapseToggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.sessionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sessionDot:hover {
+  background: var(--text-muted);
+}
+
+.sessionDotActive {
+  composes: sessionDot;
+  background: var(--accent);
+}
+
 .sessionsHeader {
   display: flex;
   align-items: center;
@@ -345,6 +396,17 @@
   background: var(--border);
   border-radius: 2px;
   transition: background 0.15s;
+  position: relative;
+  touch-action: none;
+}
+
+.resizeHandle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -8px;
+  right: -8px;
+  bottom: 0;
 }
 
 .resizeHandle:hover {
