@@ -17,12 +17,12 @@
 | Action | File | Responsibility |
 |--------|------|---------------|
 | Create | `lib/job.sh` | Job lifecycle: create, complete, fail, status, list-pending, archive |
-| Create | `agents/orchestrator/config.yaml` | Orchestrator agent configuration |
-| Create | `agents/orchestrator/IDENTITY.md` | Orchestrator identity and operating modes |
-| Create | `agents/orchestrator/state/current_objective.md` | Initial state |
-| Create | `agents/orchestrator/state/decisions.md` | Decision log |
-| Create | `agents/orchestrator/state/completed_tasks.md` | Task log |
-| Create | `agents/orchestrator/memory/semantic.md` | Semantic memory |
+| Create | `agents/_defaults/orchestrator/config.yaml` | Orchestrator agent configuration |
+| Create | `agents/_defaults/orchestrator/IDENTITY.md` | Orchestrator identity and operating modes |
+| Create | `agents/_defaults/orchestrator/state/current_objective.md` | Initial state |
+| Create | `agents/_defaults/orchestrator/state/decisions.md` | Decision log |
+| Create | `agents/_defaults/orchestrator/state/completed_tasks.md` | Task log |
+| Create | `agents/_defaults/orchestrator/memory/semantic.md` | Semantic memory |
 | Create | `shared/jobs/.gitkeep` | Jobs directory |
 | Create | `shared/jobs/archive/.gitkeep` | Archived jobs directory |
 | Modify | `lib/handoff.sh:37-100` | Add `job_id` param to send + new `job-agent` command |
@@ -196,7 +196,7 @@ job_create() {
   local description="${2:?Uso: job.sh create <created_by> <description> <agents_csv>}"
   local agents_csv="${3:?Uso: job.sh create <created_by> <description> <agents_csv>}"
 
-  bash "$LOCK_SH" acquire "$created_by" jobs > /dev/null 2>&1 || true
+  bash "$LOCK_SH" acquire "job-system" jobs > /dev/null 2>&1 || true
 
   local job_id thread_id timestamp
   job_id=$(job_next_id "JOB")
@@ -230,7 +230,7 @@ job_create() {
       result_summary: null
     }' > "$JOBS_DIR/${job_id}.json"
 
-  bash "$LOCK_SH" release "$created_by" jobs > /dev/null 2>&1 || true
+  bash "$LOCK_SH" release "job-system" jobs > /dev/null 2>&1 || true
 
   echo "$job_id"
   echo "$thread_id"
@@ -427,23 +427,26 @@ git commit -m "feat: add job_id support to handoff.sh send + job-agent command"
 ### Task 4: Create orchestrator agent
 
 **Files:**
-- Create: `agents/orchestrator/config.yaml`
-- Create: `agents/orchestrator/IDENTITY.md`
-- Create: `agents/orchestrator/state/current_objective.md`
-- Create: `agents/orchestrator/state/decisions.md`
-- Create: `agents/orchestrator/state/completed_tasks.md`
-- Create: `agents/orchestrator/memory/semantic.md`
-- Create: `agents/orchestrator/handoffs/inbox/.gitkeep`
-- Create: `agents/orchestrator/handoffs/in_progress/.gitkeep`
-- Create: `agents/orchestrator/handoffs/done/.gitkeep`
-- Create: `agents/orchestrator/handoffs/artifacts/.gitkeep`
-- Create: `agents/orchestrator/handoffs/archive/.gitkeep`
+- Create: `agents/_defaults/orchestrator/config.yaml`
+- Create: `agents/_defaults/orchestrator/IDENTITY.md`
+- Create: `agents/_defaults/orchestrator/state/current_objective.md`
+- Create: `agents/_defaults/orchestrator/state/decisions.md`
+- Create: `agents/_defaults/orchestrator/state/completed_tasks.md`
+- Create: `agents/_defaults/orchestrator/memory/semantic.md`
+- Create: `agents/_defaults/orchestrator/handoffs/inbox/.gitkeep`
+- Create: `agents/_defaults/orchestrator/handoffs/in_progress/.gitkeep`
+- Create: `agents/_defaults/orchestrator/handoffs/done/.gitkeep`
+- Create: `agents/_defaults/orchestrator/handoffs/artifacts/.gitkeep`
+- Create: `agents/_defaults/orchestrator/handoffs/archive/.gitkeep`
 
 - [ ] **Step 1: Create directory structure**
 
 ```bash
-mkdir -p agents/orchestrator/{state,memory,handoffs/{inbox,in_progress,done,artifacts,archive}}
+mkdir -p agents/_defaults/orchestrator/{state,memory,handoffs/{inbox,in_progress,done,artifacts,archive}}
+ln -sf "$(pwd)/agents/_defaults/orchestrator" agents/orchestrator
 ```
+
+Note: The symlink allows `agents/*/config.yaml` glob in `agent-cron.sh` (line 381) to find the orchestrator. The `_defaults/` directory is git-tracked per `.gitignore` rules.
 
 - [ ] **Step 2: Write `config.yaml`**
 
@@ -503,7 +506,7 @@ Quando recebe um objetivo (via handoff manual, Telegram, ou escalation):
    ```bash
    jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg job "<JOB_ID>" \
      '{last_ping: $ts, agent: "orchestrator", status: "waiting", waiting_for: $job, waiting_since: $ts}' \
-     > agents/orchestrator/state/heartbeat.json
+     > agents/_defaults/orchestrator/state/heartbeat.json
    ```
 7. Aguardar na sessão — o cron injetará o path dos replies quando o job completar
 
@@ -538,22 +541,22 @@ Quando um agente envia handoff com `expects: orchestrate`:
 
 - [ ] **Step 4: Write initial state files**
 
-`agents/orchestrator/state/current_objective.md`:
+`agents/_defaults/orchestrator/state/current_objective.md`:
 ```markdown
 Aguardando primeiro objetivo. Modos: fan-out, fan-in, escalation.
 ```
 
-`agents/orchestrator/state/decisions.md`:
+`agents/_defaults/orchestrator/state/decisions.md`:
 ```markdown
 # Decisões do Orchestrator
 ```
 
-`agents/orchestrator/state/completed_tasks.md`:
+`agents/_defaults/orchestrator/state/completed_tasks.md`:
 ```markdown
 # Tarefas Concluídas
 ```
 
-`agents/orchestrator/memory/semantic.md`:
+`agents/_defaults/orchestrator/memory/semantic.md`:
 ```markdown
 # Memória Semântica — Orchestrator
 
@@ -567,13 +570,13 @@ Aguardando primeiro objetivo. Modos: fan-out, fan-in, escalation.
 - [ ] **Step 5: Add gitkeeps**
 
 ```bash
-touch agents/orchestrator/handoffs/{inbox,in_progress,done,artifacts,archive}/.gitkeep
+touch agents/_defaults/orchestrator/handoffs/{inbox,in_progress,done,artifacts,archive}/.gitkeep
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add agents/orchestrator/
+git add agents/_defaults/orchestrator/
 git commit -m "feat: add orchestrator agent for parallel job coordination"
 ```
 
@@ -938,13 +941,24 @@ tmux send-keys -t "braion-<agent>" "/braion:agent-inbox-router <path>" Enter
 
 - [ ] **Step 2: Update heartbeat status values in the file structure section**
 
-In line 29, replace:
+In line 28, replace:
 ```
   heartbeat.json         — último ping e status (started | idle)
 ```
 with:
 ```
   heartbeat.json         — último ping e status (processing | idle | waiting | completed)
+```
+
+- [ ] **Step 3: Update expects schema in handoff frontmatter**
+
+In line 179 of AGENTS.md, replace:
+```
+expects: action | info | review
+```
+with:
+```
+expects: action | info | review | orchestrate
 ```
 
 - [ ] **Step 3: Commit**
@@ -1067,8 +1081,7 @@ Expected: `All tests passed`
 - [ ] **Step 4: Final commit**
 
 ```bash
-git add -A
 git status
-# If there are any uncommitted changes, commit them
-git commit -m "chore: final verification of concurrent collaboration implementation" || true
+# Only commit if there are specific uncommitted changes related to this feature
+# Do NOT use git add -A — review changes individually
 ```
