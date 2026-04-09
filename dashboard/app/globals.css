@@ -45,8 +45,9 @@ a:hover { color: var(--accent-hover); }
   width: calc(100% - var(--sidebar-width));
 }
 
-.app-main-full {
+.app-main.app-main-full {
   max-width: none;
+  padding: 0;
 }
 
 .page-header {

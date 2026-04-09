@@ -24,7 +24,11 @@ export function AgentCard({ agent }: { agent: AgentStatus }) {
           </div>
           <span className="text-muted-xs text-uppercase" style={{ color: cfg.color }}>{cfg.label}</span>
         </div>
-        <div className="text-secondary-sm mb-sm">{agent.domain}</div>
+        <div className="text-secondary-sm mb-sm" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {agent.domain.map((tag) => (
+            <span key={tag} className="badge badge-muted" style={{ fontSize: 11 }}>{tag}</span>
+          ))}
+        </div>
         {agent.objective && (
           <div className="text-muted-sm mb-md" style={{ lineHeight: 1.4 }}>
             {agent.objective.slice(0, 100)}

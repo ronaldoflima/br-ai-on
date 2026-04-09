@@ -9,6 +9,7 @@ import {
 } from "fs";
 import { join } from "path";
 import { parse, stringify } from "yaml";
+import { parseDomainTags } from "../../lib/domain";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -55,12 +56,13 @@ export async function GET() {
       return {
         name,
         display_name: config.display_name || name,
-        domain: config.domain || "",
+        domain: parseDomainTags(config.domain),
         version: config.version || "0.0.0",
         schedule_interval: sched.interval || "",
         schedule_mode: mode,
         model: config.model || "claude-sonnet-4-6",
         soul_preview: soulPreview,
+        layer: (config.layer as string) || "",
       };
     });
 
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
       name,
 
       display_name,
-      domain: domain || "",
+      domain: parseDomainTags(domain),
       version: "0.1.0",
       model: "claude-sonnet-4-6",
       fallback_model: "claude-haiku-4-5",

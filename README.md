@@ -2,10 +2,10 @@
 
 Sistema multi-agente autônomo orquestrado pelo Claude Code. Cada agente possui identidade persistente (IDENTITY), estado entre sessões, memória de longo prazo e integração opcional com serviços externos via MCP.
 
-## Quickstart
+## Quickstart - Instalação e atualização
 
 ```bash
-# Instala, faz build e sobe o serviço de produção automaticamente
+# Instala/atualiza, faz build e sobe o serviço de produção automaticamente
 bash <(curl -fsSL https://raw.githubusercontent.com/ronaldoflima/br-ai-on/main/scripts/install.sh)
 ```
 
@@ -155,6 +155,17 @@ O core funciona sem nenhuma integração externa — todo estado é Markdown, YA
 | Integração | Uso |
 |------------|-----|
 | **Obsidian** | Inbox bidirecional, notas. Opcional — funciona igualmente com pastas de arquivos locais. |
+| **Telegram** | Bridge para enviar mensagens ao Claude Code e receber respostas pelo Telegram. Ver [docs/telegram.md](docs/telegram.md). |
+
+## Setup do orquestrador (cron + hook)
+
+```bash
+bash scripts/setup-cron.sh
+```
+
+Instala o cron de 1min (`lib/agent-cron.sh`) e registra o Stop hook (`scripts/agent-idle-hook.sh`) no `~/.claude/settings.json`. O hook escreve uma flag em `~/.config/br-ai-on/idle/<session>` quando o Claude termina de responder em sessões `braion-*`, eliminando polling no terminal.
+
+> **Sem o hook:** o sistema funciona com fallback via grep no pane tmux, mas pode ter falsos positivos durante processamento longo.
 
 ## Scheduling
 
@@ -228,6 +239,53 @@ Host braion
 ```bash
 ssh -t braion "cd ~/br-ai-on && claude"
 ```
+
+## Claude Switch — Fallback para Ollama
+
+`scripts/claude-switch.sh` fornece um wrapper para o comando `claude` que detecta automaticamente quando o rate limit da sessão é atingido e redireciona para um modelo local via Ollama.
+
+### Setup
+
+Adicione ao seu `~/.zshrc` ou `~/.bashrc`:
+
+```bash
+source ~/br-ai-on/scripts/claude-switch.sh
+```
+
+Depois recarregue o shell:
+
+```bash
+source ~/.zshrc   # ou ~/.bashrc
+```
+
+### Comandos
+
+| Comando | Descrição |
+|---------|-----------|
+| `claude` | Wrapper inteligente — usa Anthropic ou Ollama automaticamente |
+| `claude-rl` | Marca manualmente o rate limit (ativa Ollama) |
+| `claude-ok` | Limpa o flag de rate limit (volta para Anthropic) |
+| `claude-status` | Mostra qual backend está ativo no momento |
+| `clo` | Força Ollama diretamente, sem verificação |
+
+### Comportamento
+
+1. **Check via flag file** — zero overhead. Quando o rate limit é detectado (ou marcado com `claude-rl`), cria `/tmp/.claude_ratelimit`. Expira após 60 min (padrão).
+2. **Check automático diário** — na primeira invocação do dia, faz uma chamada mínima para detectar rate limit automaticamente.
+3. **Fallback transparente** — se rate limited, redireciona para Ollama mantendo todos os argumentos passados.
+
+### Configuração
+
+Variáveis de ambiente opcionais (defina antes do `source`):
+
+```bash
+export CLAUDE_OLLAMA_MODEL="glm-5:cloud"         # modelo Ollama
+export CLAUDE_OLLAMA_URL="http://localhost:11434" # URL do Ollama
+export CLAUDE_RL_TTL=3600                         # TTL do rate limit em segundos
+source ~/br-ai-on/scripts/claude-switch.sh
+```
+
+---
 
 ## Stack
 
