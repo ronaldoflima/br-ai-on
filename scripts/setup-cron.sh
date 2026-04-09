@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CRON_SCRIPT="${PROJECT_DIR}/lib/agent-cron.sh"
 LOG_FILE="${PROJECT_DIR}/logs/agent-cron.log"
 CRON_ENTRY="* * * * * /bin/bash ${CRON_SCRIPT} >> ${LOG_FILE} 2>&1"
@@ -33,34 +33,65 @@ echo "[ok] Script: $CRON_SCRIPT"
 mkdir -p "$(dirname "$LOG_FILE")"
 echo "[ok] Diretorio de logs: $(dirname "$LOG_FILE")"
 
-# 4. Verificar se entrada ja existe
+# 4. Instalar/verificar entrada no crontab
 if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
-  echo ""
-  echo "[ok] Entrada ja existe no crontab:"
-  crontab -l | grep "$CRON_SCRIPT"
-  echo ""
-  read -rp "Quer recriar a entrada? [s/N] " answer
-  if [[ "$(echo "$answer" | tr '[:upper:]' '[:lower:]')" != "s" ]]; then
-    echo "Nada a fazer."
-    exit 0
-  fi
-  # Remove entrada existente antes de recriar
-  crontab -l 2>/dev/null | grep -vF "$CRON_SCRIPT" | crontab -
-fi
-
-# 5. Adicionar entrada no crontab
-(crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
-
-# 6. Verificar instalacao
-if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
-  echo ""
-  echo "=== Instalado ==="
-  crontab -l | grep "$CRON_SCRIPT"
+  echo "[ok] Crontab já configurado"
 else
-  echo ""
-  echo "=== Erro: entrada nao encontrada no crontab ==="
-  exit 1
+  (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
+  if crontab -l 2>/dev/null | grep -qF "$CRON_SCRIPT"; then
+    echo "[ok] Crontab instalado"
+  else
+    echo "[!] Erro ao instalar crontab"
+    exit 1
+  fi
 fi
+
+# 7. Registrar Stop hooks no settings.json do Claude Code
+SETTINGS_FILE="$HOME/.claude/settings.json"
+
+echo ""
+echo "=== Stop hooks ==="
+
+register_stop_hook() {
+  local hook_script="$1" timeout="$2" label="$3"
+
+  if [[ ! -f "$SETTINGS_FILE" ]]; then
+    echo "[!] $SETTINGS_FILE nao encontrado — adicione $label manualmente"
+    return
+  fi
+
+  if ! command -v jq &>/dev/null; then
+    echo "[!] jq nao encontrado — verifique $label manualmente em $SETTINGS_FILE"
+    return
+  fi
+
+  local needle
+  needle=$(basename "$hook_script")
+
+  if jq -e ".hooks.Stop[]?.hooks[]? | select(.command | contains(\"$needle\"))" "$SETTINGS_FILE" >/dev/null 2>&1; then
+    echo "[ok] $label ja registrado"
+    return
+  fi
+
+  python3 - "$SETTINGS_FILE" "$hook_script" "$timeout" <<'PYEOF'
+import sys, json
+settings_path, hook_script, timeout = sys.argv[1], sys.argv[2], int(sys.argv[3])
+with open(settings_path) as f:
+    s = json.load(f)
+s.setdefault("hooks", {}).setdefault("Stop", [])
+stop = s["hooks"]["Stop"]
+if not stop:
+    stop.append({"matcher": ".*", "hooks": []})
+stop[0].setdefault("hooks", []).append({"type": "command", "command": hook_script, "timeout": timeout})
+with open(settings_path, "w") as f:
+    json.dump(s, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PYEOF
+  echo "[ok] $label registrado"
+}
+
+register_stop_hook "${PROJECT_DIR}/scripts/agent-idle-hook.sh"    5  "agent-idle-hook.sh"
+register_stop_hook "${PROJECT_DIR}/scripts/telegram-hook.sh"      15 "telegram-hook.sh"
 
 echo ""
 echo "Comandos uteis:"
@@ -69,3 +100,4 @@ echo "  crontab -e                           # editar manualmente"
 echo "  tail -f ${LOG_FILE}   # logs ao vivo"
 echo "  touch ${PROJECT_DIR}/.paused         # pausar agentes"
 echo "  rm ${PROJECT_DIR}/.paused            # retomar agentes"
+echo "  ls ~/.config/br-ai-on/idle/          # sessoes em idle aguardando wrapup"

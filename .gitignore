@@ -5,7 +5,7 @@
 *.tsbuildinfo
 package-lock.json
 dashboard/.next/
-.claude/
+.claude/*
 .playwright-mcp/
 .mcp.json
 agents/*
@@ -14,6 +14,7 @@ agents/*
 agents/**/state/*
 !agents/**/state/.gitkeep
 agents/**/memory/episodic.jsonl
+agents/**/memory/semantic.md
 agents/**/handoffs/archive/
 agents/**/handoffs/inbox/*
 !agents/**/handoffs/inbox/.gitkeep
@@ -22,10 +23,15 @@ agents/**/handoffs/artifacts/*
 agents/shared/schedule_state.json
 agents/shared/triggers.jsonl
 USER.md
-logs/
-metrics/
+prompts/system-prompts/*.md
+!prompts/system-prompts/README.md
+/logs/
+/metrics/
+dashboard/logs/
+dashboard/metrics/
 nohup.out
 *.log
 .paused
 .mcp.json
 nohup.out
+log.txt

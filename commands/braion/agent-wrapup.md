@@ -71,6 +71,23 @@ bash lib/handoff.sh archive <nome> agents/<nome>/handoffs/inbox/<arquivo>.md
 
 Apenas arquive handoffs que foram de fato processados. Handoffs pendentes permanecem no inbox.
 
+## 4b. Marcar Job como Completo (se aplicável)
+
+Se o handoff processado pertencia a um job, marque o agente como completo:
+
+```bash
+for ho_file in agents/<nome>/handoffs/in_progress/HO-*.md agents/<nome>/handoffs/archive/HO-*.md; do
+  [ -f "$ho_file" ] || continue
+  job_id=$(bash lib/handoff.sh job-agent "$ho_file")
+  if [ -n "$job_id" ]; then
+    bash lib/job.sh complete "$job_id" "<nome>"
+    break
+  fi
+done
+```
+
+Isso é automático — você não precisa saber se estava num job. O wrapup detecta e marca.
+
 ## 5. Logar Métricas
 
 Registre a sessão nas métricas diárias:

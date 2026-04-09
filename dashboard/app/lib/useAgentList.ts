@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type AgentEntry = { name: string; display_name: string; schedule_mode: string; domain: string };
+type AgentEntry = { name: string; display_name: string; schedule_mode: string; domain: string[]; layer: string };
 
 let cachedAgents: AgentEntry[] | null = null;
 

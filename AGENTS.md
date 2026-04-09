@@ -25,7 +25,7 @@ state/
   current_objective.md   — foco atual da sessão
   decisions.md           — log de decisões com data e contexto
   completed_tasks.md     — tarefas concluídas com data
-  heartbeat.json         — último ping e status (started | idle)
+  heartbeat.json         — último ping e status (processing | idle | waiting | completed)
 memory/
   semantic.md            — fatos, preferências e regras aprendidas
   episodic.jsonl         — histórico de ações com importância (1-5)
@@ -176,8 +176,10 @@ from: <agente_remetente>
 to: <agente_destinatario> | user
 created: <timestamp ISO 8601>
 status: pending | archived
-expects: action | info | review
+expects: action | info | review | orchestrate
 reply_to: null | <ID do handoff original>
+job_id: null | <ID do job>
+thread_id: null | <ID da thread>
 ---
 
 ## Descricao
@@ -241,6 +243,71 @@ Quando `command` está definido, o orquestrador usa esse comando em vez de `$CLA
 
 ## Orquestrador
 
-- Skill: `skills/orchestrator/SKILL.md`
-- Responsável por rodar o scheduler e spawnar subagentes
+- Agente: `agents/_defaults/orchestrator/` (symlink em `agents/orchestrator/`)
+- Command interativo: `commands/braion/orchestrator.md`
+- Responsável por decompor objetivos, fan-out/fan-in, e coordenar colaboração
 - Único com permissão de escrita em `agents/shared/`
+
+## Jobs — Trabalho Paralelo
+
+### Conceito
+
+Um **job** agrupa múltiplos handoffs sob um mesmo objetivo. O orchestrator cria jobs para fan-out paralelo; o cron monitora conclusão para fan-in.
+
+### Estrutura
+
+```
+agents/shared/jobs/JOB-YYYYMMDD-NNN.json
+agents/shared/jobs/archive/
+```
+
+### API
+
+```bash
+bash lib/job.sh create <created_by> <description> <agent1,agent2,...>
+bash lib/job.sh complete <job_id> <agent> [handoff_id]
+bash lib/job.sh fail <job_id> <agent> [reason]
+bash lib/job.sh status <job_id>
+bash lib/job.sh list-pending
+bash lib/job.sh archive <job_id>
+```
+
+### Ciclo de Vida
+
+`pending → in_progress → completed | partial_failure`
+
+### Integração
+
+Handoffs de job incluem `job_id` no frontmatter. O `agent-wrapup` detecta automaticamente e chama `job.sh complete`.
+
+## Colaboração entre Agentes
+
+### expects: orchestrate
+
+Novo valor de `expects` para escalar ao orchestrator:
+
+| expects | Significado | Processado por |
+|---|---|---|
+| `action` | Executa tarefa | Agente destino |
+| `review` | Revisa e opina | Agente destino |
+| `info` | Notificação unidirecional | Cron arquiva |
+| `orchestrate` | Decomponha e coordene | Orchestrator |
+
+### Modo Waiting
+
+Quando um agente envia handoff e precisa da resposta para continuar, ele entra em `waiting`:
+
+```json
+{"status": "waiting", "waiting_for": "HO-xxx", "waiting_since": "..."}
+```
+
+O cron respeita sessões em `waiting` com timeout maior (`WAITING_TIMEOUT`, default 1800s). Quando o reply chega, o cron injeta o path na sessão ativa:
+
+```bash
+tmux send-keys -t "braion-<agent>" "/braion:agent-inbox-router <path>" Enter
+```
+
+### Peer-to-Peer vs Orchestrator
+
+- **Consulta simples** (info de outro domínio): envie `expects=info` direto para o agente
+- **Coordenação complexa** (múltiplos agentes): envie `expects=orchestrate` para o orchestrator

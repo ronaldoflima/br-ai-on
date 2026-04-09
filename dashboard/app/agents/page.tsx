@@ -3,6 +3,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { SkeletonCards } from "../components/Skeleton";
 import type { AgentSummary } from "../lib/types";
+import { FilterSection, FilterSidebar } from "../components/FilterSection";
+import type { FilterOption } from "../components/FilterSection";
 import styles from "./agents.module.css";
 
 export default function AgentsPage() {
@@ -17,6 +19,7 @@ export default function AgentsPage() {
   const [scheduleFilter, setScheduleFilter] = useState<Set<string>>(new Set());
   const [domainFilter, setDomainFilter] = useState<Set<string>>(new Set());
   const [modelFilter, setModelFilter] = useState<Set<string>>(new Set());
+  const [layerFilter, setLayerFilter] = useState<Set<string>>(new Set());
 
   const fetchAgents = () => {
     setLoading(true);
@@ -47,20 +50,44 @@ export default function AgentsPage() {
         setError(data.error || "Erro ao criar");
       }
     } catch {
-      setError("Erro de conexão");
+      setError("Erro de conexao");
     }
     setCreating(false);
   };
 
-  const uniqueDomains = useMemo(
-    () => [...new Set(agents.map((a) => a.domain).filter(Boolean))].sort(),
-    [agents]
-  );
+  const scheduleLabels: Record<string, string> = {
+    alive: "Alive",
+    "handoff-only": "Handoff-only",
+    disabled: "Disabled",
+  };
 
-  const uniqueModels = useMemo(
-    () => [...new Set(agents.map((a) => a.model).filter(Boolean))].sort(),
-    [agents]
-  );
+  const scheduleOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    agents.forEach((a) => { counts[a.schedule_mode] = (counts[a.schedule_mode] || 0) + 1; });
+    return ["alive", "handoff-only", "disabled"].map((mode) => ({
+      value: mode,
+      label: scheduleLabels[mode],
+      count: counts[mode] || 0,
+    }));
+  }, [agents]);
+
+  const domainOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    agents.forEach((a) => { (a.domain || []).forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; }); });
+    return Object.entries(counts).map(([d, count]) => ({ value: d, label: d, count }));
+  }, [agents]);
+
+  const modelOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    agents.forEach((a) => { if (a.model) counts[a.model] = (counts[a.model] || 0) + 1; });
+    return Object.entries(counts).map(([m, count]) => ({ value: m, label: m, count }));
+  }, [agents]);
+
+  const layerOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    agents.forEach((a) => { if (a.layer) counts[a.layer] = (counts[a.layer] || 0) + 1; });
+    return Object.entries(counts).map(([l, count]) => ({ value: l, label: l, count }));
+  }, [agents]);
 
   const filteredAgents = useMemo(() => {
     let result = agents;
@@ -79,42 +106,28 @@ export default function AgentsPage() {
     }
 
     if (domainFilter.size > 0) {
-      result = result.filter((a) => domainFilter.has(a.domain));
+      result = result.filter((a) =>
+        a.domain.some((tag) => domainFilter.has(tag)),
+      );
     }
 
     if (modelFilter.size > 0) {
       result = result.filter((a) => modelFilter.has(a.model));
     }
 
+    if (layerFilter.size > 0) {
+      result = result.filter((a) => layerFilter.has(a.layer));
+    }
+
     return result;
-  }, [agents, search, scheduleFilter, domainFilter, modelFilter]);
+  }, [agents, search, scheduleFilter, domainFilter, modelFilter, layerFilter]);
 
-  function toggleSchedule(mode: string) {
-    const next = new Set(scheduleFilter);
-    if (next.has(mode)) next.delete(mode);
-    else next.add(mode);
-    setScheduleFilter(next);
+  function toggleSet(set: Set<string>, val: string): Set<string> {
+    const next = new Set(set);
+    if (next.has(val)) next.delete(val);
+    else next.add(val);
+    return next;
   }
-
-  function toggleDomain(domain: string) {
-    const next = new Set(domainFilter);
-    if (next.has(domain)) next.delete(domain);
-    else next.add(domain);
-    setDomainFilter(next);
-  }
-
-  function toggleModel(model: string) {
-    const next = new Set(modelFilter);
-    if (next.has(model)) next.delete(model);
-    else next.add(model);
-    setModelFilter(next);
-  }
-
-  const scheduleLabels: Record<string, string> = {
-    alive: "Alive",
-    "handoff-only": "Handoff-only",
-    disabled: "Disabled",
-  };
 
   return (
     <div className={styles.wrapper}>
@@ -123,7 +136,7 @@ export default function AgentsPage() {
       </div>
 
       <div className={styles.desktopLayout}>
-        <div className={styles.filterSidebar}>
+        <FilterSidebar mobileLabel="Filtros">
           <input
             className={styles.searchInput}
             placeholder="Buscar agente..."
@@ -131,50 +144,40 @@ export default function AgentsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          <div className={styles.sidebarLabel}>Schedule Mode</div>
-          {(["alive", "handoff-only", "disabled"] as const).map((mode) => (
-            <label key={mode} className={styles.checkRow}>
-              <input
-                type="checkbox"
-                checked={scheduleFilter.has(mode)}
-                onChange={() => toggleSchedule(mode)}
-              />
-              {scheduleLabels[mode]}
-            </label>
-          ))}
+          <FilterSection
+            title="Schedule Mode"
+            options={scheduleOptions}
+            selected={scheduleFilter}
+            onToggle={(v) => setScheduleFilter(toggleSet(scheduleFilter, v))}
+          />
 
-          {uniqueDomains.length > 0 && (
-            <>
-              <div className={styles.sidebarLabel}>Domínio</div>
-              {uniqueDomains.map((d) => (
-                <label key={d} className={styles.checkRow}>
-                  <input
-                    type="checkbox"
-                    checked={domainFilter.has(d)}
-                    onChange={() => toggleDomain(d)}
-                  />
-                  {d}
-                </label>
-              ))}
-            </>
+          {domainOptions.length > 0 && (
+            <FilterSection
+              title="Dominio"
+              options={domainOptions}
+              selected={domainFilter}
+              onToggle={(v) => setDomainFilter(toggleSet(domainFilter, v))}
+            />
           )}
 
-          {uniqueModels.length > 0 && (
-            <>
-              <div className={styles.sidebarLabel}>Modelo</div>
-              {uniqueModels.map((m) => (
-                <label key={m} className={styles.checkRow}>
-                  <input
-                    type="checkbox"
-                    checked={modelFilter.has(m)}
-                    onChange={() => toggleModel(m)}
-                  />
-                  {m}
-                </label>
-              ))}
-            </>
+          {modelOptions.length > 0 && (
+            <FilterSection
+              title="Modelo"
+              options={modelOptions}
+              selected={modelFilter}
+              onToggle={(v) => setModelFilter(toggleSet(modelFilter, v))}
+            />
           )}
-        </div>
+
+          {layerOptions.length > 0 && (
+            <FilterSection
+              title="Layer"
+              options={layerOptions}
+              selected={layerFilter}
+              onToggle={(v) => setLayerFilter(toggleSet(layerFilter, v))}
+            />
+          )}
+        </FilterSidebar>
 
         <div className={styles.mainPanel}>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -204,10 +207,10 @@ export default function AgentsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Domínio</label>
+                <label className="form-label">Dominio</label>
                 <input
                   className="input"
-                  placeholder="ex: Finanças, Saúde..."
+                  placeholder="ex: Financas, Saude..."
                   value={form.domain}
                   onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 />
@@ -242,7 +245,11 @@ export default function AgentsPage() {
                       </span>
                       <span className="text-muted-xs">v{agent.version}</span>
                     </div>
-                    <div className="text-secondary-sm mb-sm">{agent.domain}</div>
+                    <div className="text-secondary-sm mb-sm" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {agent.domain.map((tag) => (
+                        <span key={tag} className="badge badge-muted" style={{ fontSize: 11 }}>{tag}</span>
+                      ))}
+                    </div>
                     <div className="flex-row" style={{ gap: 8 }}>
                       <span
                         className={`badge ${
