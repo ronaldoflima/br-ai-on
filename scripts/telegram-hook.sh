@@ -25,4 +25,4 @@ TELEGRAM_CHAT_ID=$(tmux show-environment -t "$session" TELEGRAM_CHAT_ID 2>/dev/n
 BRAION="$(cd "$(dirname "$0")/.." && pwd)"
 source "$BRAION/lib/telegram.sh"
 
-tg_send "$TELEGRAM_CHAT_ID" "$LAST_ASSISTANT_MESSAGE"
+tg_send "$LAST_ASSISTANT_MESSAGE" "$TELEGRAM_CHAT_ID"
