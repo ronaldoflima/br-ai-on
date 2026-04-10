@@ -19,12 +19,12 @@ BRAION="$(cd "$(dirname "$0")/.." && pwd)"
 echo "BRAION: $BRAION"
 [ -f "$BRAION/.env" ] && set -a && source "$BRAION/.env" && set +a
 
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" 
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"
 CLAUDE="claude"
 DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
 SESSION_PREFIX="braion-telegram"
-OFFSET_FILE="/tmp/tgbridge-offset.txt"
+OFFSET_FILE="/tmp/tgbridge-offset-$(whoami).txt"
 LOG_FILE="$BRAION/logs/telegram-bridge.log"
 IDLE_TIMEOUT=180   # segundos aguardando resposta do Claude
 RESPONSE_LINES=300 # máximo de linhas a capturar
@@ -32,29 +32,10 @@ RESPONSE_LINES=300 # máximo de linhas a capturar
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # ── Utilidades ────────────────────────────────────────────────────────────────
+source "$BRAION/lib/telegram.sh"
+
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"
-}
-
-tg_send() {
-  local chat_id="$1" text="$2"
-  # Telegram: máximo 4096 chars por mensagem — envia em chunks se necessário
-  local max=4000
-  while [ "${#text}" -gt 0 ]; do
-    local chunk="${text:0:$max}"
-    text="${text:$max}"
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-      -d "chat_id=${chat_id}" \
-      --data-urlencode "text=${chunk}" \
-      -d "disable_web_page_preview=true" \
-      > /dev/null
-  done
-}
-
-tg_typing() {
-  local chat_id="$1"
-  curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendChatAction" \
-    -d "chat_id=${chat_id}" -d "action=typing" > /dev/null
 }
 
 strip_ansi() {
@@ -101,10 +82,10 @@ ensure_session() {
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
   tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$BOT_TOKEN" 2>/dev/null || true
 
-  # System prompt carregado de arquivo (fallback inline se arquivo não existir)
-  local tg_prompt=$(cat $BRAION/prompts/system-prompts/chat-telegram.md 2>/dev/null || echo "You are a helpful assistant. Keep responses concise for Telegram/chat, format for mobile, NO tables/ASCII art. Use bullets and short paragraphs. Be concise.")
-  log "tmux send-keys -t \"$session\" \"$CLAUDE --permission-mode acceptEdits --append-system-prompt '$tg_prompt'\" Enter"
-  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
+  # System prompt lido diretamente do arquivo via $(cat ...) avaliado pela shell da sessão tmux
+  local prompt_file="$BRAION/prompts/system-prompts/chat-telegram.md"
+  log "START claude --append-system-prompt via \$(cat '$prompt_file') em $session"
+  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode bypassPermissions --append-system-prompt \"\$(cat '$prompt_file')\"" Enter
 
   # Aguarda prompt ❯ (máx 5s)
   local waited=0

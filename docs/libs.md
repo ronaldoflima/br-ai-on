@@ -10,11 +10,13 @@ Orquestrador principal, roda a cada 5min via cron. Responsável por:
 - Rotear notas do inbox para agentes (regras + AI fallback)
 - Processar handoffs pendentes (iniciar sessões ou arquivar)
 - Iniciar agentes "alive" que estão prontos (via scheduler)
-- Monitorar e encerrar sessões stale/idle
+- Monitorar sessões ociosas (kill automático removido na v1.3.0)
+- Suporte a `permission_mode` configurável por agente via `runtime.claude.permission_mode`
+- Detecção de processo Telegram filtrada por usuário (`pgrep -u`)
 
 ### agent-scheduler.py
 Engine de scheduling em Python. Lê todos os `config.yaml`, compara intervalos com `schedule_state.json`, e retorna JSON com agentes categorizados:
-- `due` — prontos para execução
+- `due` — prontos para execução (inclui `permission_mode` no output)
 - `waiting` — intervalo não expirou
 - `inactive` — mode disabled/handoff-only
 - `budget_blocked` — limite diário atingido

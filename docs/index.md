@@ -10,6 +10,7 @@
 ## Referência
 
 - [Agentes](agents.md) — Catálogo completo de agentes com domínios e funções
+- [Dashboard](dashboard.md) — Dashboard web Next.js 15: terminal, file explorer, filtros, API
 - [Bibliotecas (lib/)](libs.md) — Scripts utilitários: cron, handoffs, jobs, logging, memória
 - [Commands (Skills)](commands.md) — agent-init, agent-wrapup, agent-handoff, orchestrator
 - [Scripts](scripts.md) — Automação: install, cron, telegram, plugins
@@ -38,4 +39,4 @@ br-ai-on/
 
 ## Versão
 
-Dashboard: 1.2.5 | Última atualização dos docs: 2026-04-09
+Dashboard: 1.3.1 | Última atualização dos docs: 2026-04-10

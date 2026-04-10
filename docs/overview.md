@@ -34,7 +34,7 @@ Ecossistema de agentes AI pessoais orquestrado pelo Claude Code. Cada agente pos
 4. **Init** (`/braion:agent-init`) carrega identidade, estado e handoffs
 5. **Execução** — agente processa tarefas conforme objetivo
 6. **Wrapup** (`/braion:agent-wrapup`) persiste estado, memória e métricas
-7. **Idle/Kill** — cron monitora e encerra sessões ociosas ou stale
+7. **Idle** — cron monitora sessões ociosas (kill automático por stale removido na v1.3.0)
 
 ## Modos de Schedule
 
@@ -68,7 +68,7 @@ Para trabalho paralelo, o **orchestrator** cria **jobs** que agrupam múltiplos 
 
 - **Ambiente**: VPS Hostinger (Linux)
 - **Sessões**: tmux (uma por agente ativo)
-- **Dashboard**: Next.js 15 na porta 3040 (`dashboard/`)
+- **Dashboard**: Next.js 15 v1.3.1 na porta 3040 (`dashboard/`) — terminal web, file explorer, filtros por layer
 - **Logs**: JSONL estruturado em `logs/`
 - **Métricas**: JSONL em `metrics/`
 - **Locks**: `/tmp/agents-workflow/*.lock`
