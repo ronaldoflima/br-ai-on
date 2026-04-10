@@ -323,7 +323,7 @@ export default function TerminalPage() {
       setFilePanelWidth(newWidth);
     };
     const onMouseMove = (e: MouseEvent) => onMove(e.clientX);
-    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onMove(e.touches[0].clientX); };
+    const onTouchMove = (e: TouchEvent) => { if (!resizingRef.current) return; e.preventDefault(); onMove(e.touches[0].clientX); };
     const onEnd = () => { resizingRef.current = false; };
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onEnd);
