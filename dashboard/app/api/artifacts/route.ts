@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { join, extname } from "path";
+import { join, extname, resolve } from "path";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
+
+const AGENT_RE = /^[a-z][a-z0-9_-]*$/;
+const ID_RE = /^[A-Z0-9_-]+$/;
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +47,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "agent e id obrigatórios" }, { status: 400 });
   }
 
+  if (!AGENT_RE.test(agent)) {
+    return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  }
+  if (!ID_RE.test(id)) {
+    return NextResponse.json({ error: "id inválido" }, { status: 400 });
+  }
+
   const artifactsDir = join(AGENTS_DIR, agent, "handoffs", "artifacts", id);
+
+  if (!resolve(artifactsDir).startsWith(resolve(AGENTS_DIR))) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
 
   if (!existsSync(artifactsDir)) {
     return NextResponse.json({ files: [] });

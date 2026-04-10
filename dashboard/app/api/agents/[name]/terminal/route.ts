@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execSync } from "child_process";
+import { spawn } from "child_process";
 
 export const dynamic = "force-dynamic";
+
+function spawnTmux(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tmux", args);
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (d) => { out += d; });
+    proc.stderr.on("data", (d) => { err += d; });
+    proc.on("close", (code) => {
+      if (code !== 0 && !out) reject(new Error(err));
+      else resolve(out);
+    });
+  });
+}
 
 export async function GET(
   _request: NextRequest,
@@ -11,10 +25,7 @@ export async function GET(
 
   let allSessions: string[] = [];
   try {
-    const out = execSync("tmux list-sessions -F '#{session_name}' 2>/dev/null", {
-      encoding: "utf-8",
-      timeout: 3000,
-    });
+    const out = await spawnTmux(["list-sessions", "-F", "#{session_name}"]);
     allSessions = out
       .trim()
       .split("\n")
@@ -27,18 +38,17 @@ export async function GET(
     return NextResponse.json({ sessions: [] });
   }
 
-  const sessions = allSessions.map((session) => {
-    let output = "";
-    try {
-      output = execSync(`tmux capture-pane -t '${session}' -p -S -200 2>/dev/null`, {
-        encoding: "utf-8",
-        timeout: 3000,
-      });
-    } catch {
-      output = "(erro ao capturar pane)";
-    }
-    return { session, output: output.trimEnd() };
-  });
+  const sessions = await Promise.all(
+    allSessions.map(async (session) => {
+      let output = "";
+      try {
+        output = await spawnTmux(["capture-pane", "-t", session, "-p", "-S", "-200"]);
+      } catch {
+        output = "(erro ao capturar pane)";
+      }
+      return { session, output: output.trimEnd() };
+    })
+  );
 
   return NextResponse.json({ sessions });
 }
