@@ -29,7 +29,7 @@ Catálogo de todos os agentes do ecossistema BR.AI.ON.
 ### documentation
 - **Display**: Braion Docs
 - **Domínio**: documentação, arquitetura, knowledgebase
-- **Schedule**: alive, 5min (priority 2)
+- **Schedule**: alive, 8h (priority 2)
 - **Função**: Mantém documentação atualizada acompanhando commits. Gerencia NotebookLM como knowledgebase.
 
 ## Agentes de Negócio
@@ -117,12 +117,28 @@ Symlinks externos: agent-builder, braion, extract-tasks, netsuite-monitor, super
 | `inbox/` | Notas do Obsidian inbox para roteamento automático |
 | `forwarded/` | Handoffs encaminhados entre agentes |
 
+## Runtime e Permission Mode
+
+Desde v1.3.0, cada agente pode definir o `permission_mode` do Claude Code via campo `runtime` no config.yaml:
+
+```yaml
+runtime:
+  claude:
+    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
+```
+
+O cron lê esse campo e passa `--permission-mode <valor>` ao iniciar a sessão. Default: `acceptEdits`.
+
+Campos novos opcionais no config.yaml (v1.3.0+):
+- `layer` — categorização: infrastructure, business, service, auxiliary (usado nos filtros do dashboard)
+- `capabilities` — array de strings descrevendo o que o agente pode fazer
+
 ## Estrutura de Diretórios por Agente
 
 ```
 agents/<nome>/
 ├── IDENTITY.md          — identidade e regras
-├── config.yaml          — schedule, budget, integrações
+├── config.yaml          — schedule, budget, integrações, runtime
 ├── state/
 │   ├── current_objective.md
 │   ├── decisions.md
