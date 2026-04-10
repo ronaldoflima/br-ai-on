@@ -6,6 +6,9 @@ import { parse } from "yaml";
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 
+const AGENT_RE = /^[a-z][a-z0-9_-]*$/;
+const FILENAME_RE = /^[A-Z0-9_-]+_[a-z-]+\.md$/;
+
 export const dynamic = "force-dynamic";
 
 interface Handoff {
@@ -120,6 +123,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } else {
+    if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
     if (!existsSync(join(AGENTS_DIR, agent))) {
       return NextResponse.json({ error: "agent not found" }, { status: 404 });
     }
@@ -182,6 +186,7 @@ export async function POST(request: NextRequest) {
   const { to, expects = "action", description = "", context = "", expected = "" } = body;
 
   if (!to) return NextResponse.json({ error: "campo 'to' obrigatório" }, { status: 400 });
+  if (!AGENT_RE.test(to)) return NextResponse.json({ error: "campo 'to' inválido" }, { status: 400 });
 
   const agentDir = join(AGENTS_DIR, to);
   if (!existsSync(agentDir)) return NextResponse.json({ error: "agente não encontrado" }, { status: 404 });
@@ -222,6 +227,8 @@ export async function PUT(request: NextRequest) {
   const { agent, filename, expects, description, context, expected, restore } = body;
 
   if (!agent || !filename) return NextResponse.json({ error: "agent e filename obrigatórios" }, { status: 400 });
+  if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  if (!FILENAME_RE.test(filename)) return NextResponse.json({ error: "filename inválido" }, { status: 400 });
 
   const inboxPath = join(AGENTS_DIR, agent, "handoffs", "inbox", filename);
   const inProgressPath = join(AGENTS_DIR, agent, "handoffs", "in_progress", filename);
@@ -263,6 +270,8 @@ export async function PATCH(request: NextRequest) {
   const { agent, filename } = body;
 
   if (!agent || !filename) return NextResponse.json({ error: "agent e filename obrigatórios" }, { status: 400 });
+  if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  if (!FILENAME_RE.test(filename)) return NextResponse.json({ error: "filename inválido" }, { status: 400 });
 
   const inboxPath = join(AGENTS_DIR, agent, "handoffs", "inbox", filename);
   if (!existsSync(inboxPath)) return NextResponse.json({ error: "handoff não encontrado" }, { status: 404 });

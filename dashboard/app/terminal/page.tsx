@@ -41,6 +41,12 @@ const SPECIAL_KEYS: { label: string; key: string; ctrl?: boolean; title: string 
 
 const ansiConverter = new AnsiToHtml({ fg: "#d4d4d4", bg: "#0d0d0d", escapeXML: true, stream: false });
 
+const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+
+function linkifyHtml(html: string): string {
+  return html.replace(URL_RE, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="terminal-link">${url}</a>`);
+}
+
 export default function TerminalPage() {
   const isMobile = useIsMobile();
   const [sessions, setSessions] = useState<TmuxSession[]>([]);
@@ -65,6 +71,10 @@ export default function TerminalPage() {
   const resizingRef = useRef(false);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(0);
+  const [textSelectable, setTextSelectable] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("termTextSelectable") === "true";
+    return false;
+  });
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
@@ -256,6 +266,7 @@ export default function TerminalPage() {
     }
   };
 
+
   const createSession = async () => {
     const name = newSessionName.trim();
     if (!name) return;
@@ -349,9 +360,10 @@ export default function TerminalPage() {
       // the raw-character check that was here before.
       const safe = output.replace(CURSOR_MARKER, CURSOR_PLACEHOLDER);
       const html = ansiConverter.toHtml(safe);
-      return html.includes(CURSOR_PLACEHOLDER)
+      const withCursor = html.includes(CURSOR_PLACEHOLDER)
         ? html.replace(CURSOR_PLACEHOLDER, CURSOR_HTML)
         : html;
+      return linkifyHtml(withCursor);
     } catch { return null; }
   }, [output]);
 
@@ -500,24 +512,42 @@ export default function TerminalPage() {
               className={`input ${styles.configInputWide}`}
             />
           </label>
+          <label className={styles.configLabel}>
+            <input
+              type="checkbox"
+              checked={textSelectable}
+              onChange={(e) => {
+                setTextSelectable(e.target.checked);
+                localStorage.setItem("termTextSelectable", String(e.target.checked));
+              }}
+            />
+            Selecionar texto
+          </label>
         </div>
       )}
 
-      <pre
-        ref={outputRef}
-        tabIndex={-1}
-        onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
-        onTouchEnd={isMobile ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
-        onClick={() => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
-        className={isMobile ? styles.outputMobile : styles.output}
-        style={{
-          outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent"),
-          cursor: directMode ? "text" : "default",
-        }}
-        dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
+      <div
+        className={styles.outputScroll}
+        style={{ outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent") }}
+        onClick={textSelectable ? undefined : () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
+        onTouchEnd={isMobile && !textSelectable ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
       >
-        {outputHtml ? undefined : "Aguardando saída..."}
-      </pre>
+        <pre
+          ref={outputRef}
+          tabIndex={-1}
+          onMouseDown={isMobile && !textSelectable ? (e) => e.preventDefault() : undefined}
+          className={isMobile ? styles.outputMobile : styles.output}
+          style={{
+            cursor: textSelectable ? "text" : (directMode ? "text" : "default"),
+            userSelect: textSelectable ? "text" : "none",
+            WebkitUserSelect: textSelectable ? "text" : "none",
+            WebkitTouchCallout: textSelectable ? "default" : "none",
+          }}
+          dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
+        >
+          {outputHtml ? undefined : "Aguardando saída..."}
+        </pre>
+      </div>
 
       {error && (
         <div className={styles.errorMsg}>{error}</div>
@@ -542,6 +572,7 @@ export default function TerminalPage() {
         {directMode ? (
           <>
             <input
+              key="direct-input"
               ref={mobileDirectInputRef}
               onChange={handleDirectChange}
               onCompositionStart={handleCompositionStart}
@@ -571,6 +602,7 @@ export default function TerminalPage() {
         ) : (
           <>
             <input
+              key="text-input"
               ref={inputRef}
               className={`input ${styles.textInput}`}
               placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}

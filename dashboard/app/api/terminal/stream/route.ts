@@ -1,28 +1,36 @@
 import { NextRequest } from "next/server";
-import { execSync } from "child_process";
+import { spawn } from "child_process";
 
 export const dynamic = "force-dynamic";
 
 const SESSION_RE = /^[a-zA-Z0-9_:.-]+$/;
 const CURSOR_MARKER = "\uE000";
 
-function capturePane(session: string, lines: number): string {
-  try {
-    return execSync(`tmux capture-pane -pet '${session}' -S -${lines} 2>/dev/null`, {
-      encoding: "utf-8",
-      timeout: 5000,
+function spawnTmux(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tmux", args);
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (d) => { out += d; });
+    proc.stderr.on("data", (d) => { err += d; });
+    proc.on("close", (code) => {
+      if (code !== 0 && !out) reject(new Error(err));
+      else resolve(out);
     });
+  });
+}
+
+async function capturePane(session: string, lines: number): Promise<string> {
+  try {
+    return await spawnTmux(["capture-pane", "-pet", session, "-S", `-${lines}`]);
   } catch {
     return "";
   }
 }
 
-function getCursorInfo(session: string): { x: number; y: number; paneHeight: number } | null {
+async function getCursorInfo(session: string): Promise<{ x: number; y: number; paneHeight: number } | null> {
   try {
-    const raw = execSync(
-      `tmux display-message -t '${session}' -p "#{cursor_x} #{cursor_y} #{pane_height}" 2>/dev/null`,
-      { encoding: "utf-8", timeout: 2000 }
-    ).trim();
+    const raw = (await spawnTmux(["display-message", "-t", session, "-p", "#{cursor_x} #{cursor_y} #{pane_height}"])).trim();
     const parts = raw.split(" ").map(Number);
     if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
       return { x: parts[0], y: parts[1], paneHeight: parts[2] };
@@ -42,14 +50,12 @@ function insertCursorMarker(
   const visibleStart = Math.max(0, lines.length - cursor.paneHeight);
   const lineIndex = visibleStart + cursor.y;
 
-  // Pad with empty lines when cursor is past captured text
   while (lineIndex >= lines.length) {
     lines.push("");
   }
 
   const line = lines[lineIndex];
 
-  // Walk through line counting visible chars (skipping ANSI sequences)
   let visibleCount = 0;
   let i = 0;
   let insertPos = line.length;
@@ -68,9 +74,9 @@ function insertCursorMarker(
   return lines.join("\n");
 }
 
-function captureWithCursor(session: string, lines: number): string {
-  const text = capturePane(session, lines);
-  const cursor = getCursorInfo(session);
+async function captureWithCursor(session: string, lines: number): Promise<string> {
+  const text = await capturePane(session, lines);
+  const cursor = await getCursorInfo(session);
   if (!cursor) return text;
   return insertCursorMarker(text, cursor);
 }
@@ -94,17 +100,19 @@ export async function GET(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
       }
 
-      const initial = captureWithCursor(session, lines);
-      lastOutput = initial;
-      send("output", JSON.stringify(initial));
+      captureWithCursor(session, lines).then((initial) => {
+        lastOutput = initial;
+        send("output", JSON.stringify(initial));
+      });
 
       const interval = setInterval(() => {
         if (closed) { clearInterval(interval); return; }
-        const current = captureWithCursor(session, lines);
-        if (current !== lastOutput) {
-          lastOutput = current;
-          send("output", JSON.stringify(current));
-        }
+        captureWithCursor(session, lines).then((current) => {
+          if (current !== lastOutput) {
+            lastOutput = current;
+            send("output", JSON.stringify(current));
+          }
+        });
       }, rate);
 
       const keepalive = setInterval(() => {
