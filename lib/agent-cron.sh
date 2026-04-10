@@ -174,8 +174,14 @@ get_agent_command() {
   awk '/^command:/{gsub(/^command:[[:space:]]*/,""); gsub(/^"|"$/,""); print}' "$config" 2>/dev/null
 }
 
+get_agent_permission_mode() {
+  local config=$1
+  [ -f "$config" ] || return 0
+  awk '/^permission_mode:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
+}
+
 start_session() {
-  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}"
+  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}" perm_mode="${6:-acceptEdits}"
   [ -z "$working_dir" ] && working_dir="$BRAION"
   [ -d "$working_dir" ] || { log "WARN $session — diretório '$working_dir' não existe, usando $BRAION"; working_dir="$BRAION"; }
 
@@ -192,8 +198,8 @@ start_session() {
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "claude --model $model --permission-mode acceptEdits --add-dir $BRAION --add-dir $HOME/.config/br-ai-on" Enter
-    log "START $session em $working_dir (model=$model)"
+    tmux send-keys -t "$session" "claude --model $model --permission-mode $perm_mode --add-dir $BRAION --add-dir $HOME/.config/br-ai-on" Enter
+    log "START $session em $working_dir (model=$model, permission_mode=$perm_mode)"
   fi
 
   # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 60s
@@ -520,8 +526,9 @@ for config in "$BRAION/agents"/*/config.yaml; do
     prompt="Read $BRAION/commands/braion/agent-handoff.md and follow the instructions exactly. Agent: $agent. Handoff: $handoff_file. BR.AI.ON base: $BRAION. Working directory: $working_dir."
     agent_model=$(get_agent_model "$config")
     agent_cmd=$(get_agent_command "$config")
+    agent_perm=$(get_agent_permission_mode "$config")
 
-    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
+    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd" "${agent_perm:-acceptEdits}"
   done
 done
 
@@ -536,8 +543,8 @@ if [ "$due_count" -gt 0 ]; then
   marked_agents=""
 
   echo "$scheduler_output" | jq -r '
-    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // "")] | @tsv
-  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd; do
+    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // ""), (.permission_mode // "acceptEdits")] | @tsv
+  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd agent_perm; do
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
@@ -565,7 +572,7 @@ if [ "$due_count" -gt 0 ]; then
 
     prompt="Read $BRAION/commands/braion/agent-init.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd"
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd" "${agent_perm:-acceptEdits}"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"
