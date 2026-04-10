@@ -15,7 +15,7 @@ fallback_model: claude-haiku-4-5
 
 runtime:
   claude:
-    permission_mode: bypassPermissions  # acceptEdits | auto | bypassPermissions | plan | dontAsk
+    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
 
 capabilities:
   - Decomposição de tarefas complexas em sub-tarefas
