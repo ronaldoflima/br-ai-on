@@ -3,14 +3,16 @@
 #
 # Uso como biblioteca (source):
 #   source "$(dirname "$0")/../lib/telegram.sh"
-#   tg_send "$chat_id" "mensagem"
-#   tg_typing "$chat_id"
+#   tg_send "mensagem"                    # usa TELEGRAM_ALLOWED_CHAT_ID do .env
+#   tg_send "mensagem" "$chat_id"         # chat_id explícito
+#   tg_typing                             # usa chat_id do .env
+#   tg_typing "$chat_id"                  # chat_id explícito
 #
 # Uso direto (qualquer agente):
-#   bash lib/telegram.sh send "mensagem"
-#   bash lib/telegram.sh send "mensagem" --chat-id 12345
-#   bash lib/telegram.sh typing
-#   bash lib/telegram.sh typing --chat-id 12345
+#   bash lib/telegram.sh send "mensagem"              # envia para chat padrão
+#   bash lib/telegram.sh send "mensagem" --chat-id ID # envia para chat específico
+#   bash lib/telegram.sh typing                       # indicador de digitação
+#   bash lib/telegram.sh typing --chat-id ID
 
 _TG_BRAION="${_TG_BRAION:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)}"
 
@@ -32,12 +34,13 @@ _tg_default_chat_id() {
 }
 
 tg_send() {
-  local chat_id="$1" text="$2"
+  local text="$1" chat_id="${2:-}"
   local token
   token=$(_tg_bot_token)
   [ -z "$token" ] && return 0
-  [ -z "$chat_id" ] && return 0
   [ -z "$text" ] && return 0
+  [ -z "$chat_id" ] && chat_id=$(_tg_default_chat_id)
+  [ -z "$chat_id" ] && { echo "ERROR: chat_id obrigatório (passe como 2o arg ou defina TELEGRAM_ALLOWED_CHAT_ID)" >&2; return 1; }
 
   local max=4000
   while [ "${#text}" -gt 0 ]; do
@@ -56,16 +59,15 @@ tg_typing() {
   local token
   token=$(_tg_bot_token)
   [ -z "$token" ] && return 0
-  [ -z "$chat_id" ] && return 0
+  [ -z "$chat_id" ] && chat_id=$(_tg_default_chat_id)
+  [ -z "$chat_id" ] && { echo "ERROR: chat_id obrigatório (passe como arg ou defina TELEGRAM_ALLOWED_CHAT_ID)" >&2; return 1; }
 
   curl -s -X POST "https://api.telegram.org/bot${token}/sendChatAction" \
     -d "chat_id=${chat_id}" -d "action=typing" > /dev/null
 }
 
 tg_notify() {
-  local text="$1" chat_id="${2:-}"
-  [ -z "$chat_id" ] && chat_id=$(_tg_default_chat_id)
-  tg_send "$chat_id" "$text"
+  tg_send "$@"
 }
 
 # ── Modo direto (quando executado como comando) ──────────────────────────────
@@ -113,7 +115,7 @@ EOF
       [ -z "$chat_id" ] && chat_id=$(_tg_default_chat_id)
       [ -z "$chat_id" ] && { echo "ERROR: chat_id não definido (use --chat-id ou TELEGRAM_ALLOWED_CHAT_ID)" >&2; exit 1; }
 
-      tg_send "$chat_id" "$text"
+      tg_send "$text" "$chat_id"
       ;;
     typing)
       chat_id=""

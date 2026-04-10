@@ -146,7 +146,7 @@ send_and_wait() {
 handle_start() {
   local chat_id="$1" session="$2"
   ensure_session "$session" "$chat_id"
-  tg_send "$chat_id" "🤖 *BR.AI.ON* conectado
+  tg_send "🤖 *BR.AI.ON* conectado
 Sessão: \`$session\`
 
 Envie qualquer mensagem para o Claude Code.
@@ -158,18 +158,18 @@ Comandos:
 • /pause — pausar agentes
 • /unpause — retomar agentes
 • /deploy — deploy da branch main
-• /deploy <branch> — deploy de branch específica"
+• /deploy <branch> — deploy de branch específica" "$chat_id"
 }
 
 handle_clear() {
   local chat_id="$1" session="$2"
   if ! session_running "$session"; then
-    tg_send "$chat_id" "⚠️ Sem sessão ativa. Envie uma mensagem para iniciar."
+    tg_send "⚠️ Sem sessão ativa. Envie uma mensagem para iniciar." "$chat_id"
     return
   fi
   tmux send-keys -t "$session" "/clear" Enter
   sleep 2
-  tg_send "$chat_id" "✅ Contexto limpo."
+  tg_send "✅ Contexto limpo." "$chat_id"
   log "CLEAR $session"
 }
 
@@ -181,26 +181,26 @@ handle_reset() {
   fi
   sleep 1
   ensure_session "$session" "$chat_id"
-  tg_send "$chat_id" "🔄 Sessão reiniciada."
+  tg_send "🔄 Sessão reiniciada." "$chat_id"
 }
 
 handle_status() {
   local chat_id="$1" session="$2"
   if ! session_running "$session"; then
-    tg_send "$chat_id" "💤 Sem sessão ativa."
+    tg_send "💤 Sem sessão ativa." "$chat_id"
     return
   fi
   if session_is_idle "$session"; then
-    tg_send "$chat_id" "✅ Sessão \`$session\` ativa e aguardando."
+    tg_send "✅ Sessão \`$session\` ativa e aguardando." "$chat_id"
   else
-    tg_send "$chat_id" "⏳ Sessão \`$session\` processando..."
+    tg_send "⏳ Sessão \`$session\` processando..." "$chat_id"
   fi
 }
 
 handle_pause() {
   local chat_id="$1"
   touch "$BRAION/.paused"
-  tg_send "$chat_id" "⏸ BR.AI.ON pausado. Agentes não serão iniciados até /unpause."
+  tg_send "⏸ BR.AI.ON pausado. Agentes não serão iniciados até /unpause." "$chat_id"
   log "PAUSE — arquivo .paused criado"
 }
 
@@ -208,66 +208,66 @@ handle_unpause() {
   local chat_id="$1"
   if [ -f "$BRAION/.paused" ]; then
     rm -f "$BRAION/.paused"
-    tg_send "$chat_id" "▶️ BR.AI.ON retomado. Agentes voltam ao ciclo normal."
+    tg_send "▶️ BR.AI.ON retomado. Agentes voltam ao ciclo normal." "$chat_id"
     log "UNPAUSE — arquivo .paused removido"
   else
-    tg_send "$chat_id" "ℹ️ BR.AI.ON já estava ativo (sem arquivo .paused)."
+    tg_send "ℹ️ BR.AI.ON já estava ativo (sem arquivo .paused)." "$chat_id"
   fi
 }
 
 handle_deploy() {
   local chat_id="$1" branch="${2:-main}"
   log "DEPLOY — branch=$branch iniciado por chat_id=$chat_id"
-  tg_send "$chat_id" "🚀 Deploy iniciado (branch: \`$branch\`)..."
+  tg_send "🚀 Deploy iniciado (branch: \`$branch\`)..." "$chat_id"
 
   local output errors=""
 
-  tg_send "$chat_id" "📦 Fazendo checkout e pull..."
+  tg_send "📦 Fazendo checkout e pull..." "$chat_id"
   local git_cmds="git fetch origin && git checkout \"$branch\" && git pull origin \"$branch\""
   [ "$branch" != "main" ] && git_cmds="$git_cmds && git pull origin main"
   if ! output=$(cd "$BRAION" && eval "$git_cmds" 2>&1); then
     errors="$output"
-    tg_send "$chat_id" "❌ Erro no git:
+    tg_send "❌ Erro no git:
 \`\`\`
 ${errors:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR git: $errors"
     return
   fi
 
-  tg_send "$chat_id" "📦 Instalando dependências..."
+  tg_send "📦 Instalando dependências..." "$chat_id"
   if ! output=$(cd "$BRAION/dashboard" && npm install 2>&1); then
-    tg_send "$chat_id" "❌ Erro no npm install:
+    tg_send "❌ Erro no npm install:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR npm install: $output"
     return
   fi
 
-  tg_send "$chat_id" "🔨 Building..."
+  tg_send "🔨 Building..." "$chat_id"
   if ! output=$(cd "$BRAION/dashboard" && npm run build 2>&1); then
-    tg_send "$chat_id" "❌ Erro no npm build:
+    tg_send "❌ Erro no npm build:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR npm build: $output"
     return
   fi
 
-  tg_send "$chat_id" "🔄 Reiniciando serviço..."
+  tg_send "🔄 Reiniciando serviço..." "$chat_id"
   local uid
   uid=$(id -u)
   if ! output=$(XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user stop braion 2>&1 && XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user start braion 2>&1); then
-    tg_send "$chat_id" "❌ Erro no systemctl:
+    tg_send "❌ Erro no systemctl:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR systemctl: $output"
     return
   fi
 
-  tg_send "$chat_id" "✅ Deploy concluído! Branch \`$branch\` em produção."
+  tg_send "✅ Deploy concluído! Branch \`$branch\` em produção." "$chat_id"
   log "DEPLOY OK — branch=$branch"
 }
 
@@ -277,7 +277,7 @@ handle_message() {
   ensure_session "$session" "$chat_id"
 
   if ! session_is_idle "$session"; then
-    tg_send "$chat_id" "⏳ Claude ainda está processando a mensagem anterior. Aguarde."
+    tg_send "⏳ Claude ainda está processando a mensagem anterior. Aguarde." "$chat_id"
     return
   fi
 
@@ -288,7 +288,7 @@ handle_message() {
   response=$(send_and_wait "$session" "$text")
 
   if [ -n "$response" ]; then
-    tg_send "$chat_id" "$response"
+    tg_send "$response" "$chat_id"
     log "DONE $session — resposta enviada (${#response} chars)"
   else
     log "WARN $session — resposta vazia. Aguardando hook"
@@ -342,7 +342,7 @@ main() {
       # Verificar acesso
       if [ -n "$ALLOWED_CHAT" ] && [ "$chat_id" != "$ALLOWED_CHAT" ]; then
         log "DENY chat_id=$chat_id"
-        tg_send "$chat_id" "⛔ Acesso não autorizado."
+        tg_send "⛔ Acesso não autorizado." "$chat_id"
         continue
       fi
 
@@ -357,7 +357,7 @@ main() {
         /unpause)     handle_unpause "$chat_id" ;;
         /deploy)      handle_deploy  "$chat_id" "main" ;;
         /deploy\ *)   handle_deploy  "$chat_id" "${text#/deploy }" ;;
-        /*)           tg_send "$chat_id" "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." ;;
+        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
         *)            handle_message "$chat_id" "$session" "$text" ;;
       esac
 
