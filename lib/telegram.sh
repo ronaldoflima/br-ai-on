@@ -35,8 +35,8 @@ tg_send() {
   local chat_id="$1" text="$2"
   local token
   token=$(_tg_bot_token)
-  [ -z "$token" ] && { echo "ERROR: TELEGRAM_BOT_TOKEN not set" >&2; return 1; }
-  [ -z "$chat_id" ] && { echo "ERROR: chat_id required" >&2; return 1; }
+  [ -z "$token" ] && return 0
+  [ -z "$chat_id" ] && return 0
   [ -z "$text" ] && return 0
 
   local max=4000
@@ -52,11 +52,11 @@ tg_send() {
 }
 
 tg_typing() {
-  local chat_id="$1"
+  local chat_id="${1:-}"
   local token
   token=$(_tg_bot_token)
-  [ -z "$token" ] && return 1
-  [ -z "$chat_id" ] && return 1
+  [ -z "$token" ] && return 0
+  [ -z "$chat_id" ] && return 0
 
   curl -s -X POST "https://api.telegram.org/bot${token}/sendChatAction" \
     -d "chat_id=${chat_id}" -d "action=typing" > /dev/null
@@ -91,6 +91,11 @@ EOF
 
   cmd="${1:-}"
   shift 2>/dev/null || true
+
+  token=$(_tg_bot_token)
+  [ -z "$token" ] && [ "$cmd" != "help" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && {
+    echo "ERROR: TELEGRAM_BOT_TOKEN não configurado" >&2; exit 1;
+  }
 
   case "$cmd" in
     send)
