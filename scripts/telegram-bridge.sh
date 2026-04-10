@@ -82,10 +82,10 @@ ensure_session() {
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
   tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$BOT_TOKEN" 2>/dev/null || true
 
-  # System prompt carregado de arquivo (fallback inline se arquivo não existir)
-  local tg_prompt=$(cat $BRAION/prompts/system-prompts/chat-telegram.md 2>/dev/null || echo "You are a helpful assistant. Keep responses concise for Telegram/chat, format for mobile, NO tables/ASCII art. Use bullets and short paragraphs. Be concise.")
-  log "tmux send-keys -t \"$session\" \"$CLAUDE --permission-mode acceptEdits --append-system-prompt '$tg_prompt'\" Enter"
-  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
+  # System prompt lido diretamente do arquivo via $(cat ...) avaliado pela shell da sessão tmux
+  local prompt_file="$BRAION/prompts/system-prompts/chat-telegram.md"
+  log "START claude --append-system-prompt via \$(cat '$prompt_file') em $session"
+  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode bypassPermissions --append-system-prompt \"\$(cat '$prompt_file')\"" Enter
 
   # Aguarda prompt ❯ (máx 5s)
   local waited=0
