@@ -223,7 +223,24 @@ handle_deploy() {
   local output errors=""
 
   tg_send "📦 Fazendo checkout e pull..." "$chat_id"
-  local git_cmds="git fetch origin && git checkout \"$branch\" && git pull origin \"$branch\""
+  if ! output=$(cd "$BRAION" && git fetch origin 2>&1); then
+    tg_send "❌ Erro no git fetch:
+\`\`\`
+${output:0:800}
+\`\`\`" "$chat_id"
+    log "DEPLOY ERROR git fetch: $output"
+    return
+  fi
+
+  local origin_ahead
+  origin_ahead=$(cd "$BRAION" && git rev-list main..origin/main --count 2>/dev/null || echo 0)
+  if [ "$origin_ahead" -gt 0 ]; then
+    tg_send "⚠️ origin/main tem ${origin_ahead} commit(s) à frente do local. Faça pull de main antes de deployar." "$chat_id"
+    log "DEPLOY ABORT — origin/main ${origin_ahead} commit(s) à frente"
+    return
+  fi
+
+  local git_cmds="git checkout \"$branch\" && git pull origin \"$branch\""
   [ "$branch" != "main" ] && git_cmds="$git_cmds && git pull origin main"
   if ! output=$(cd "$BRAION" && eval "$git_cmds" 2>&1); then
     errors="$output"
@@ -246,6 +263,7 @@ ${output:0:800}
   fi
 
   tg_send "🔨 Building..." "$chat_id"
+  rm -rf "$BRAION/dashboard/.next"
   if ! output=$(cd "$BRAION/dashboard" && npm run build 2>&1); then
     tg_send "❌ Erro no npm build:
 \`\`\`
