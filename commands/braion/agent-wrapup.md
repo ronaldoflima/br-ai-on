@@ -112,7 +112,17 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome
 bash lib/logger.sh wrapup "Sessão encerrada" '{"objective": "<objetivo>", "tasks_completed": <n>}'
 ```
 
-## 8. Confirmar
+## 8. Notificar via Telegram
+
+Verifique se o agente tem Telegram habilitado no config.yaml (`integrations.telegram.enabled: true`). Se sim, envie um resumo da sessão:
+
+```bash
+bash lib/telegram.sh send "✅ [<nome>] Sessão encerrada — <n> tarefa(s) concluída(s). <resumo curto do que foi feito>"
+```
+
+Se `integrations.telegram.enabled` for `false` ou não existir, pule este passo.
+
+## 9. Confirmar
 
 Ao terminar, informe brevemente:
 - O que foi feito nesta sessão
