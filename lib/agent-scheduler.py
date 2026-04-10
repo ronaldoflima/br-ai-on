@@ -170,6 +170,8 @@ def compute_schedule(configs, schedule_state, now):
         model = cfg.get("model", "claude-sonnet-4-6")
         fallback_model = cfg.get("fallback_model", "claude-haiku-4-5")
 
+        permission_mode = cfg.get("runtime", {}).get("claude", {}).get("permission_mode", "acceptEdits")
+
         base_entry = {
             "name": name,
             "domain": cfg.get("domain", ""),
@@ -184,6 +186,7 @@ def compute_schedule(configs, schedule_state, now):
             "model": model,
             "fallback_model": fallback_model,
             "command": cfg.get("command", ""),
+            "permission_mode": permission_mode,
             "budget": budget_info,
         }
         if obsidian_info:
