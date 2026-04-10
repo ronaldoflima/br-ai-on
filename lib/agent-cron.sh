@@ -177,7 +177,14 @@ get_agent_command() {
 get_agent_permission_mode() {
   local config=$1
   [ -f "$config" ] || return 0
-  awk '/^permission_mode:/{gsub(/"/,"",$2); print $2}' "$config" 2>/dev/null
+  python3 -c "
+import yaml, sys
+try:
+    cfg = yaml.safe_load(open('$config'))
+    print(cfg.get('runtime', {}).get('claude', {}).get('permission_mode', 'acceptEdits'))
+except Exception:
+    print('acceptEdits')
+" 2>/dev/null
 }
 
 start_session() {

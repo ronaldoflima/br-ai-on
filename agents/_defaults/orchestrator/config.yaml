@@ -12,7 +12,10 @@ version: "1.0"
 
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
-permission_mode: acceptEdits
+
+runtime:
+  claude:
+    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
 
 capabilities:
   - Decomposição de tarefas complexas em sub-tarefas
