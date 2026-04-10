@@ -1,16 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join, extname, resolve } from "path";
-import { execSync } from "child_process";
+import { spawn } from "child_process";
 
 export const dynamic = "force-dynamic";
 
 const SESSION_RE = /^[a-zA-Z0-9_:.-]+$/;
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024;
+
+const ALLOWED_BASES = [
+  join(process.cwd(), ".."),
+  join(process.cwd(), "..", "agents"),
+  join(process.cwd(), "..", "logs"),
+  "/tmp",
+];
+
+function spawnTmux(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tmux", args);
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (d) => { out += d; });
+    proc.stderr.on("data", (d) => { err += d; });
+    proc.on("close", (code) => {
+      if (code !== 0 && !out) reject(new Error(err));
+      else resolve(out);
+    });
+  });
+}
 
 function safeSession(name: string | null): string | null {
   if (!name || !SESSION_RE.test(name)) return null;
   return name;
+}
+
+function isAllowedPath(p: string): boolean {
+  const resolved = resolve(p);
+  return ALLOWED_BASES.some((base) => resolved.startsWith(resolve(base) + "/") || resolved === resolve(base));
 }
 
 function getFileType(name: string): string {
@@ -33,8 +59,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-// GET /api/terminal/files?session=NAME&path=/some/dir  → lista diretório
-// GET /api/terminal/files?session=NAME&path=/some/dir&file=name.txt → lê arquivo
 export async function GET(request: NextRequest) {
   const sessionParam = safeSession(request.nextUrl.searchParams.get("session"));
   const pathParam = request.nextUrl.searchParams.get("path");
@@ -45,14 +69,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "session obrigatório" }, { status: 400 });
   }
 
-  // Se não veio path, busca o cwd da sessão tmux
   let dirPath = pathParam;
   if (!dirPath) {
     try {
-      dirPath = execSync(
-        `tmux display-message -p -t '${sessionParam}' '#{pane_current_path}' 2>/dev/null`,
-        { encoding: "utf-8", timeout: 3000 }
-      ).trim();
+      dirPath = (await spawnTmux(["display-message", "-p", "-t", sessionParam, "#{pane_current_path}"])).trim();
     } catch {
       return NextResponse.json({ error: "Não foi possível obter o diretório da sessão" }, { status: 500 });
     }
@@ -64,9 +84,12 @@ export async function GET(request: NextRequest) {
 
   const resolvedDir = resolve(dirPath);
 
+  if (pathParam && !isAllowedPath(resolvedDir)) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
+
   if (fileParam) {
     const filePath = resolve(join(resolvedDir, fileParam));
-    // Path traversal check
     if (!filePath.startsWith(resolvedDir + "/") && filePath !== resolvedDir) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
@@ -100,7 +123,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Listar diretório
   try {
     const entries = readdirSync(resolvedDir, { withFileTypes: true })
       .filter((e) => !e.name.startsWith("."))
