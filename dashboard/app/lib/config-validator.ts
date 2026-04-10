@@ -17,9 +17,15 @@ const VALID_MODES = ["alive", "handoff-only", "disabled"];
 
 const INTERVAL_RE = /^\d+(s|m|h|d)$/;
 
+const VALID_CLAUDE_PERMISSION_MODES = [
+  "acceptEdits", "auto", "bypassPermissions", "plan", "dontAsk",
+];
+
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
-  "name", "display_name", "domain", "directory", "version", "model", "fallback_model",
-  "command", "schedule", "budget", "integrations", "collaborators",
+  "name", "display_name", "domain", "layer", "directory", "working_directory",
+  "version", "model", "fallback_model", "command",
+  "runtime", "capabilities",
+  "schedule", "budget", "integrations", "collaborators",
 ]);
 
 const KNOWN_SCHEDULE_FIELDS = new Set([
@@ -50,9 +56,20 @@ export function validateAgentConfig(raw: string): ValidationResult {
     }
   }
 
-  for (const field of ["name", "display_name", "domain", "version", "model", "fallback_model"] as const) {
+  for (const field of ["name", "display_name", "version", "model", "fallback_model"] as const) {
     if (!cfg[field] || typeof cfg[field] !== "string") {
       errors.push({ field, message: `Campo obrigatório ausente ou inválido: ${field}` });
+    }
+  }
+
+  if (!cfg.domain) {
+    errors.push({ field: "domain", message: "Campo obrigatório ausente ou inválido: domain" });
+  } else if (typeof cfg.domain !== "string" && !Array.isArray(cfg.domain)) {
+    errors.push({ field: "domain", message: "domain deve ser uma string ou array de strings" });
+  } else if (Array.isArray(cfg.domain)) {
+    const invalid = cfg.domain.filter((t: unknown) => typeof t !== "string" || !(t as string).trim());
+    if (invalid.length > 0) {
+      errors.push({ field: "domain", message: "Todos os itens de domain devem ser strings não-vazias" });
     }
   }
 
@@ -95,8 +112,8 @@ export function validateAgentConfig(raw: string): ValidationResult {
       }
     }
     const priority = sched.priority;
-    if (priority !== undefined && (typeof priority !== "number" || priority < 1)) {
-      errors.push({ field: "schedule.priority", message: "schedule.priority deve ser número >= 1" });
+    if (priority !== undefined && (typeof priority !== "number" || priority < 0)) {
+      errors.push({ field: "schedule.priority", message: "schedule.priority deve ser número >= 0" });
     }
     if (sched.run_alone !== undefined && typeof sched.run_alone !== "boolean") {
       errors.push({ field: "schedule.run_alone", message: "schedule.run_alone deve ser boolean" });
@@ -159,6 +176,46 @@ export function validateAgentConfig(raw: string): ValidationResult {
   // command: opcional, string quando presente
   if (cfg.command !== undefined && typeof cfg.command !== "string") {
     errors.push({ field: "command", message: "command deve ser uma string" });
+  }
+
+  // layer: opcional, string quando presente
+  if (cfg.layer !== undefined && typeof cfg.layer !== "string") {
+    errors.push({ field: "layer", message: "layer deve ser uma string" });
+  }
+
+  // capabilities: opcional, array de strings não-vazias
+  if (cfg.capabilities !== undefined) {
+    if (!Array.isArray(cfg.capabilities)) {
+      errors.push({ field: "capabilities", message: "capabilities deve ser um array de strings" });
+    } else {
+      const invalid = cfg.capabilities.filter((c: unknown) => typeof c !== "string" || !(c as string).trim());
+      if (invalid.length > 0) {
+        errors.push({ field: "capabilities", message: "Todos os itens de capabilities devem ser strings não-vazias" });
+      }
+    }
+  }
+
+  // runtime: opcional, configurações específicas por executor de AI
+  if (cfg.runtime !== undefined) {
+    if (typeof cfg.runtime !== "object" || cfg.runtime === null || Array.isArray(cfg.runtime)) {
+      errors.push({ field: "runtime", message: "runtime deve ser um objeto" });
+    } else {
+      const runtime = cfg.runtime as Record<string, unknown>;
+      const claude = runtime.claude as Record<string, unknown> | undefined;
+      if (claude !== undefined) {
+        if (typeof claude !== "object" || claude === null || Array.isArray(claude)) {
+          errors.push({ field: "runtime.claude", message: "runtime.claude deve ser um objeto" });
+        } else {
+          const pm = claude.permission_mode;
+          if (pm !== undefined && !VALID_CLAUDE_PERMISSION_MODES.includes(pm as string)) {
+            errors.push({
+              field: "runtime.claude.permission_mode",
+              message: `permission_mode inválido "${pm}". Válidos: ${VALID_CLAUDE_PERMISSION_MODES.join(", ")}`,
+            });
+          }
+        }
+      }
+    }
   }
 
   return { valid: errors.length === 0, errors };

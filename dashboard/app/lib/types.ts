@@ -6,7 +6,7 @@ export interface ConfigError {
 export interface AgentStatus {
   name: string;
   displayName: string;
-  domain: string;
+  domain: string[];
   state: "running" | "idle" | "stale" | "maintenance" | "error";
   heartbeat: string | null;
   lastRun: string | null;
@@ -60,11 +60,12 @@ export interface Handoff {
 export interface AgentSummary {
   name: string;
   display_name: string;
-  domain: string;
+  domain: string[];
   version: string;
   schedule_interval: string;
   schedule_mode: "alive" | "handoff-only" | "disabled";
   model: string;
+  layer: string;
 }
 
 export interface AgentDetail {

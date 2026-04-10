@@ -112,11 +112,36 @@ export function IconIntegrations() {
   );
 }
 
+export function IconCron() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12,6 12,12 16,14" />
+    </svg>
+  );
+}
+
 export function IconClose() {
   return (
     <svg {...s} viewBox="0 0 24 24">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+export function IconChevronLeft() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="15,18 9,12 15,6" />
+    </svg>
+  );
+}
+
+export function IconChevronRight() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="9,18 15,12 9,6" />
     </svg>
   );
 }

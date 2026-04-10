@@ -8,6 +8,19 @@ const GITHUB_API = `https://api.github.com/repos/${REPO}/tags`;
 let cache: { version: string | null; ts: number } = { version: null, ts: 0 };
 const TTL = 10 * 60 * 1000;
 
+function parseSemver(v: string): [number, number, number] {
+  const parts = v.split(".").map((p) => parseInt(p, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function semverGt(a: string, b: string): boolean {
+  const [aMaj, aMin, aPat] = parseSemver(a);
+  const [bMaj, bMin, bPat] = parseSemver(b);
+  if (aMaj !== bMaj) return aMaj > bMaj;
+  if (aMin !== bMin) return aMin > bMin;
+  return aPat > bPat;
+}
+
 export async function GET() {
   const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8"));
   const current = pkg.version as string;
@@ -36,7 +49,7 @@ export async function GET() {
   return NextResponse.json({
     current,
     latest,
-    hasUpdate: latest ? latest !== current : false,
+    hasUpdate: latest ? semverGt(latest, current) : false,
     repo: `https://github.com/${REPO}`,
   });
 }
