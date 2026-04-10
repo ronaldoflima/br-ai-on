@@ -30,6 +30,8 @@ WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
+source "$BRAION/lib/telegram.sh"
+
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
 }
@@ -414,13 +416,7 @@ notify_user_handoff() {
 
   if ! session_is_idle "$session"; then
     log "Handoff $ho_id → telegram direto (sessão $session ocupada)"
-    local chat_id="${TELEGRAM_ALLOWED_CHAT_ID:-}"
-    if [ -n "$chat_id" ]; then
-      local msg="📬 Handoff ${ho_id} de ${from}: ${description}"
-      curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${chat_id}" --data-urlencode "text=${msg}" \
-        -d "disable_web_page_preview=true" > /dev/null
-    fi
+    tg_notify "📬 Handoff ${ho_id} de ${from}: ${description}"
     return 0
   fi
 

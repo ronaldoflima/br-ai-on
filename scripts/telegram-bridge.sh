@@ -19,7 +19,7 @@ BRAION="$(cd "$(dirname "$0")/.." && pwd)"
 echo "BRAION: $BRAION"
 [ -f "$BRAION/.env" ] && set -a && source "$BRAION/.env" && set +a
 
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" 
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"
 CLAUDE="claude"
 DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
@@ -32,29 +32,10 @@ RESPONSE_LINES=300 # máximo de linhas a capturar
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # ── Utilidades ────────────────────────────────────────────────────────────────
+source "$BRAION/lib/telegram.sh"
+
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"
-}
-
-tg_send() {
-  local chat_id="$1" text="$2"
-  # Telegram: máximo 4096 chars por mensagem — envia em chunks se necessário
-  local max=4000
-  while [ "${#text}" -gt 0 ]; do
-    local chunk="${text:0:$max}"
-    text="${text:$max}"
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-      -d "chat_id=${chat_id}" \
-      --data-urlencode "text=${chunk}" \
-      -d "disable_web_page_preview=true" \
-      > /dev/null
-  done
-}
-
-tg_typing() {
-  local chat_id="$1"
-  curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendChatAction" \
-    -d "chat_id=${chat_id}" -d "action=typing" > /dev/null
 }
 
 strip_ansi() {
