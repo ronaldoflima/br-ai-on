@@ -21,11 +21,11 @@ const NAV: NavItem[] = [
   { href: "/agents", label: "Agents", icon: IconAgents },
   { href: "/wizard", label: "Wizard", icon: IconWizard },
   { href: "/terminal", label: "Terminais", icon: IconTerminal },
+  { href: "/integrations", label: "Integrações", icon: IconIntegrations },
 ];
 
 const CLAUDE_CODE_NAV = [
   { href: "/memories", label: "Memórias", icon: IconMemories },
-  { href: "/integrations", label: "Integrações", icon: IconIntegrations },
 ];
 
 interface HealthData {
