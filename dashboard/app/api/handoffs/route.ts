@@ -6,6 +6,9 @@ import { parse } from "yaml";
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 
+const AGENT_RE = /^[a-z][a-z0-9_-]*$/;
+const FILENAME_RE = /^[A-Z0-9_-]+_[a-z-]+\.md$/;
+
 export const dynamic = "force-dynamic";
 
 interface Handoff {
@@ -16,6 +19,7 @@ interface Handoff {
   status: string;
   expects: string;
   reply_to: string | null;
+  thread_id?: string | null;
   description: string;
   body: string;
   filename: string;
@@ -54,6 +58,7 @@ function parseHandoff(filePath: string, filename: string): Handoff | null {
       status: meta.status || "pending",
       expects: meta.expects || "",
       reply_to: meta.reply_to || null,
+      thread_id: meta.thread_id || null,
       description: descMatch ? descMatch[1].trim().slice(0, 200) : "",
       body,
       filename,
@@ -66,14 +71,23 @@ function parseHandoff(filePath: string, filename: string): Handoff | null {
 function collectHandoffs(agentName: string) {
   const agentDir = join(AGENTS_DIR, agentName);
   const inboxDir = join(agentDir, "handoffs", "inbox");
+  const inProgressDir = join(agentDir, "handoffs", "in_progress");
   const archiveDir = join(agentDir, "handoffs", "archive");
   const inbox: Handoff[] = [];
+  const in_progress: Handoff[] = [];
   const archive: Handoff[] = [];
 
   if (existsSync(inboxDir)) {
     for (const file of readdirSync(inboxDir).filter((f) => f.endsWith(".md"))) {
       const ho = parseHandoff(join(inboxDir, file), file);
       if (ho) inbox.push(ho);
+    }
+  }
+
+  if (existsSync(inProgressDir)) {
+    for (const file of readdirSync(inProgressDir).filter((f) => f.endsWith(".md"))) {
+      const ho = parseHandoff(join(inProgressDir, file), file);
+      if (ho) in_progress.push(ho);
     }
   }
 
@@ -84,13 +98,14 @@ function collectHandoffs(agentName: string) {
     }
   }
 
-  return { inbox, archive };
+  return { inbox, in_progress, archive };
 }
 
 export async function GET(request: NextRequest) {
   const agent = request.nextUrl.searchParams.get("agent") || "all";
 
   const inbox: Handoff[] = [];
+  const in_progress: Handoff[] = [];
   const archive: Handoff[] = [];
 
   if (agent === "all") {
@@ -103,10 +118,12 @@ export async function GET(request: NextRequest) {
         } catch { continue; }
         const result = collectHandoffs(dir);
         inbox.push(...result.inbox);
+        in_progress.push(...result.in_progress);
         archive.push(...result.archive);
       }
     }
   } else {
+    if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
     if (!existsSync(join(AGENTS_DIR, agent))) {
       return NextResponse.json({ error: "agent not found" }, { status: 404 });
     }
@@ -119,6 +136,7 @@ export async function GET(request: NextRequest) {
         } catch { continue; }
         const result = collectHandoffs(dir);
         inbox.push(...result.inbox.filter((h) => h.to === agent || h.from === agent));
+        in_progress.push(...result.in_progress.filter((h) => h.to === agent || h.from === agent));
         archive.push(...result.archive.filter((h) => h.to === agent || h.from === agent));
       }
     }
@@ -135,12 +153,14 @@ export async function GET(request: NextRequest) {
   };
 
   const dedupInbox = dedup(inbox);
+  const dedupInProgress = dedup(in_progress);
   const dedupArchive = dedup(archive);
 
   dedupInbox.sort((a, b) => b.created.localeCompare(a.created));
+  dedupInProgress.sort((a, b) => b.created.localeCompare(a.created));
   dedupArchive.sort((a, b) => b.created.localeCompare(a.created));
 
-  return NextResponse.json({ agent, inbox: dedupInbox, archive: dedupArchive });
+  return NextResponse.json({ agent, inbox: dedupInbox, in_progress: dedupInProgress, archive: dedupArchive });
 }
 
 function nextHandoffId(): string {
@@ -166,6 +186,7 @@ export async function POST(request: NextRequest) {
   const { to, expects = "action", description = "", context = "", expected = "" } = body;
 
   if (!to) return NextResponse.json({ error: "campo 'to' obrigatório" }, { status: 400 });
+  if (!AGENT_RE.test(to)) return NextResponse.json({ error: "campo 'to' inválido" }, { status: 400 });
 
   const agentDir = join(AGENTS_DIR, to);
   if (!existsSync(agentDir)) return NextResponse.json({ error: "agente não encontrado" }, { status: 404 });
@@ -206,12 +227,16 @@ export async function PUT(request: NextRequest) {
   const { agent, filename, expects, description, context, expected, restore } = body;
 
   if (!agent || !filename) return NextResponse.json({ error: "agent e filename obrigatórios" }, { status: 400 });
+  if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  if (!FILENAME_RE.test(filename)) return NextResponse.json({ error: "filename inválido" }, { status: 400 });
 
   const inboxPath = join(AGENTS_DIR, agent, "handoffs", "inbox", filename);
+  const inProgressPath = join(AGENTS_DIR, agent, "handoffs", "in_progress", filename);
   const archivePath = join(AGENTS_DIR, agent, "handoffs", "archive", filename);
 
-  const isInArchive = !existsSync(inboxPath) && existsSync(archivePath);
-  const currentPath = isInArchive ? archivePath : inboxPath;
+  const isInArchive = !existsSync(inboxPath) && !existsSync(inProgressPath) && existsSync(archivePath);
+  const isInProgress = !existsSync(inboxPath) && existsSync(inProgressPath);
+  const currentPath = isInArchive ? archivePath : isInProgress ? inProgressPath : inboxPath;
 
   if (!existsSync(currentPath)) return NextResponse.json({ error: "handoff não encontrado" }, { status: 404 });
 
@@ -227,12 +252,12 @@ export async function PUT(request: NextRequest) {
 
   const updatedContent = `---\n${updatedMeta}\n---\n\n## Descricao\n${description || ""}\n\n## Contexto\n${context || ""}\n\n## Esperado\n${expected || ""}\n`;
 
-  if (isInArchive && restore) {
+  if ((isInArchive || isInProgress) && restore) {
     const inboxDir = join(AGENTS_DIR, agent, "handoffs", "inbox");
     mkdirSync(inboxDir, { recursive: true });
-    writeFileSync(archivePath, updatedContent, "utf-8");
+    writeFileSync(currentPath, updatedContent, "utf-8");
     const { renameSync } = require("fs");
-    renameSync(archivePath, inboxPath);
+    renameSync(currentPath, inboxPath);
   } else {
     writeFileSync(currentPath, updatedContent, "utf-8");
   }
@@ -245,6 +270,8 @@ export async function PATCH(request: NextRequest) {
   const { agent, filename } = body;
 
   if (!agent || !filename) return NextResponse.json({ error: "agent e filename obrigatórios" }, { status: 400 });
+  if (!AGENT_RE.test(agent)) return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  if (!FILENAME_RE.test(filename)) return NextResponse.json({ error: "filename inválido" }, { status: 400 });
 
   const inboxPath = join(AGENTS_DIR, agent, "handoffs", "inbox", filename);
   if (!existsSync(inboxPath)) return NextResponse.json({ error: "handoff não encontrado" }, { status: 404 });

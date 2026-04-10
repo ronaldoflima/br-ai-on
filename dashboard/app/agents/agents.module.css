@@ -1,0 +1,40 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.desktopLayout {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.mainPanel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.searchInput {
+  width: 100%;
+  font-size: 11px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .desktopLayout {
+    flex-direction: column;
+  }
+}

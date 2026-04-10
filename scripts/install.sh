@@ -3,6 +3,7 @@ set -e
 
 REPO_URL="git@github.com:ronaldoflima/br-ai-on.git"
 REPO_DIR="${REPO_DIR:-$HOME/br-ai-on}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DASHBOARD_DIR="$REPO_DIR/dashboard"
 LOG_DIR="$REPO_DIR/logs"
 LOG_FILE="$LOG_DIR/deploy-prod.log"
@@ -79,6 +80,32 @@ check_deps() {
 
 check_deps
 
+setup_commands() {
+  local commands_dir="$REPO_DIR/commands/braion"
+  local target_dir="$HOME/.claude/commands/braion"
+
+  if [ ! -d "$commands_dir" ]; then
+    echo "WARN: $commands_dir não encontrado — pulando setup de commands"
+    return
+  fi
+
+  mkdir -p "$HOME/.claude/commands"
+
+  if [ -L "$target_dir" ]; then
+    rm "$target_dir"
+  elif [ -d "$target_dir" ]; then
+    rm -rf "$target_dir"
+  fi
+
+  ln -sf "$commands_dir" "$target_dir"
+  echo "Commands linkados: $target_dir -> $commands_dir"
+
+  if [ -d "$REPO_DIR/.claude/commands/braion" ]; then
+    rm -rf "$REPO_DIR/.claude/commands/braion"
+    echo "Symlinks antigos removidos de .claude/commands/braion"
+  fi
+}
+
 log() {
   mkdir -p "$LOG_DIR"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -135,8 +162,10 @@ else
   [ -d "$REPO_DIR" ] && rm -rf "$REPO_DIR"
   echo "Clonando repositório em $REPO_DIR..."
   git clone "$REPO_URL" "$REPO_DIR"
-  git -C "$REPO_DIR" checkout main
+  git -C "$REPO_DIR" checkout "$DEPLOY_BRANCH"
   log "Repositório clonado"
+
+  setup_commands
 
   if [ ! -f "$REPO_DIR/.env" ]; then
     cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
@@ -158,17 +187,17 @@ fi
 
 # — Auto-deploy: verifica mudanças
 cd "$REPO_DIR"
-git fetch origin main --quiet
+git fetch origin "$DEPLOY_BRANCH" --quiet
 
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/main)
+REMOTE=$(git rev-parse "origin/$DEPLOY_BRANCH")
 
 if [ "$LOCAL" = "$REMOTE" ]; then
   log "Sem mudanças."
   exit 0
 fi
 
-log "Nova versão detectada: $LOCAL -> $REMOTE"
+log "Nova versão detectada ($DEPLOY_BRANCH): $LOCAL -> $REMOTE"
 
 HAS_STASH=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -177,10 +206,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   log "Mudanças locais salvas em stash"
 fi
 
-if ! git rebase origin/main 2>/dev/null; then
+if ! git rebase "origin/$DEPLOY_BRANCH" 2>/dev/null; then
   git rebase --abort 2>/dev/null || true
-  log "WARN: rebase falhou, usando reset para origin/main"
-  git reset --hard origin/main
+  log "WARN: rebase falhou, usando reset para origin/$DEPLOY_BRANCH"
+  git reset --hard "origin/$DEPLOY_BRANCH"
 fi
 
 if [ "$HAS_STASH" = true ]; then
@@ -192,6 +221,8 @@ if [ "$HAS_STASH" = true ]; then
 fi
 
 log "Atualização concluída"
+
+setup_commands
 
 cd "$DASHBOARD_DIR"
 node --env-file=../.env ./node_modules/.bin/next build --turbopack 2>&1 | tee -a "$LOG_FILE"

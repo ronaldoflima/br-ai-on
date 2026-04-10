@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Handoff } from "../lib/types";
 import { useAgentListFull } from "../lib/useAgentList";
+import { FilterSection, FilterSidebar } from "../components/FilterSection";
+import type { FilterOption } from "../components/FilterSection";
 import styles from "./handoffs.module.css";
 
 interface ArtifactFile {
@@ -68,7 +70,7 @@ function ArtifactViewer({ agent, id, file, onClose }: {
               {copied ? "Copiado!" : "Copiar"}
             </button>
             <button className="badge badge-info pointer" onClick={download}>Baixar</button>
-            <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+            <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
           </div>
         </div>
         <div className="modal-body">
@@ -158,7 +160,7 @@ function ArtifactsSection({ agent, handoffId }: { agent: string; handoffId: stri
                 <button className="badge badge-info pointer" onClick={() => setViewing(f)} title="Visualizar">
                   Ver
                 </button>
-                <button className="badge badge-muted pointer" onClick={() => copyFile(f)} title="Copiar conteúdo">
+                <button className="badge badge-muted pointer" onClick={() => copyFile(f)} title="Copiar conteudo">
                   Copiar
                 </button>
                 <button className="badge badge-muted pointer" onClick={() => downloadFile(f)} title="Baixar arquivo">
@@ -200,10 +202,10 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-      <div className="card" style={{ width: 480, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Novo Handoff</span>
-          <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+          <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
         </div>
 
         <div className="flex-row" style={{ gap: 8 }}>
@@ -226,7 +228,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
         </div>
 
         {[
-          { label: "Descrição", value: description, set: setDescription, required: true },
+          { label: "Descricao", value: description, set: setDescription, required: true },
           { label: "Contexto", value: context, set: setContext },
           { label: "Esperado", value: expected, set: setExpected },
         ].map(({ label, value, set, required }) => (
@@ -285,10 +287,10 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-      <div className="card" style={{ width: 480, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className={`card ${styles.modalContent}`}>
         <div className="flex-between">
           <span className="font-semibold">Editar Handoff <span className="text-muted-sm">{handoff.id}</span></span>
-          <button className="badge badge-muted pointer" onClick={onClose}>✕</button>
+          <button className="badge badge-muted pointer" onClick={onClose}>&#10005;</button>
         </div>
 
         <div>
@@ -302,7 +304,7 @@ function EditHandoffModal({ handoff, isArchived, onClose, onSaved }: {
         </div>
 
         {[
-          { label: "Descrição", value: description, set: setDescription, required: true },
+          { label: "Descricao", value: description, set: setDescription, required: true },
           { label: "Contexto", value: context, set: setContext },
           { label: "Esperado", value: expected, set: setExpected },
         ].map(({ label, value, set, required }) => (
@@ -341,8 +343,9 @@ function toggleSet(set: Set<string>, val: string): Set<string> {
 export default function HandoffsPage() {
   const agents = useAgentListFull(false);
   const [inbox, setInbox] = useState<Handoff[]>([]);
+  const [inProgress, setInProgress] = useState<Handoff[]>([]);
   const [archive, setArchive] = useState<Handoff[]>([]);
-  const [tab, setTab] = useState<"inbox" | "archive">("inbox");
+  const [tab, setTab] = useState<"inbox" | "in_progress" | "archive">("inbox");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -354,13 +357,14 @@ export default function HandoffsPage() {
   const [filterTo, setFilterTo] = useState<Set<string>>(new Set());
   const [filterDomain, setFilterDomain] = useState<Set<string>>(new Set());
   const [filterSchedule, setFilterSchedule] = useState<Set<string>>(new Set());
+  const [filterLayer, setFilterLayer] = useState<Set<string>>(new Set());
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   function load() {
     setLoading(true);
     fetch("/api/handoffs?agent=all")
       .then((r) => r.json())
-      .then((data) => { setInbox(data.inbox || []); setArchive(data.archive || []); })
+      .then((data) => { setInbox(data.inbox || []); setInProgress(data.in_progress || []); setArchive(data.archive || []); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
@@ -379,17 +383,23 @@ export default function HandoffsPage() {
     load();
   }
 
-  const allHandoffs = [...inbox, ...archive];
-  const uniqueFrom = useMemo(() => [...new Set(allHandoffs.map((h) => h.from))].sort(), [inbox, archive]);
-  const uniqueTo = useMemo(() => [...new Set(allHandoffs.map((h) => h.to))].sort(), [inbox, archive]);
-  const uniqueDomains = useMemo(() => {
-    const domains = agents.map((a) => a.domain).filter(Boolean);
-    return [...new Set(domains)].sort();
-  }, [agents]);
+  const allHandoffs = [...inbox, ...inProgress, ...archive];
+
+  const fromOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => { counts[h.from] = (counts[h.from] || 0) + 1; });
+    return Object.entries(counts).map(([name, count]) => ({ value: name, label: name, count }));
+  }, [inbox, inProgress, archive]);
+
+  const toOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => { counts[h.to] = (counts[h.to] || 0) + 1; });
+    return Object.entries(counts).map(([name, count]) => ({ value: name, label: name, count }));
+  }, [inbox, inProgress, archive]);
 
   const agentDomainMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    agents.forEach((a) => { if (a.domain) map[a.name] = a.domain; });
+    const map: Record<string, string[]> = {};
+    agents.forEach((a) => { if (a.domain.length > 0) map[a.name] = a.domain; });
     return map;
   }, [agents]);
 
@@ -398,6 +408,55 @@ export default function HandoffsPage() {
     agents.forEach((a) => { map[a.name] = a.schedule_mode; });
     return map;
   }, [agents]);
+
+  const agentLayerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    agents.forEach((a) => { if (a.layer) map[a.name] = a.layer; });
+    return map;
+  }, [agents]);
+
+  const layerOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fl = agentLayerMap[h.from];
+      const tl = agentLayerMap[h.to];
+      if (fl) counts[fl] = (counts[fl] || 0) + 1;
+      if (tl && tl !== fl) counts[tl] = (counts[tl] || 0) + 1;
+    });
+    return Object.entries(counts).map(([l, count]) => ({ value: l, label: l, count }));
+  }, [inbox, archive, agentLayerMap]);
+
+  const domainOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fd = agentDomainMap[h.from];
+      const td = agentDomainMap[h.to];
+      const tags = new Set([...(fd || []), ...(td || [])]);
+      tags.forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; });
+    });
+    return Object.entries(counts).map(([d, count]) => ({ value: d, label: d, count }));
+  }, [inbox, archive, agentDomainMap]);
+
+  const scheduleLabels: Record<string, string> = {
+    alive: "Alive",
+    "handoff-only": "Handoff-only",
+    disabled: "Disabled",
+  };
+
+  const scheduleOptions: FilterOption[] = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allHandoffs.forEach((h) => {
+      const fm = agentScheduleMap[h.from];
+      const tm = agentScheduleMap[h.to];
+      if (fm) counts[fm] = (counts[fm] || 0) + 1;
+      if (tm && tm !== fm) counts[tm] = (counts[tm] || 0) + 1;
+    });
+    return ["alive", "handoff-only", "disabled"].map((mode) => ({
+      value: mode,
+      label: scheduleLabels[mode],
+      count: counts[mode] || 0,
+    }));
+  }, [inbox, archive, agentScheduleMap]);
 
   const filterItems = useCallback((items: Handoff[]) => {
     let result = items;
@@ -420,9 +479,9 @@ export default function HandoffsPage() {
     }
     if (filterDomain.size > 0) {
       result = result.filter((h) => {
-        const fromDomain = agentDomainMap[h.from];
-        const toDomain = agentDomainMap[h.to];
-        return (fromDomain && filterDomain.has(fromDomain)) || (toDomain && filterDomain.has(toDomain));
+        const fromTags = agentDomainMap[h.from] || [];
+        const toTags = agentDomainMap[h.to] || [];
+        return fromTags.some((t) => filterDomain.has(t)) || toTags.some((t) => filterDomain.has(t));
       });
     }
     if (filterSchedule.size > 0) {
@@ -430,6 +489,13 @@ export default function HandoffsPage() {
         const fromMode = agentScheduleMap[h.from];
         const toMode = agentScheduleMap[h.to];
         return (fromMode && filterSchedule.has(fromMode)) || (toMode && filterSchedule.has(toMode));
+      });
+    }
+    if (filterLayer.size > 0) {
+      result = result.filter((h) => {
+        const fromLayer = agentLayerMap[h.from];
+        const toLayer = agentLayerMap[h.to];
+        return (fromLayer && filterLayer.has(fromLayer)) || (toLayer && filterLayer.has(toLayer));
       });
     }
 
@@ -440,13 +506,14 @@ export default function HandoffsPage() {
     });
 
     return result;
-  }, [search, filterFrom, filterTo, filterDomain, filterSchedule, sortOrder, agentDomainMap, agentScheduleMap]);
+  }, [search, filterFrom, filterTo, filterDomain, filterSchedule, filterLayer, sortOrder, agentDomainMap, agentScheduleMap, agentLayerMap]);
 
   const filteredInbox = useMemo(() => filterItems(inbox), [inbox, filterItems]);
+  const filteredInProgress = useMemo(() => filterItems(inProgress), [inProgress, filterItems]);
   const filteredArchive = useMemo(() => filterItems(archive), [archive, filterItems]);
-  const items = tab === "inbox" ? filteredInbox : filteredArchive;
+  const items = tab === "inbox" ? filteredInbox : tab === "in_progress" ? filteredInProgress : filteredArchive;
 
-  const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0;
+  const hasFilters = search || filterFrom.size > 0 || filterTo.size > 0 || filterDomain.size > 0 || filterSchedule.size > 0 || filterLayer.size > 0;
 
   function clearFilters() {
     setSearch("");
@@ -454,6 +521,7 @@ export default function HandoffsPage() {
     setFilterTo(new Set());
     setFilterDomain(new Set());
     setFilterSchedule(new Set());
+    setFilterLayer(new Set());
   }
 
   const expectsBadge: Record<string, string> = {
@@ -462,16 +530,10 @@ export default function HandoffsPage() {
     review: "badge-warning",
   };
 
-  const scheduleLabels: Record<string, string> = {
-    alive: "Alive",
-    "handoff-only": "Handoff-only",
-    disabled: "Disabled",
-  };
-
   return (
     <div className={styles.wrapper}>
       {showNew && <NewHandoffModal agents={agents} onClose={() => setShowNew(false)} onCreated={load} />}
-      {editing && <EditHandoffModal handoff={editing} isArchived={tab === "archive"} onClose={() => setEditing(null)} onSaved={load} />}
+      {editing && <EditHandoffModal handoff={editing} isArchived={tab !== "inbox"} onClose={() => setEditing(null)} onSaved={load} />}
 
       <div className="page-header">
         <h1 className="page-title">Handoffs</h1>
@@ -479,7 +541,7 @@ export default function HandoffsPage() {
       </div>
 
       <div className={styles.desktopLayout}>
-        <div className={styles.filterSidebar}>
+        <FilterSidebar mobileLabel="Filtros">
           <input
             className={styles.sidebarSearch}
             placeholder="Buscar..."
@@ -487,87 +549,78 @@ export default function HandoffsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          {uniqueFrom.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>From</div>
-              {uniqueFrom.map((name) => (
-                <label key={`from-${name}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterFrom.has(name)}
-                    onChange={() => setFilterFrom(toggleSet(filterFrom, name))}
-                  />
-                  {name}
-                </label>
-              ))}
-            </>
+          {fromOptions.length > 0 && (
+            <FilterSection
+              title="From"
+              options={fromOptions}
+              selected={filterFrom}
+              onToggle={(v) => setFilterFrom(toggleSet(filterFrom, v))}
+            />
           )}
 
-          {uniqueTo.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>To</div>
-              {uniqueTo.map((name) => (
-                <label key={`to-${name}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterTo.has(name)}
-                    onChange={() => setFilterTo(toggleSet(filterTo, name))}
-                  />
-                  {name}
-                </label>
-              ))}
-            </>
+          {toOptions.length > 0 && (
+            <FilterSection
+              title="To"
+              options={toOptions}
+              selected={filterTo}
+              onToggle={(v) => setFilterTo(toggleSet(filterTo, v))}
+            />
           )}
 
-          {uniqueDomains.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>Domínio</div>
-              {uniqueDomains.map((d) => (
-                <label key={`dom-${d}`} className={styles.checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={filterDomain.has(d)}
-                    onChange={() => setFilterDomain(toggleSet(filterDomain, d))}
-                  />
-                  {d}
-                </label>
-              ))}
-            </>
+          {domainOptions.length > 0 && (
+            <FilterSection
+              title="Dominio"
+              options={domainOptions}
+              selected={filterDomain}
+              onToggle={(v) => setFilterDomain(toggleSet(filterDomain, v))}
+              defaultOpen={false}
+            />
           )}
 
-          <div className={styles.sectionLabel}>Schedule Mode</div>
-          {["alive", "handoff-only", "disabled"].map((mode) => (
-            <label key={`sched-${mode}`} className={styles.checkItem}>
-              <input
-                type="checkbox"
-                checked={filterSchedule.has(mode)}
-                onChange={() => setFilterSchedule(toggleSet(filterSchedule, mode))}
-              />
-              {scheduleLabels[mode]}
-            </label>
-          ))}
+          <FilterSection
+            title="Schedule Mode"
+            options={scheduleOptions}
+            selected={filterSchedule}
+            onToggle={(v) => setFilterSchedule(toggleSet(filterSchedule, v))}
+            defaultOpen={false}
+          />
 
-          <div className={styles.sectionLabel}>Ordenação</div>
-          <select
-            className={styles.sortSelect}
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-          >
-            <option value="newest">Mais recente</option>
-            <option value="oldest">Mais antigo</option>
-          </select>
+          {layerOptions.length > 0 && (
+            <FilterSection
+              title="Layer"
+              options={layerOptions}
+              selected={filterLayer}
+              onToggle={(v) => setFilterLayer(toggleSet(filterLayer, v))}
+              defaultOpen={false}
+            />
+          )}
+
+          <div className={styles.sortRow}>
+            <span className={styles.sortLabel}>Ordenar</span>
+            <select
+              className={styles.sortSelect}
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+            >
+              <option value="newest">Mais recente</option>
+              <option value="oldest">Mais antigo</option>
+            </select>
+          </div>
 
           {hasFilters && (
             <button className={styles.clearBtn} onClick={clearFilters}>
               Limpar filtros
             </button>
           )}
-        </div>
+        </FilterSidebar>
 
         <div className={styles.mainPanel}>
           <div className="tabs">
             <button className={`tab ${tab === "inbox" ? "active" : ""}`} onClick={() => setTab("inbox")}>
               Inbox ({filteredInbox.length})
+            </button>
+            <button className={`tab ${tab === "in_progress" ? "active" : ""}`} onClick={() => setTab("in_progress")}>
+              In Progress ({filteredInProgress.length})
             </button>
             <button className={`tab ${tab === "archive" ? "active" : ""}`} onClick={() => setTab("archive")}>
               Archive ({filteredArchive.length})
@@ -578,21 +631,22 @@ export default function HandoffsPage() {
             <div className="empty-state">Carregando...</div>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              {hasFilters ? "Nenhum handoff corresponde aos filtros" : `Nenhum handoff ${tab === "inbox" ? "pendente" : "arquivado"}`}
+              {hasFilters ? "Nenhum handoff corresponde aos filtros" : `Nenhum handoff ${tab === "inbox" ? "pendente" : tab === "in_progress" ? "em processamento" : "arquivado"}`}
             </div>
           ) : (
             <div className="flex-col">
               {items.map((ho) => (
                 <div key={`${ho.id}_${ho.from}_${ho.to}`} className="card pointer" onClick={() => setExpanded(expanded === ho.id ? null : ho.id)}>
-                  <div className="flex-between mb-sm">
-                    <div className="flex-row">
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardInfo}>
                       <span className="mono-md font-semibold">{ho.id}</span>
                       <span className="text-muted-sm">
-                        {ho.from} → {ho.to}
+                        {ho.from} &rarr; {ho.to}
                       </span>
                       {ho.reply_to && <span className="text-muted-xs">(reply to {ho.reply_to})</span>}
+                      {ho.thread_id && <span className="text-xs text-purple-400">thread: {ho.thread_id}</span>}
                     </div>
-                    <div className="flex-row">
+                    <div className={styles.cardActions}>
                       <span className={`badge ${expectsBadge[ho.expects] || "badge-muted"}`}>{ho.expects}</span>
                       <span className={`badge ${ho.status === "pending" ? "badge-warning" : "badge-muted"}`}>{ho.status}</span>
                       <button

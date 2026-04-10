@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +15,7 @@ export async function GET(req: NextRequest) {
 
   if (!session) {
     try {
-      const out = execSync("tmux list-sessions -F '#{session_name}\t#{session_windows}\t#{session_attached}\t#{session_activity}' 2>/dev/null", {
-        encoding: "utf-8",
-        timeout: 5000,
-      }).trim();
+      const out = (await spawnTmux(["list-sessions", "-F", "#{session_name}\t#{session_windows}\t#{session_attached}\t#{session_activity}"])).trim();
 
       if (!out) return NextResponse.json([]);
 
@@ -39,10 +36,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const output = execSync(`tmux capture-pane -pet '${session}' -S -100 2>/dev/null`, {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
+    const output = await spawnTmux(["capture-pane", "-pet", session, "-S", "-100"]);
     return NextResponse.json({ session, output });
   } catch {
     return NextResponse.json({ error: "Sessão não encontrada" }, { status: 404 });
@@ -87,6 +81,20 @@ function buildTmuxKey(key: string, ctrl: boolean, meta: boolean, shift: boolean)
   return { named: parts.join("-") };
 }
 
+function spawnTmux(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tmux", args);
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (d) => { out += d; });
+    proc.stderr.on("data", (d) => { err += d; });
+    proc.on("close", (code) => {
+      if (code !== 0 && !out) reject(new Error(err));
+      else resolve(out);
+    });
+  });
+}
+
 function spawnTmuxSendKey(session: string, keyObj: { literal?: string; named?: string }) {
   return new Promise<void>((resolve) => {
     const args = ["send-keys", "-t", session];
@@ -123,9 +131,7 @@ export async function POST(req: NextRequest) {
   if (typeof text !== "string") return NextResponse.json({ error: "Texto inválido" }, { status: 400 });
 
   try {
-    execSync(`tmux send-keys -t '${session}' ${JSON.stringify(text)} Enter 2>/dev/null`, {
-      timeout: 5000,
-    });
+    await spawnTmux(["send-keys", "-t", session, text, "Enter"]);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Falha ao enviar teclas" }, { status: 500 });
@@ -138,7 +144,7 @@ export async function PUT(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "Nome de sessão inválido" }, { status: 400 });
 
   try {
-    execSync(`tmux new-session -d -s '${name}' 2>/dev/null`, { timeout: 5000 });
+    await spawnTmux(["new-session", "-d", "-s", name]);
     return NextResponse.json({ ok: true, name });
   } catch {
     return NextResponse.json({ error: "Falha ao criar sessão" }, { status: 500 });
@@ -150,7 +156,7 @@ export async function DELETE(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Sessão inválida" }, { status: 400 });
 
   try {
-    execSync(`tmux kill-session -t '${session}' 2>/dev/null`, { timeout: 5000 });
+    await spawnTmux(["kill-session", "-t", session]);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Falha ao matar sessão" }, { status: 500 });

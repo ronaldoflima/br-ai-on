@@ -1,0 +1,16 @@
+{
+  "obsidian_rules": [
+    {
+      "id": "4r3ql0j2uenmnkk6qcr",
+      "created_at": "2026-04-04T16:40:33.771Z",
+      "name": "All Agents Inbox",
+      "enabled": true,
+      "folder": "/home/mcpgw/pessoal/obsidian-files/geral/agents/inbox",
+      "filter": {
+        "type": "none",
+        "value": ""
+      },
+      "agent": "inbox-router"
+    }
+  ]
+}

@@ -2,6 +2,9 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import AnsiToHtml from "ansi-to-html";
 import styles from "./terminal.module.css";
+import { FileExplorer } from "../components/FileExplorer";
+import { FileViewer } from "../components/FileViewer";
+import { IconChevronLeft, IconChevronRight } from "../components/icons";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -38,6 +41,12 @@ const SPECIAL_KEYS: { label: string; key: string; ctrl?: boolean; title: string 
 
 const ansiConverter = new AnsiToHtml({ fg: "#d4d4d4", bg: "#0d0d0d", escapeXML: true, stream: false });
 
+const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+
+function linkifyHtml(html: string): string {
+  return html.replace(URL_RE, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="terminal-link">${url}</a>`);
+}
+
 export default function TerminalPage() {
   const isMobile = useIsMobile();
   const [sessions, setSessions] = useState<TmuxSession[]>([]);
@@ -52,20 +61,33 @@ export default function TerminalPage() {
   const [creating, setCreating] = useState(false);
   const [showNewSession, setShowNewSession] = useState(false);
   const [directMode, setDirectMode] = useState(true);
+  const [directFocused, setDirectFocused] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [sessionsCollapsed, setSessionsCollapsed] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null);
+  const [mobileView, setMobileView] = useState<"terminal" | "files" | "fileviewer">("terminal");
+  const [filePanelWidth, setFilePanelWidth] = useState(400);
+  const resizingRef = useRef(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
+  const [textSelectable, setTextSelectable] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("termTextSelectable") === "true";
+    return false;
+  });
   const [captureLines, setCaptureLines] = useState(() => {
     if (typeof window !== "undefined") return parseInt(localStorage.getItem("termCaptureLines") ?? "100") || 100;
     return 100;
   });
   const [refreshRate, setRefreshRate] = useState(() => {
-    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "300") || 300;
-    return 300;
+    if (typeof window !== "undefined") return parseInt(localStorage.getItem("termRefreshRate") ?? "100") || 100;
+    return 100;
   });
   const outputRef = useRef<HTMLPreElement>(null);
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileDirectInputRef = useRef<HTMLInputElement>(null);
-  const [mobileDirectValue, setMobileDirectValue] = useState("");
+  const composingRef = useRef(false);
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -154,15 +176,11 @@ export default function TerminalPage() {
 
   useEffect(() => {
     if (directMode && selected) {
-      if (isMobile) {
-        mobileDirectInputRef.current?.focus();
-      } else {
-        outputRef.current?.focus();
-      }
+      mobileDirectInputRef.current?.focus();
     } else if (!directMode && selected) {
       inputRef.current?.focus();
     }
-  }, [directMode, selected, isMobile]);
+  }, [directMode, selected]);
 
   const sendKey = useCallback(async (key: string, ctrl = false, meta = false, shift = false) => {
     if (!selected) return;
@@ -197,48 +215,47 @@ export default function TerminalPage() {
     setSending(false);
   };
 
-  const handleDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+  const handleDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (composingRef.current) return;
+    const val = e.target.value;
+    e.target.value = "";
+    for (const char of val) {
+      sendKey(char);
+    }
+  }, [sendKey]);
 
-    // AltGr no Windows/Linux = Ctrl+Alt juntos — não é modificador real
+  const handleCompositionStart = useCallback(() => {
+    composingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
+    composingRef.current = false;
+    const data = e.data;
+    (e.target as HTMLInputElement).value = "";
+    if (data) {
+      for (const char of [...data]) {
+        sendKey(char);
+      }
+    }
+  }, [sendKey]);
+
+  const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
     const isAltGr = e.ctrlKey && e.altKey;
-    // No Mac, Command (metaKey) é mapeado para Ctrl no contexto de terminal
     const ctrl = isAltGr ? false : (e.ctrlKey || e.metaKey);
     const meta = isAltGr ? false : e.altKey;
     const shift = e.shiftKey;
-
-    // Teclas que têm comportamento padrão indesejado no browser
-    const shouldPrevent = ctrl || meta || [
+    const specialKeys = [
       "Tab", "Enter", "Backspace", "Escape", "Delete",
       "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
       "Home", "End", "PageUp", "PageDown",
       "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
-    ].includes(e.key);
-
-    if (shouldPrevent) e.preventDefault();
-
-    sendKey(e.key, ctrl, meta, shift);
-  };
-
-  const handleMobileDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newText = e.target.value;
-    for (const char of newText) {
-      sendKey(char);
-    }
-    setMobileDirectValue("");
-  }, [sendKey]);
-
-  const handleMobileDirectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
-    const specialKeys = [
-      "Backspace", "Delete", "Enter", "Escape", "Tab",
-      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-      "Home", "End", "PageUp", "PageDown",
     ];
-    if (specialKeys.includes(e.key)) {
+    if (ctrl || meta || specialKeys.includes(e.key)) {
       e.preventDefault();
-      sendKey(e.key);
+      sendKey(e.key, ctrl, meta, shift);
     }
+    // Caracteres regulares (incluindo acentuados compostos) são tratados pelo onChange
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -248,6 +265,7 @@ export default function TerminalPage() {
       else sendKey("Enter");
     }
   };
+
 
   const createSession = async () => {
     const name = newSessionName.trim();
@@ -295,6 +313,41 @@ export default function TerminalPage() {
     setKilling(false);
   };
 
+  const handleFileSelect = (path: string, name: string) => {
+    setSelectedFile({ path, name });
+    if (isMobile) setMobileView("fileviewer");
+  };
+
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    resizeStartXRef.current = clientX;
+    resizeStartWidthRef.current = filePanelWidth;
+  };
+
+  useEffect(() => {
+    const onMove = (clientX: number) => {
+      if (!resizingRef.current) return;
+      const delta = resizeStartXRef.current - clientX;
+      const newWidth = Math.max(250, Math.min(800, resizeStartWidthRef.current + delta));
+      setFilePanelWidth(newWidth);
+    };
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onMove(e.touches[0].clientX); };
+    const onEnd = () => { resizingRef.current = false; };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onEnd);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onEnd);
+    };
+  }, []);
+
   const CURSOR_MARKER = "\uE000";
   const CURSOR_PLACEHOLDER = "__TERMINAL_CURSOR__";
   const CURSOR_HTML = '<span class="terminal-cursor"></span>';
@@ -307,75 +360,70 @@ export default function TerminalPage() {
       // the raw-character check that was here before.
       const safe = output.replace(CURSOR_MARKER, CURSOR_PLACEHOLDER);
       const html = ansiConverter.toHtml(safe);
-      return html.includes(CURSOR_PLACEHOLDER)
+      const withCursor = html.includes(CURSOR_PLACEHOLDER)
         ? html.replace(CURSOR_PLACEHOLDER, CURSOR_HTML)
         : html;
+      return linkifyHtml(withCursor);
     } catch { return null; }
   }, [output]);
 
   const showSessionList = !isMobile || !selected;
   const showTerminal = !isMobile || !!selected;
 
-  const sessionsList = (
-    <div className={isMobile ? styles.sessionsListMobile : styles.sessionsList}>
+  const sessionsList = isMobile ? (
+    <div className={styles.sessionsListMobile}>
       <div className={styles.sessionsHeader}>
-        <span className={styles.sessionsLabel}>
-          Sessões tmux
-        </span>
-        <button
-          className={`btn ${styles.newSessionBtn}`}
-          onClick={() => setShowNewSession((v) => !v)}
-          title="Nova sessão"
-        >
-          +
-        </button>
+        <span className={styles.sessionsLabel}>Sessões tmux</span>
+        <button className={`btn ${styles.newSessionBtn}`} onClick={() => setShowNewSession((v) => !v)} title="Nova sessão">+</button>
       </div>
       {showNewSession && (
         <div className={styles.newSessionRow}>
-          <input
-            className={`input ${styles.newSessionInput}`}
-            placeholder="Nome da sessão"
-            value={newSessionName}
-            onChange={(e) => setNewSessionName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }}
-            autoFocus
-          />
-          <button
-            className={`btn btn-primary ${styles.newSessionSubmit}`}
-            onClick={createSession}
-            disabled={creating || !newSessionName.trim()}
-          >
-            {creating ? "..." : "Criar"}
-          </button>
+          <input className={`input ${styles.newSessionInput}`} placeholder="Nome da sessão" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }} autoFocus />
+          <button className={`btn btn-primary ${styles.newSessionSubmit}`} onClick={createSession} disabled={creating || !newSessionName.trim()}>{creating ? "..." : "Criar"}</button>
+        </div>
+      )}
+      {loadingSessions ? <div className={styles.statusMsg}>Carregando...</div> : sessions.length === 0 ? <div className={styles.statusMsg}>Nenhuma sessão ativa</div> : (
+        <div className={styles.mobileChips}>
+          {sessions.map((s) => <button key={s.name} onClick={() => setSelected(s.name)} className={selected === s.name ? styles.mobileChipActive : styles.mobileChip}>{s.name}</button>)}
+        </div>
+      )}
+    </div>
+  ) : sessionsCollapsed ? (
+    <div className={styles.sessionsListCollapsed}>
+      <button className={styles.sessionsCollapseToggle} onClick={() => setSessionsCollapsed(false)} title="Expandir sessões"><IconChevronRight /></button>
+      {sessions.map((s) => (
+        <button
+          key={s.name}
+          onClick={() => setSelected(s.name)}
+          className={selected === s.name ? styles.sessionDotActive : styles.sessionDot}
+          title={s.name}
+        />
+      ))}
+    </div>
+  ) : (
+    <div className={styles.sessionsList}>
+      <div className={styles.sessionsHeader}>
+        <span className={styles.sessionsLabel}>Sessões tmux</span>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setShowNewSession((v) => !v)} title="Nova sessão">+</button>
+          <button className={`btn ${styles.newSessionBtn}`} onClick={() => setSessionsCollapsed(true)} title="Recolher"><IconChevronLeft /></button>
+        </div>
+      </div>
+      {showNewSession && (
+        <div className={styles.newSessionRow}>
+          <input className={`input ${styles.newSessionInput}`} placeholder="Nome da sessão" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createSession(); if (e.key === "Escape") setShowNewSession(false); }} autoFocus />
+          <button className={`btn btn-primary ${styles.newSessionSubmit}`} onClick={createSession} disabled={creating || !newSessionName.trim()}>{creating ? "..." : "Criar"}</button>
         </div>
       )}
       {loadingSessions ? (
         <div className={styles.statusMsg}>Carregando...</div>
       ) : sessions.length === 0 ? (
         <div className={styles.statusMsg}>Nenhuma sessão ativa</div>
-      ) : isMobile ? (
-        <div className={styles.mobileChips}>
-          {sessions.map((s) => (
-            <button
-              key={s.name}
-              onClick={() => setSelected(s.name)}
-              className={selected === s.name ? styles.mobileChipActive : styles.mobileChip}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
       ) : (
         sessions.map((s) => (
-          <button
-            key={s.name}
-            onClick={() => setSelected(s.name)}
-            className={selected === s.name ? styles.sessionItemActive : styles.sessionItem}
-          >
+          <button key={s.name} onClick={() => setSelected(s.name)} className={selected === s.name ? styles.sessionItemActive : styles.sessionItem}>
             <span className={selected === s.name ? styles.sessionNameActive : styles.sessionName}>{s.name}</span>
-            <span className={styles.sessionMeta}>
-              {s.windows}w {s.attached ? "· anexada" : ""}
-            </span>
+            <span className={styles.sessionMeta}>{s.windows}w {s.attached ? "· anexada" : ""}</span>
           </button>
         ))
       )}
@@ -399,6 +447,22 @@ export default function TerminalPage() {
           >
             ⚙
           </button>
+          {selected && (
+            <button
+              className={`btn ${styles.toolbarBtn} ${showFiles ? styles.toolbarBtnActive : ""}`}
+              onClick={() => {
+                if (isMobile) {
+                  setMobileView("files");
+                } else {
+                  setShowFiles((v) => !v);
+                  setSelectedFile(null);
+                }
+              }}
+              title="Explorador de arquivos"
+            >
+              📁
+            </button>
+          )}
           <button
             className={`btn ${styles.toolbarBtn}`}
             onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
@@ -448,25 +512,42 @@ export default function TerminalPage() {
               className={`input ${styles.configInputWide}`}
             />
           </label>
+          <label className={styles.configLabel}>
+            <input
+              type="checkbox"
+              checked={textSelectable}
+              onChange={(e) => {
+                setTextSelectable(e.target.checked);
+                localStorage.setItem("termTextSelectable", String(e.target.checked));
+              }}
+            />
+            Selecionar texto
+          </label>
         </div>
       )}
 
-      <pre
-        ref={outputRef}
-        tabIndex={directMode ? 0 : -1}
-        onKeyDown={directMode ? handleDirectKeyDown : undefined}
-        onMouseDown={isMobile ? (e) => e.preventDefault() : undefined}
-        onTouchEnd={isMobile ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
-        onClick={() => directMode && outputRef.current?.focus()}
-        className={isMobile ? styles.outputMobile : styles.output}
-        style={{
-          outline: "1px solid " + (directMode ? "var(--primary)" : "transparent"),
-          cursor: directMode ? "text" : "default",
-        }}
-        dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
+      <div
+        className={styles.outputScroll}
+        style={{ outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent") }}
+        onClick={textSelectable ? undefined : () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
+        onTouchEnd={isMobile && !textSelectable ? () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus() : undefined}
       >
-        {outputHtml ? undefined : "Aguardando saída..."}
-      </pre>
+        <pre
+          ref={outputRef}
+          tabIndex={-1}
+          onMouseDown={isMobile && !textSelectable ? (e) => e.preventDefault() : undefined}
+          className={isMobile ? styles.outputMobile : styles.output}
+          style={{
+            cursor: textSelectable ? "text" : (directMode ? "text" : "default"),
+            userSelect: textSelectable ? "text" : "none",
+            WebkitUserSelect: textSelectable ? "text" : "none",
+            WebkitTouchCallout: textSelectable ? "default" : "none",
+          }}
+          dangerouslySetInnerHTML={outputHtml ? { __html: outputHtml } : undefined}
+        >
+          {outputHtml ? undefined : "Aguardando saída..."}
+        </pre>
+      </div>
 
       {error && (
         <div className={styles.errorMsg}>{error}</div>
@@ -490,22 +571,24 @@ export default function TerminalPage() {
       <div className={styles.inputRow}>
         {directMode ? (
           <>
-            {isMobile && (
-              <input
-                ref={mobileDirectInputRef}
-                value={mobileDirectValue}
-                onChange={handleMobileDirectChange}
-                onKeyDown={handleMobileDirectKeyDown}
-                autoCorrect="off"
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-                style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
-              />
-            )}
+            <input
+              key="direct-input"
+              ref={mobileDirectInputRef}
+              onChange={handleDirectChange}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+              onKeyDown={handleDirectInputKeyDown}
+              onFocus={() => setDirectFocused(true)}
+              onBlur={() => setDirectFocused(false)}
+              autoCorrect="off"
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+              style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+            />
             <div
               className={styles.directModeLabel}
-              onClick={() => isMobile && mobileDirectInputRef.current?.focus()}
+              onClick={() => mobileDirectInputRef.current?.focus()}
             >
               {isMobile ? "modo direto • toque aqui ou no terminal para digitar" : "modo direto • cada tecla é enviada imediatamente"}
             </div>
@@ -519,6 +602,7 @@ export default function TerminalPage() {
         ) : (
           <>
             <input
+              key="text-input"
               ref={inputRef}
               className={`input ${styles.textInput}`}
               placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
@@ -559,13 +643,54 @@ export default function TerminalPage() {
 
       {isMobile ? (
         <div className={styles.mobileLayout}>
-          {showSessionList && sessionsList}
-          {showTerminal && terminalPanel}
+          {mobileView === "terminal" && showSessionList && sessionsList}
+          {mobileView === "terminal" && showTerminal && terminalPanel}
+          {mobileView === "files" && selected && (
+            <div className={styles.mobilePanelFull}>
+              <div className={styles.mobilePanelHeader}>
+                <button className={`btn ${styles.backBtn}`} onClick={() => setMobileView("terminal")}>
+                  ← Terminal
+                </button>
+                <span className={styles.mobilePanelTitle}>Arquivos</span>
+              </div>
+              <FileExplorer session={selected} onFileSelect={handleFileSelect} />
+            </div>
+          )}
+          {mobileView === "fileviewer" && selected && selectedFile && (
+            <div className={styles.mobilePanelFull}>
+              <FileViewer
+                session={selected}
+                filePath={selectedFile.path}
+                fileName={selectedFile.name}
+                onClose={() => { setSelectedFile(null); setMobileView("files"); }}
+              />
+            </div>
+          )}
         </div>
       ) : (
-        <div className={styles.desktopLayout}>
+        <div className={showFiles && selected ? styles.desktopLayoutWithFiles : styles.desktopLayout}>
           {sessionsList}
           {terminalPanel}
+          {showFiles && selected && (
+            <>
+              <div className={styles.resizeHandle} onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} />
+              <div className={styles.filePanel} style={{ width: filePanelWidth }}>
+              {selectedFile ? (
+                <FileViewer
+                  session={selected}
+                  filePath={selectedFile.path}
+                  fileName={selectedFile.name}
+                  onClose={() => setSelectedFile(null)}
+                />
+              ) : (
+                <FileExplorer
+                  session={selected}
+                  onFileSelect={handleFileSelect}
+                />
+              )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

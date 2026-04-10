@@ -100,11 +100,48 @@ export function IconGithub() {
   );
 }
 
+export function IconIntegrations() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <circle cx="7" cy="7" r="3" />
+      <circle cx="17" cy="17" r="3" />
+      <path d="M7 10v1a4 4 0 004 4h1" />
+      <line x1="10" y1="7" x2="21" y2="7" />
+      <line x1="3" y1="17" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+export function IconCron() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12,6 12,12 16,14" />
+    </svg>
+  );
+}
+
 export function IconClose() {
   return (
     <svg {...s} viewBox="0 0 24 24">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+export function IconChevronLeft() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="15,18 9,12 15,6" />
+    </svg>
+  );
+}
+
+export function IconChevronRight() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <polyline points="9,18 15,12 9,6" />
     </svg>
   );
 }

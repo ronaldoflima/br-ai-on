@@ -45,8 +45,9 @@ a:hover { color: var(--accent-hover); }
   width: calc(100% - var(--sidebar-width));
 }
 
-.app-main-full {
+.app-main.app-main-full {
   max-width: none;
+  padding: 0;
 }
 
 .page-header {
@@ -392,4 +393,11 @@ a:hover { color: var(--accent-hover); }
 @keyframes terminal-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+.terminal-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
