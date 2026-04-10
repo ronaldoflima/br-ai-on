@@ -5,11 +5,17 @@ import { join } from "path";
 const PROJECT_ROOT = join(process.cwd(), "..");
 const METRICS_DIR = join(PROJECT_ROOT, "metrics");
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const today = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
+
+  if (!DATE_RE.test(today)) {
+    return NextResponse.json({ error: "date inválido" }, { status: 400 });
+  }
   const metricsFile = join(METRICS_DIR, `${today}.jsonl`);
 
   if (!existsSync(metricsFile)) {

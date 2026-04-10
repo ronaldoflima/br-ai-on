@@ -5,6 +5,9 @@ import { join } from "path";
 const PROJECT_ROOT = join(process.cwd(), "..");
 const LOGS_DIR = join(PROJECT_ROOT, "logs");
 
+const AGENT_RE = /^[a-z][a-z0-9_-]*$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -12,6 +15,13 @@ export async function GET(request: NextRequest) {
   const date =
     request.nextUrl.searchParams.get("date") ||
     new Date().toISOString().slice(0, 10);
+
+  if (agent && !AGENT_RE.test(agent)) {
+    return NextResponse.json({ error: "agent inválido" }, { status: 400 });
+  }
+  if (!DATE_RE.test(date)) {
+    return NextResponse.json({ error: "date inválido" }, { status: 400 });
+  }
   const limit = parseInt(
     request.nextUrl.searchParams.get("limit") || "100",
     10,
