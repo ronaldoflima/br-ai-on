@@ -84,6 +84,8 @@ export default function TerminalPage() {
     return 100;
   });
   const outputRef = useRef<HTMLPreElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileDirectInputRef = useRef<HTMLInputElement>(null);
@@ -116,10 +118,19 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    const el = outputRef.current;
+    const el = scrollContainerRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (atBottom) el.scrollTop = el.scrollHeight;
+    const onScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [selected]);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (isAtBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [output]);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -163,6 +174,7 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
+    isAtBottomRef.current = true;
     if (!selected) {
       setOutput("");
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
@@ -525,6 +537,7 @@ export default function TerminalPage() {
       )}
 
       <div
+        ref={scrollContainerRef}
         className={styles.outputScroll}
         style={{ outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent") }}
         onClick={textSelectable ? undefined : () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
