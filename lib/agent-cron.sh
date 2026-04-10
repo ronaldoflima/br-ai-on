@@ -36,7 +36,7 @@ log() {
 
 # ── 0a. Telegram bridge ───────────────────────────────────────────────────────
 if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
-  if ! pgrep -f "telegram-bridge.sh" > /dev/null 2>&1; then
+  if ! pgrep -u "$(whoami)" -f "telegram-bridge.sh" > /dev/null 2>&1; then
     log "Telegram bridge não está rodando — iniciando em background"
     nohup bash "$BRAION/scripts/telegram-bridge.sh" >> "$BRAION/logs/telegram-bridge.log" 2>&1 &
     disown $!
