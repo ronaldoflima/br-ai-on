@@ -5,18 +5,7 @@ import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
 import { parseDomainTags } from "../../../lib/domain";
 import { readMergedConfig } from "../../../lib/config-merge";
-
-const PROJECT_ROOT = join(process.cwd(), "..");
-const AGENTS_DIR = join(PROJECT_ROOT, "agents");
-const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
-
-function resolveAgentDir(name: string): { dir: string; isDefault: boolean } | null {
-  const userDir = join(AGENTS_DIR, name);
-  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return { dir: userDir, isDefault: false };
-  const defaultDir = join(DEFAULTS_DIR, name);
-  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return { dir: defaultDir, isDefault: true };
-  return null;
-}
+import { resolveAgentDir } from "../../../lib/agents";
 
 export const dynamic = "force-dynamic";
 
