@@ -617,7 +617,7 @@ if [ "$due_count" -gt 0 ]; then
     fi
 
     if [ "$run_alone" = "true" ]; then
-      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^braion-' || true)
+      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^braion-' | grep -v '^braion-telegram$' | wc -l)
       if [ "${active_sessions:-0}" -gt 0 ]; then
         log "SKIP $session — run_alone mas há $active_sessions sessão(ões) ativa(s)"
         continue
