@@ -244,6 +244,12 @@ export default function AgentDetailPage() {
 
       {tab === "config" && (
         <div>
+          {agent.isDefault && (
+            <div className="text-muted-sm mb-md" style={{ padding: "8px 12px", background: "var(--bg-tertiary)", borderRadius: 6, fontSize: 13 }}>
+              Agente default — alterações são salvas em <code>config.override.yaml</code> (gitignored).
+              {agent.hasOverride && <span className="badge badge-warning" style={{ marginLeft: 8 }}>override ativo</span>}
+            </div>
+          )}
           <textarea
             className="textarea"
             value={configText}

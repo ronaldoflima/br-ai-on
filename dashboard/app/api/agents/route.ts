@@ -10,6 +10,7 @@ import {
 import { join } from "path";
 import { parse, stringify } from "yaml";
 import { parseDomainTags } from "../../lib/domain";
+import { readMergedConfig } from "../../lib/config-merge";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -34,13 +35,18 @@ export async function GET() {
   const combined = [...userAgents, ...defaultAgents.filter((a) => !seen.has(a.name))];
 
   const agents = combined.map(({ name, baseDir }) => {
-      const configPath = join(baseDir, name, "config.yaml");
-      const soulPath = join(baseDir, name, "IDENTITY.md");
+      const agentDir = join(baseDir, name);
+      const soulPath = join(agentDir, "IDENTITY.md");
+      const isDefault = baseDir === DEFAULTS_DIR;
       let config: Record<string, unknown> = {};
-      try {
-        config = parse(readFileSync(configPath, "utf-8"));
-      } catch {
-        // ignore parse errors
+      if (isDefault) {
+        ({ config } = readMergedConfig(agentDir));
+      } else {
+        try {
+          config = parse(readFileSync(join(agentDir, "config.yaml"), "utf-8"));
+        } catch {
+          // ignore parse errors
+        }
       }
       let soulPreview = "";
       try {

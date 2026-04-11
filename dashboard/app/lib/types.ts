@@ -78,6 +78,8 @@ export interface AgentDetail {
   semantic: string;
   episodic: EpisodicEntry[];
   heartbeat: Record<string, unknown>;
+  isDefault?: boolean;
+  hasOverride?: boolean;
 }
 
 export interface EpisodicEntry {

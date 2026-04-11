@@ -4,16 +4,17 @@ import { join } from "path";
 import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
 import { parseDomainTags } from "../../../lib/domain";
+import { readMergedConfig } from "../../../lib/config-merge";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
 
-function resolveAgentDir(name: string): string | null {
+function resolveAgentDir(name: string): { dir: string; isDefault: boolean } | null {
   const userDir = join(AGENTS_DIR, name);
-  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return userDir;
+  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return { dir: userDir, isDefault: false };
   const defaultDir = join(DEFAULTS_DIR, name);
-  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return defaultDir;
+  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return { dir: defaultDir, isDefault: true };
   return null;
 }
 
@@ -24,21 +25,32 @@ export async function GET(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
+  const { dir: agentDir, isDefault } = resolved;
+
   let config: Record<string, unknown> = {};
   let configRaw = "";
-  const configPath = join(agentDir, "config.yaml");
-  if (existsSync(configPath)) {
-    configRaw = readFileSync(configPath, "utf-8");
-    try {
-      config = parse(configRaw);
-    } catch {
-      // ignore parse errors
+  let hasOverride = false;
+
+  if (isDefault) {
+    const merged = readMergedConfig(agentDir);
+    config = merged.config;
+    configRaw = merged.configRaw;
+    hasOverride = merged.hasOverride;
+  } else {
+    const configPath = join(agentDir, "config.yaml");
+    if (existsSync(configPath)) {
+      configRaw = readFileSync(configPath, "utf-8");
+      try {
+        config = parse(configRaw);
+      } catch {
+        // ignore parse errors
+      }
     }
   }
 
@@ -104,6 +116,8 @@ export async function GET(
     semantic,
     episodic,
     heartbeat,
+    isDefault,
+    hasOverride,
   });
 }
 
@@ -112,11 +126,13 @@ export async function PUT(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
+
+  const { dir: agentDir, isDefault } = resolved;
 
   try {
     const body = await request.json();
@@ -126,7 +142,8 @@ export async function PUT(
       if (!result.valid) {
         return NextResponse.json({ error: "Config inválida", errors: result.errors }, { status: 422 });
       }
-      writeFileSync(join(agentDir, "config.yaml"), body.config);
+      const targetFile = isDefault ? "config.override.yaml" : "config.yaml";
+      writeFileSync(join(agentDir, targetFile), body.config);
     }
     if (body.soul !== undefined) {
       writeFileSync(join(agentDir, "IDENTITY.md"), body.soul);
@@ -146,14 +163,14 @@ export async function DELETE(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
   try {
-    rmSync(agentDir, { recursive: true, force: true });
+    rmSync(resolved.dir, { recursive: true, force: true });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(
