@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { stringify } from "yaml";
 import { useRouter } from "next/navigation";
 import {
@@ -43,7 +43,7 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
     fallback_model: (raw.fallback_model as ModelId) ?? "claude-haiku-4-5",
     permission_mode:
       (runtime.claude?.permission_mode as PermissionMode | "") ?? "",
-    working_directory: String(raw.working_directory ?? ""),
+    working_directory: String(raw.working_directory ?? raw.directory ?? ""),
     command: String(raw.command ?? ""),
     capabilities: Array.isArray(raw.capabilities)
       ? raw.capabilities.map(String)
@@ -117,6 +117,9 @@ export function ConfigWizard({ name, initialConfig }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const [mobileTab, setMobileTab] = useState<"form" | "yaml">("form");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => { clearTimeout(timerRef.current); }, []);
 
   const yamlString = useMemo(() => stringify(formToConfig(form)), [form]);
 
@@ -137,7 +140,7 @@ export function ConfigWizard({ name, initialConfig }: Props) {
       const data = await res.json();
       if (res.ok) {
         setSaveStatus("Salvo!");
-        setTimeout(() => router.push(`/agents/${name}`), 800);
+        timerRef.current = setTimeout(() => router.push(`/agents/${name}`), 800);
       } else {
         setErrors(data.errors ?? []);
         setSaveStatus("Erro ao salvar");
@@ -146,7 +149,7 @@ export function ConfigWizard({ name, initialConfig }: Props) {
       setSaveStatus("Erro de conexão");
     } finally {
       setSaving(false);
-      setTimeout(() => setSaveStatus(""), 3000);
+      timerRef.current = setTimeout(() => setSaveStatus(""), 3000);
     }
   }
 
