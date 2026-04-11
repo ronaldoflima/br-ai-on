@@ -24,6 +24,10 @@ export default function AgentDetailPage() {
   const [handoffForm, setHandoffForm] = useState({ expects: "action", description: "", context: "", expected: "" });
   const [handoffSending, setHandoffSending] = useState(false);
   const [handoffStatus, setHandoffStatus] = useState("");
+  const [configHistory, setConfigHistory] = useState<
+    Array<{ timestamp: string; displayLabel: string }>
+  >([]);
+  const [selectedVersion, setSelectedVersion] = useState("");
 
   useEffect(() => {
     fetch(`/api/agents/${name}`)
@@ -35,6 +39,16 @@ export default function AgentDetailPage() {
       })
       .catch(() => router.push("/agents"));
   }, [name, router]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`/api/agents/${name}/config-history`);
+      const data = await res.json();
+      setConfigHistory(data.versions ?? []);
+    } catch {
+      setConfigHistory([]);
+    }
+  };
 
   const fetchTerminal = async () => {
     setTerminalLoading(true);
@@ -179,6 +193,10 @@ export default function AgentDetailPage() {
           <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => {
             setTab(t);
             if (t === "terminal") fetchTerminal();
+            if (t === "config") {
+              fetchHistory();
+              setSelectedVersion("");
+            }
           }}>
             {t === "overview" ? "Overview" : t === "config" ? "Config" : t === "soul" ? "IDENTITY" : t === "memory" ? "Memória" : "Terminal"}
           </button>
@@ -260,6 +278,48 @@ export default function AgentDetailPage() {
               {agent.hasOverride && <span className="badge badge-warning" style={{ marginLeft: 8 }}>override ativo</span>}
             </div>
           )}
+          {configHistory.length > 0 && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <select
+                className="select"
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                style={{ fontSize: 13 }}
+              >
+                <option value="">Versão atual</option>
+                {configHistory.map((v) => (
+                  <option key={v.timestamp} value={v.timestamp}>
+                    {v.displayLabel}
+                  </option>
+                ))}
+              </select>
+              {selectedVersion && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const label = configHistory.find(
+                      (v) => v.timestamp === selectedVersion,
+                    )?.displayLabel;
+                    if (!confirm(`Restaurar versão de ${label}?`)) return;
+                    const res = await fetch(
+                      `/api/agents/${name}/config-history/restore`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ timestamp: selectedVersion }),
+                      },
+                    );
+                    if (res.ok) {
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Restaurar esta versão
+                </button>
+              )}
+            </div>
+          )}
           <textarea
             className="textarea"
             value={configText}
@@ -283,6 +343,9 @@ export default function AgentDetailPage() {
             <button className="btn" onClick={() => validateConfig(configText)} disabled={saving}>
               Validar
             </button>
+            <a href={`/agents/${name}/config-wizard`} className="btn btn-primary">
+              Wizard
+            </a>
             {agent.isDefault && agent.hasOverride && (
               <button className="btn" style={{ color: "var(--warning)", borderColor: "var(--warning)" }} onClick={restoreDefault} disabled={saving}>
                 Restaurar Default
