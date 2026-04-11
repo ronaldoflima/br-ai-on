@@ -15,7 +15,7 @@ capabilities:
   - Monitorar deadlines e progresso
 
 schedule:
-  mode: alive
+  mode: disabled
   interval: "2h"
   priority: 1
   run_alone: false
