@@ -30,10 +30,11 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
   > "$BRAION/agents/$AGENT/state/heartbeat.json"
 ```
 
-## 2. Carregar Identidade
+## 2. Carregar Estado
 
-Leia em ordem:
-- `<BR.AI.ON base>/agents/<nome>/IDENTITY.md` — sua identidade e regras
+Sua identidade (IDENTITY.md), perfil do usuário (USER.md) e regras operacionais (AGENTS.md) já foram carregados via system prompt.
+
+Leia o estado operacional:
 - `<BR.AI.ON base>/agents/<nome>/state/current_objective.md`
 - `<BR.AI.ON base>/agents/<nome>/state/decisions.md`
 - `<BR.AI.ON base>/agents/<nome>/memory/semantic.md`
