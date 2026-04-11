@@ -53,16 +53,32 @@ export async function GET() {
       }
       const sched = (config.schedule || {}) as Record<string, unknown>;
       const mode = sched.mode || (sched.enabled === true ? "alive" : "handoff-only");
+      const domainTags = parseDomainTags(config.domain);
+      const _searchText = [
+        name,
+        config.display_name || name,
+        ...domainTags,
+        config.model || "",
+        (config.layer as string) || "",
+        config.version || "",
+        sched.mode || "",
+        sched.interval || "",
+        ...(Array.isArray(config.capabilities) ? config.capabilities : []),
+        config.working_directory || "",
+        config.fallback_model || "",
+      ].filter(Boolean).join(" ").toLowerCase();
+
       return {
         name,
         display_name: config.display_name || name,
-        domain: parseDomainTags(config.domain),
+        domain: domainTags,
         version: config.version || "0.0.0",
         schedule_interval: sched.interval || "",
         schedule_mode: mode,
         model: config.model || "claude-sonnet-4-6",
         soul_preview: soulPreview,
         layer: (config.layer as string) || "",
+        _searchText,
       };
     });
 
