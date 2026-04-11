@@ -588,25 +588,28 @@ export function IntegracoesSection({ form, update }: SectionProps) {
 // ─── Colaboradores ────────────────────────────────────────────────────────────
 
 export function ColaboradoresSection({ form, update }: SectionProps) {
+  const [colItems, setColItems] = useState(() =>
+    form.collaborators.map((col) => ({
+      id: col.id ?? crypto.randomUUID(),
+      agent: col.agent,
+    })),
+  );
+
+  function syncUp(items: { id: string; agent: string }[]) {
+    setColItems(items);
+    update({ collaborators: items });
+  }
+
   function addCollaborator() {
-    update({
-      collaborators: [
-        ...form.collaborators,
-        { id: crypto.randomUUID(), agent: "" },
-      ],
-    });
+    syncUp([...colItems, { id: crypto.randomUUID(), agent: "" }]);
   }
 
-  function removeCollaborator(i: number) {
-    update({
-      collaborators: form.collaborators.filter((_, idx) => idx !== i),
-    });
+  function removeCollaborator(id: string) {
+    syncUp(colItems.filter((c) => c.id !== id));
   }
 
-  function updateCollaboratorAgent(i: number, value: string) {
-    const cols = [...form.collaborators] as WizardCollaborator[];
-    cols[i] = { ...cols[i], agent: value };
-    update({ collaborators: cols });
+  function updateAgent(id: string, value: string) {
+    syncUp(colItems.map((c) => (c.id === id ? { ...c, agent: value } : c)));
   }
 
   return (
@@ -618,18 +621,18 @@ export function ColaboradoresSection({ form, update }: SectionProps) {
         handoff e contexto compartilhado.
       </div>
 
-      {form.collaborators.map((col, i) => (
-        <div key={col.id ?? i} className={styles.listItem}>
+      {colItems.map((col) => (
+        <div key={col.id} className={styles.listItem}>
           <input
             className="input"
             value={col.agent}
-            onChange={(e) => updateCollaboratorAgent(i, e.target.value)}
+            onChange={(e) => updateAgent(col.id, e.target.value)}
             placeholder="slug-do-agente"
           />
           <button
             type="button"
             className="btn"
-            onClick={() => removeCollaborator(i)}
+            onClick={() => removeCollaborator(col.id)}
           >
             ×
           </button>
