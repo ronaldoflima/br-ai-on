@@ -6,6 +6,7 @@ import { validateAgentConfig } from "../../../lib/config-validator";
 import { parseDomainTags } from "../../../lib/domain";
 import { readMergedConfig } from "../../../lib/config-merge";
 import { resolveAgentDir } from "../../../lib/agents";
+import { saveConfigToHistory } from "../../../lib/config-history";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +133,11 @@ export async function PUT(
         return NextResponse.json({ error: "Config inválida", errors: result.errors }, { status: 422 });
       }
       const targetFile = isDefault ? "config.override.yaml" : "config.yaml";
-      writeFileSync(join(agentDir, targetFile), body.config);
+      const targetPath = join(agentDir, targetFile);
+      if (existsSync(targetPath)) {
+        saveConfigToHistory(agentDir, readFileSync(targetPath, "utf-8"));
+      }
+      writeFileSync(targetPath, body.config);
     }
     if (body.soul !== undefined) {
       writeFileSync(join(agentDir, "IDENTITY.md"), body.soul);
