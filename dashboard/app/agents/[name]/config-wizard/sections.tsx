@@ -289,18 +289,30 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
 // ─── Capabilities ─────────────────────────────────────────────────────────────
 
 export function CapabilitiesSection({ form, update }: SectionProps) {
+  const [capItems, setCapItems] = useState(() =>
+    form.capabilities.map((value) => ({ id: crypto.randomUUID(), value })),
+  );
   const [newCap, setNewCap] = useState("");
+
+  function syncUp(items: { id: string; value: string }[]) {
+    setCapItems(items);
+    update({ capabilities: items.map((c) => c.value) });
+  }
+
+  function updateCap(id: string, value: string) {
+    syncUp(capItems.map((c) => (c.id === id ? { ...c, value } : c)));
+  }
+
+  function removeCap(id: string) {
+    syncUp(capItems.filter((c) => c.id !== id));
+  }
 
   function addCap() {
     const v = newCap.trim();
     if (v) {
-      update({ capabilities: [...form.capabilities, v] });
+      syncUp([...capItems, { id: crypto.randomUUID(), value: v }]);
       setNewCap("");
     }
-  }
-
-  function removeCap(i: number) {
-    update({ capabilities: form.capabilities.filter((_, idx) => idx !== i) });
   }
 
   return (
@@ -311,18 +323,14 @@ export function CapabilitiesSection({ form, update }: SectionProps) {
         agentes que precisam delegar tarefas.
       </div>
 
-      {form.capabilities.map((cap, i) => (
-        <div key={cap} className={styles.listItem}>
+      {capItems.map((cap) => (
+        <div key={cap.id} className={styles.listItem}>
           <input
             className="input"
-            value={cap}
-            onChange={(e) => {
-              const caps = [...form.capabilities];
-              caps[i] = e.target.value;
-              update({ capabilities: caps });
-            }}
+            value={cap.value}
+            onChange={(e) => updateCap(cap.id, e.target.value)}
           />
-          <button type="button" className="btn" onClick={() => removeCap(i)}>
+          <button type="button" className="btn" onClick={() => removeCap(cap.id)}>
             ×
           </button>
         </div>
