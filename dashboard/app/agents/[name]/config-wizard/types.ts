@@ -69,7 +69,6 @@ export interface WizardFormState {
   schedule_interval: string;
   schedule_priority: number;
   schedule_run_alone: boolean;
-  max_tokens_per_session: number;
   max_sessions_per_day: number;
   integrations: Record<string, WizardIntegration>;
   collaborators: WizardCollaborator[];

@@ -52,7 +52,6 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
     schedule_interval: String(schedule.interval ?? ""),
     schedule_priority: Number(schedule.priority ?? 0),
     schedule_run_alone: Boolean(schedule.run_alone ?? false),
-    max_tokens_per_session: Number(budget.max_tokens_per_session ?? 50000),
     max_sessions_per_day: Number(budget.max_sessions_per_day ?? 5),
     integrations:
       (raw.integrations as Record<string, WizardIntegration>) ?? {},
@@ -81,7 +80,6 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
       ...(form.schedule_run_alone ? { run_alone: true } : {}),
     },
     budget: {
-      max_tokens_per_session: form.max_tokens_per_session,
       max_sessions_per_day: form.max_sessions_per_day,
     },
   };

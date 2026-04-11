@@ -441,39 +441,14 @@ export function ScheduleSection({ form, update, errors }: SectionProps) {
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
 export function BudgetSection({ form, update, errors }: SectionProps) {
-  const hasError = [
-    "budget.max_tokens_per_session",
-    "budget.max_sessions_per_day",
-  ].some((f) => fieldError(errors, f));
-
-  const maxTokensError = fieldError(errors, "budget.max_tokens_per_session");
+  const hasError = Boolean(fieldError(errors, "budget.max_sessions_per_day"));
   const maxSessionsError = fieldError(errors, "budget.max_sessions_per_day");
 
   return (
     <AccordionSection title="Budget" hasError={hasError}>
       <div className={styles.legend}>
-        Limites de custo por agente.{" "}
-        <strong>max_tokens_per_session</strong>: máximo de tokens por sessão
-        (mín. 1000) — afeta diretamente o custo e quanto o agente consegue
-        processar por vez. <strong>max_sessions_per_day</strong>: quantas sessões
-        o agente pode iniciar por dia (mín. 1).
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">max_tokens_per_session</label>
-        <input
-          className="input"
-          type="number"
-          min={1000}
-          step={1000}
-          value={form.max_tokens_per_session}
-          onChange={(e) =>
-            update({ max_tokens_per_session: Number(e.target.value) })
-          }
-        />
-        {maxTokensError && (
-          <span className={styles.fieldError}>{maxTokensError}</span>
-        )}
+        Limites por agente. <strong>max_sessions_per_day</strong>: quantas
+        sessões o agente pode iniciar por dia (mín. 1).
       </div>
 
       <div className="form-group">

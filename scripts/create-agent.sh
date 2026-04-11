@@ -162,7 +162,6 @@ $interval_line
   run_alone: false
 
 budget:
-  max_tokens_per_session: 50000
   max_sessions_per_day: 10
 
 integrations:

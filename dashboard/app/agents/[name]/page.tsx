@@ -238,14 +238,6 @@ export default function AgentDetailPage() {
           {/* Budget */}
           <div className="card">
             <h3 className="subsection-title">Budget</h3>
-            {budget.max_tokens_per_session ? (
-              <ProgressBar
-                label="Tokens/Sessão"
-                value={0}
-                max={budget.max_tokens_per_session}
-                showPercentage={false}
-              />
-            ) : null}
             {budget.max_sessions_per_day ? (
               <div className="text-muted-xs mt-sm">
                 Máx sessões/dia: {budget.max_sessions_per_day}
