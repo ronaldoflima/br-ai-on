@@ -1,17 +1,33 @@
-export type PermissionMode =
-  | "acceptEdits"
-  | "auto"
-  | "bypassPermissions"
-  | "plan"
-  | "dontAsk";
+export const VALID_MODELS = [
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5",
+  "claude-haiku-4-5-20251001",
+] as const;
+export type ModelId = (typeof VALID_MODELS)[number];
 
-export type ScheduleMode = "alive" | "handoff-only" | "disabled";
+export const VALID_PERMISSION_MODES = [
+  "acceptEdits",
+  "auto",
+  "bypassPermissions",
+  "plan",
+  "dontAsk",
+] as const;
+export type PermissionMode = (typeof VALID_PERMISSION_MODES)[number];
 
-export type ModelId =
-  | "claude-opus-4-6"
-  | "claude-sonnet-4-6"
-  | "claude-haiku-4-5"
-  | "claude-haiku-4-5-20251001";
+export const VALID_SCHEDULE_MODES = [
+  "alive",
+  "handoff-only",
+  "disabled",
+] as const;
+export type ScheduleMode = (typeof VALID_SCHEDULE_MODES)[number];
+
+export const VALID_LAYERS = [
+  "infrastructure",
+  "business",
+  "service",
+  "auxiliary",
+] as const;
 
 export interface WizardIntegration {
   enabled: boolean;
@@ -19,7 +35,8 @@ export interface WizardIntegration {
 }
 
 export interface WizardCollaborator {
-  name: string;
+  agent: string;
+  reason?: string;
   [key: string]: unknown;
 }
 
@@ -49,31 +66,3 @@ export interface FieldError {
   field: string;
   message: string;
 }
-
-export const VALID_MODELS: ModelId[] = [
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5",
-  "claude-haiku-4-5-20251001",
-];
-
-export const VALID_PERMISSION_MODES: PermissionMode[] = [
-  "acceptEdits",
-  "auto",
-  "bypassPermissions",
-  "plan",
-  "dontAsk",
-];
-
-export const VALID_LAYERS = [
-  "infrastructure",
-  "business",
-  "service",
-  "auxiliary",
-];
-
-export const VALID_SCHEDULE_MODES: ScheduleMode[] = [
-  "alive",
-  "handoff-only",
-  "disabled",
-];

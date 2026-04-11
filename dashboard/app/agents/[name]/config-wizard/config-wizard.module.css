@@ -80,7 +80,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .accordionHeader:hover {
@@ -126,7 +126,7 @@
   border-radius: 6px;
   min-height: 38px;
   cursor: text;
-  background: var(--bg);
+  background: var(--bg-input);
 }
 
 .tag {
@@ -155,7 +155,7 @@
   outline: none;
   background: transparent;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-primary);
   min-width: 80px;
   flex: 1;
 }
@@ -226,7 +226,7 @@
   white-space: pre;
   overflow: auto;
   max-height: 65vh;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
