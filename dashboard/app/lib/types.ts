@@ -66,6 +66,7 @@ export interface AgentSummary {
   schedule_mode: "alive" | "handoff-only" | "disabled";
   model: string;
   layer: string;
+  _searchText?: string;
 }
 
 export interface AgentDetail {

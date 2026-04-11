@@ -2,7 +2,7 @@
 
 Dashboard web para monitoramento e interação com o ecossistema BR.AI.ON. Construído com Next.js 15, roda na porta 3040.
 
-**Versão atual**: 1.3.1
+**Versão atual**: 1.3.2
 
 ## Stack
 
@@ -33,6 +33,7 @@ Página principal de interação com sessões tmux dos agentes. Features:
 - **File Explorer**: painel de navegação de arquivos com drag-to-resize, integrado via endpoint `/api/terminal/files`
 - **File Viewer**: visualizador de arquivos selecionados no explorer
 - **Input de texto**: envio de comandos para sessões tmux ativas
+- **Auto-scroll**: scroll automático para novas linhas de output (PR #26)
 - **Text selection toggle**: botão para habilitar/desabilitar seleção de texto no terminal
 - **URL linkification**: URLs no output do terminal são convertidas em links clicáveis
 - **Mobile**: scroll touch otimizado, layout responsivo
@@ -41,7 +42,7 @@ Página principal de interação com sessões tmux dos agentes. Features:
 
 | Componente | Função |
 |------------|--------|
-| `Sidebar` | Navegação principal com modo colapsado (icon-only) persistido em localStorage |
+| `Sidebar` | Navegação principal com Integrações na nav principal e modo colapsado persistido em localStorage |
 | `FileExplorer` | Árvore de diretórios com navegação hierárquica |
 | `FileViewer` | Visualizador de conteúdo de arquivos |
 | `FilterSection` | Filtros reutilizáveis com collapse, contadores e ordenação por relevância |
@@ -58,7 +59,7 @@ Página principal de interação com sessões tmux dos agentes. Features:
 | `/api/terminal` | POST | Interação direta com terminal |
 | `/api/terminal/files` | GET | Navegação de filesystem com proteção path traversal |
 | `/api/terminal/stream` | GET | Stream SSE de output do terminal |
-| `/api/handoffs` | GET | Lista handoffs |
+| `/api/handoffs` | GET | Lista handoffs (filename regex aceita dígitos no sufixo, ex: superset-kpi-v3) |
 | `/api/logs` | GET | Lista logs |
 | `/api/metrics` | GET | Métricas agregadas |
 | `/api/artifacts` | GET | Artefatos de agentes |
@@ -89,8 +90,9 @@ O dashboard valida configs de agentes em tempo real. Campos validados:
 
 ```bash
 npm run dev    # Dev server na porta 3040
-npm run build  # Build de produção
-npm run start  # Produção na porta 3040
+npm run build    # Build de produção
+npm run start    # Produção na porta 3040
+npm run release  # Bump de versão via release.sh
 ```
 
 Variáveis de ambiente carregadas de `../.env` (raiz do projeto).
