@@ -19,14 +19,18 @@ export default async function ConfigWizardPage({ params }: Props) {
   const basePath = join(agentDir, "config.yaml");
 
   const activePath = isDefault && existsSync(overridePath) ? overridePath : basePath;
-  if (!existsSync(activePath)) notFound();
-
-  const configRaw = readFileSync(activePath, "utf-8");
+  let configRaw: string;
+  try {
+    configRaw = readFileSync(activePath, "utf-8");
+  } catch {
+    notFound();
+    return;
+  }
   let config: Record<string, unknown> = { name };
   try {
     config = (parse(configRaw) ?? { name }) as Record<string, unknown>;
   } catch {
-    // Invalid YAML — still open wizard with name pre-filled
+    // Invalid YAML — wizard opens with name pre-filled
   }
 
   const displayName = String(config.display_name ?? name);

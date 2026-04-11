@@ -8,6 +8,9 @@ export const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
 export function resolveAgentDir(
   name: string,
 ): { dir: string; isDefault: boolean } | null {
+  if (!name || /[/\\]/.test(name) || name.includes("..")) {
+    return null;
+  }
   const userDir = join(AGENTS_DIR, name);
   if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) {
     return { dir: userDir, isDefault: false };
