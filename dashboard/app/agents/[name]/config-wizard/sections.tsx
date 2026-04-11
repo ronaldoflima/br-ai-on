@@ -10,6 +10,9 @@ import {
   FieldError,
   WizardIntegration,
   WizardCollaborator,
+  isModelId,
+  isPermissionMode,
+  isScheduleMode,
 } from "./types";
 import styles from "./config-wizard.module.css";
 
@@ -32,6 +35,10 @@ export function IdentidadeSection({ form, update, errors }: SectionProps) {
   const hasError = ["display_name", "domain", "version"].some((f) =>
     fieldError(errors, f),
   );
+
+  const displayNameError = fieldError(errors, "display_name");
+  const domainError = fieldError(errors, "domain");
+  const versionError = fieldError(errors, "version");
 
   function addDomain(val: string) {
     const v = val.trim();
@@ -85,10 +92,8 @@ export function IdentidadeSection({ form, update, errors }: SectionProps) {
           onChange={(e) => update({ display_name: e.target.value })}
           placeholder="Nome legível do agente"
         />
-        {fieldError(errors, "display_name") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "display_name")}
-          </span>
+        {displayNameError && (
+          <span className={styles.fieldError}>{displayNameError}</span>
         )}
       </div>
 
@@ -126,10 +131,8 @@ export function IdentidadeSection({ form, update, errors }: SectionProps) {
             }
           />
         </div>
-        {fieldError(errors, "domain") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "domain")}
-          </span>
+        {domainError && (
+          <span className={styles.fieldError}>{domainError}</span>
         )}
       </div>
 
@@ -157,10 +160,8 @@ export function IdentidadeSection({ form, update, errors }: SectionProps) {
           onChange={(e) => update({ version: e.target.value })}
           placeholder="1.0.0"
         />
-        {fieldError(errors, "version") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "version")}
-          </span>
+        {versionError && (
+          <span className={styles.fieldError}>{versionError}</span>
         )}
       </div>
     </AccordionSection>
@@ -188,9 +189,9 @@ export function ModeloSection({ form, update, errors }: SectionProps) {
         <select
           className="select"
           value={form.model}
-          onChange={(e) =>
-            update({ model: e.target.value as typeof form.model })
-          }
+          onChange={(e) => {
+            if (isModelId(e.target.value)) update({ model: e.target.value });
+          }}
         >
           {VALID_MODELS.map((m) => (
             <option key={m} value={m}>
@@ -205,9 +206,10 @@ export function ModeloSection({ form, update, errors }: SectionProps) {
         <select
           className="select"
           value={form.fallback_model}
-          onChange={(e) =>
-            update({ fallback_model: e.target.value as typeof form.fallback_model })
-          }
+          onChange={(e) => {
+            if (isModelId(e.target.value))
+              update({ fallback_model: e.target.value });
+          }}
         >
           {VALID_MODELS.map((m) => (
             <option key={m} value={m}>
@@ -224,6 +226,7 @@ export function ModeloSection({ form, update, errors }: SectionProps) {
 
 export function RuntimeSection({ form, update, errors }: SectionProps) {
   const hasError = Boolean(fieldError(errors, "runtime.claude.permission_mode"));
+  const permissionModeError = fieldError(errors, "runtime.claude.permission_mode");
 
   return (
     <AccordionSection title="Runtime" hasError={hasError}>
@@ -242,9 +245,11 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
         <select
           className="select"
           value={form.permission_mode}
-          onChange={(e) =>
-            update({ permission_mode: e.target.value as typeof form.permission_mode })
-          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || isPermissionMode(v))
+              update({ permission_mode: v === "" ? "" : v });
+          }}
         >
           <option value="">— não definido —</option>
           {VALID_PERMISSION_MODES.map((m) => (
@@ -253,10 +258,8 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
             </option>
           ))}
         </select>
-        {fieldError(errors, "runtime.claude.permission_mode") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "runtime.claude.permission_mode")}
-          </span>
+        {permissionModeError && (
+          <span className={styles.fieldError}>{permissionModeError}</span>
         )}
       </div>
 
@@ -309,7 +312,7 @@ export function CapabilitiesSection({ form, update }: SectionProps) {
       </div>
 
       {form.capabilities.map((cap, i) => (
-        <div key={i} className={styles.listItem}>
+        <div key={cap} className={styles.listItem}>
           <input
             className="input"
             value={cap}
@@ -352,6 +355,7 @@ export function ScheduleSection({ form, update, errors }: SectionProps) {
   const hasError = ["schedule.mode", "schedule.interval"].some((f) =>
     fieldError(errors, f),
   );
+  const scheduleIntervalError = fieldError(errors, "schedule.interval");
 
   return (
     <AccordionSection title="Schedule" hasError={hasError}>
@@ -370,9 +374,10 @@ export function ScheduleSection({ form, update, errors }: SectionProps) {
         <select
           className="select"
           value={form.schedule_mode}
-          onChange={(e) =>
-            update({ schedule_mode: e.target.value as typeof form.schedule_mode })
-          }
+          onChange={(e) => {
+            if (isScheduleMode(e.target.value))
+              update({ schedule_mode: e.target.value });
+          }}
         >
           {VALID_SCHEDULE_MODES.map((m) => (
             <option key={m} value={m}>
@@ -391,10 +396,8 @@ export function ScheduleSection({ form, update, errors }: SectionProps) {
             onChange={(e) => update({ schedule_interval: e.target.value })}
             placeholder="15m"
           />
-          {fieldError(errors, "schedule.interval") && (
-            <span className={styles.fieldError}>
-              {fieldError(errors, "schedule.interval")}
-            </span>
+          {scheduleIntervalError && (
+            <span className={styles.fieldError}>{scheduleIntervalError}</span>
           )}
         </div>
       )}
@@ -435,6 +438,9 @@ export function BudgetSection({ form, update, errors }: SectionProps) {
     "budget.max_sessions_per_day",
   ].some((f) => fieldError(errors, f));
 
+  const maxTokensError = fieldError(errors, "budget.max_tokens_per_session");
+  const maxSessionsError = fieldError(errors, "budget.max_sessions_per_day");
+
   return (
     <AccordionSection title="Budget" hasError={hasError}>
       <div className={styles.legend}>
@@ -457,10 +463,8 @@ export function BudgetSection({ form, update, errors }: SectionProps) {
             update({ max_tokens_per_session: Number(e.target.value) })
           }
         />
-        {fieldError(errors, "budget.max_tokens_per_session") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "budget.max_tokens_per_session")}
-          </span>
+        {maxTokensError && (
+          <span className={styles.fieldError}>{maxTokensError}</span>
         )}
       </div>
 
@@ -475,10 +479,8 @@ export function BudgetSection({ form, update, errors }: SectionProps) {
             update({ max_sessions_per_day: Number(e.target.value) })
           }
         />
-        {fieldError(errors, "budget.max_sessions_per_day") && (
-          <span className={styles.fieldError}>
-            {fieldError(errors, "budget.max_sessions_per_day")}
-          </span>
+        {maxSessionsError && (
+          <span className={styles.fieldError}>{maxSessionsError}</span>
         )}
       </div>
     </AccordionSection>
@@ -580,7 +582,10 @@ export function IntegracoesSection({ form, update }: SectionProps) {
 export function ColaboradoresSection({ form, update }: SectionProps) {
   function addCollaborator() {
     update({
-      collaborators: [...form.collaborators, { agent: "" }],
+      collaborators: [
+        ...form.collaborators,
+        { id: crypto.randomUUID(), agent: "" },
+      ],
     });
   }
 
@@ -606,7 +611,7 @@ export function ColaboradoresSection({ form, update }: SectionProps) {
       </div>
 
       {form.collaborators.map((col, i) => (
-        <div key={i} className={styles.listItem}>
+        <div key={col.id ?? i} className={styles.listItem}>
           <input
             className="input"
             value={col.agent}

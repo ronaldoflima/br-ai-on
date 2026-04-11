@@ -35,9 +35,22 @@ export interface WizardIntegration {
 }
 
 export interface WizardCollaborator {
+  id?: string;
   agent: string;
   reason?: string;
   [key: string]: unknown;
+}
+
+export function isModelId(v: string): v is ModelId {
+  return (VALID_MODELS as readonly string[]).includes(v);
+}
+
+export function isPermissionMode(v: string): v is PermissionMode {
+  return (VALID_PERMISSION_MODES as readonly string[]).includes(v);
+}
+
+export function isScheduleMode(v: string): v is ScheduleMode {
+  return (VALID_SCHEDULE_MODES as readonly string[]).includes(v);
 }
 
 export interface WizardFormState {
