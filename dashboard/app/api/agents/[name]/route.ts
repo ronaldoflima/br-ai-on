@@ -4,18 +4,9 @@ import { join } from "path";
 import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
 import { parseDomainTags } from "../../../lib/domain";
-
-const PROJECT_ROOT = join(process.cwd(), "..");
-const AGENTS_DIR = join(PROJECT_ROOT, "agents");
-const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
-
-function resolveAgentDir(name: string): string | null {
-  const userDir = join(AGENTS_DIR, name);
-  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return userDir;
-  const defaultDir = join(DEFAULTS_DIR, name);
-  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return defaultDir;
-  return null;
-}
+import { readMergedConfig } from "../../../lib/config-merge";
+import { resolveAgentDir } from "../../../lib/agents";
+import { saveConfigToHistory } from "../../../lib/config-history";
 
 export const dynamic = "force-dynamic";
 
@@ -24,21 +15,32 @@ export async function GET(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
+  const { dir: agentDir, isDefault } = resolved;
+
   let config: Record<string, unknown> = {};
   let configRaw = "";
-  const configPath = join(agentDir, "config.yaml");
-  if (existsSync(configPath)) {
-    configRaw = readFileSync(configPath, "utf-8");
-    try {
-      config = parse(configRaw);
-    } catch {
-      // ignore parse errors
+  let hasOverride = false;
+
+  if (isDefault) {
+    const merged = readMergedConfig(agentDir);
+    config = merged.config;
+    configRaw = merged.configRaw;
+    hasOverride = merged.hasOverride;
+  } else {
+    const configPath = join(agentDir, "config.yaml");
+    if (existsSync(configPath)) {
+      configRaw = readFileSync(configPath, "utf-8");
+      try {
+        config = parse(configRaw);
+      } catch {
+        // ignore parse errors
+      }
     }
   }
 
@@ -104,6 +106,8 @@ export async function GET(
     semantic,
     episodic,
     heartbeat,
+    isDefault,
+    hasOverride,
   });
 }
 
@@ -112,11 +116,13 @@ export async function PUT(
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
+
+  const { dir: agentDir, isDefault } = resolved;
 
   try {
     const body = await request.json();
@@ -126,7 +132,16 @@ export async function PUT(
       if (!result.valid) {
         return NextResponse.json({ error: "Config inválida", errors: result.errors }, { status: 422 });
       }
-      writeFileSync(join(agentDir, "config.yaml"), body.config);
+      const targetFile = isDefault ? "config.override.yaml" : "config.yaml";
+      const targetPath = join(agentDir, targetFile);
+      if (existsSync(targetPath)) {
+        try {
+          saveConfigToHistory(agentDir, readFileSync(targetPath, "utf-8"));
+        } catch {
+          // history is best-effort — config write proceeds regardless
+        }
+      }
+      writeFileSync(targetPath, body.config, "utf-8");
     }
     if (body.soul !== undefined) {
       writeFileSync(join(agentDir, "IDENTITY.md"), body.soul);
@@ -142,18 +157,29 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
-  const agentDir = resolveAgentDir(name);
+  const resolved = resolveAgentDir(name);
 
-  if (!agentDir) {
+  if (!resolved) {
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const overrideOnly = searchParams.get("override") === "true";
+
   try {
-    rmSync(agentDir, { recursive: true, force: true });
+    if (overrideOnly) {
+      const overridePath = join(resolved.dir, "config.override.yaml");
+      if (!existsSync(overridePath)) {
+        return NextResponse.json({ error: "override not found" }, { status: 404 });
+      }
+      rmSync(overridePath);
+    } else {
+      rmSync(resolved.dir, { recursive: true, force: true });
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

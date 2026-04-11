@@ -10,6 +10,7 @@ dashboard/.next/
 .mcp.json
 agents/*
 !agents/_defaults/
+agents/_defaults/*/config.override.yaml
 !agents/shared/
 agents/**/state/*
 !agents/**/state/.gitkeep

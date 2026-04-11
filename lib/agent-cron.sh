@@ -247,9 +247,9 @@ start_session() {
     tmux send-keys -t "$session" "$cmd" Enter
   fi
 
-  # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 60s
+  # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 120s
   local waited=0
-  while [ $waited -lt 60 ]; do
+  while [ $waited -lt 120 ]; do
     sleep 2
     waited=$((waited + 2))
     if session_is_idle "$session"; then
@@ -259,6 +259,21 @@ start_session() {
   done
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
+
+  # Verifica se Claude recebeu o prompt (sai do estado idle em até 10s)
+  local submit_waited=0
+  while [ $submit_waited -lt 10 ]; do
+    sleep 2
+    submit_waited=$((submit_waited + 2))
+    if ! session_is_idle "$session"; then
+      break
+    fi
+  done
+  # Se ainda idle após 10s, Claude não processou o Enter — tenta novamente
+  if session_is_idle "$session"; then
+    log "RETRY $session — Claude não saiu do idle após envio do prompt, reenviando Enter"
+    tmux send-keys -t "$session" Enter
+  fi
 
   # Watcher em background: invoca /braion:agent-wrapup quando Claude fica idle,
   # aguarda o wrapup terminar e então mata a sessão.

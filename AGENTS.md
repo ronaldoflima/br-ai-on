@@ -136,7 +136,6 @@ schedule:
   run_alone: false           # true = roda sem outros agentes simultâneos
 
 budget:
-  max_tokens_per_session: 50000
   max_sessions_per_day: 10
 
 integrations:
