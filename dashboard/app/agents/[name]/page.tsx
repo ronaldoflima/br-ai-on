@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import type { AgentDetail, EpisodicEntry, ConfigError } from "../../lib/types";
 import { relativeTime } from "../../lib/utils";
 import { renderMarkdown } from "../../lib/markdown";
@@ -24,6 +25,10 @@ export default function AgentDetailPage() {
   const [handoffForm, setHandoffForm] = useState({ expects: "action", description: "", context: "", expected: "" });
   const [handoffSending, setHandoffSending] = useState(false);
   const [handoffStatus, setHandoffStatus] = useState("");
+  const [configHistory, setConfigHistory] = useState<
+    Array<{ timestamp: string; displayLabel: string }>
+  >([]);
+  const [selectedVersion, setSelectedVersion] = useState("");
 
   useEffect(() => {
     fetch(`/api/agents/${name}`)
@@ -35,6 +40,16 @@ export default function AgentDetailPage() {
       })
       .catch(() => router.push("/agents"));
   }, [name, router]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`/api/agents/${name}/config-history`);
+      const data = await res.json();
+      setConfigHistory(data.versions ?? []);
+    } catch {
+      setConfigHistory([]);
+    }
+  };
 
   const fetchTerminal = async () => {
     setTerminalLoading(true);
@@ -125,11 +140,21 @@ export default function AgentDetailPage() {
 
   const restoreDefault = async () => {
     if (!confirm(`Remover o override e restaurar o config padrão de "${name}"?`)) return;
-    const res = await fetch(`/api/agents/${name}?override=true`, { method: "DELETE" });
-    if (res.ok) {
-      const data = await fetch(`/api/agents/${name}`).then((r) => r.json()) as AgentDetail;
-      setAgent(data);
-      setConfigText(data.configRaw);
+    try {
+      const res = await fetch(`/api/agents/${name}?override=true`, { method: "DELETE" });
+      if (res.ok) {
+        const data = await fetch(`/api/agents/${name}`).then((r) => r.json()) as AgentDetail;
+        setAgent(data);
+        setConfigText(data.configRaw);
+        setSaveStatus("Default restaurado!");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } else {
+        setSaveStatus("Erro ao restaurar default");
+        setTimeout(() => setSaveStatus(""), 2000);
+      }
+    } catch {
+      setSaveStatus("Erro de conexão");
+      setTimeout(() => setSaveStatus(""), 2000);
     }
   };
 
@@ -179,6 +204,10 @@ export default function AgentDetailPage() {
           <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => {
             setTab(t);
             if (t === "terminal") fetchTerminal();
+            if (t === "config") {
+              fetchHistory();
+              setSelectedVersion("");
+            }
           }}>
             {t === "overview" ? "Overview" : t === "config" ? "Config" : t === "soul" ? "IDENTITY" : t === "memory" ? "Memória" : "Terminal"}
           </button>
@@ -209,14 +238,6 @@ export default function AgentDetailPage() {
           {/* Budget */}
           <div className="card">
             <h3 className="subsection-title">Budget</h3>
-            {budget.max_tokens_per_session ? (
-              <ProgressBar
-                label="Tokens/Sessão"
-                value={0}
-                max={budget.max_tokens_per_session}
-                showPercentage={false}
-              />
-            ) : null}
             {budget.max_sessions_per_day ? (
               <div className="text-muted-xs mt-sm">
                 Máx sessões/dia: {budget.max_sessions_per_day}
@@ -260,6 +281,48 @@ export default function AgentDetailPage() {
               {agent.hasOverride && <span className="badge badge-warning" style={{ marginLeft: 8 }}>override ativo</span>}
             </div>
           )}
+          {configHistory.length > 0 && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <select
+                className="select"
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                style={{ fontSize: 13 }}
+              >
+                <option value="">Versão atual</option>
+                {configHistory.map((v) => (
+                  <option key={v.timestamp} value={v.timestamp}>
+                    {v.displayLabel}
+                  </option>
+                ))}
+              </select>
+              {selectedVersion && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const label = configHistory.find(
+                      (v) => v.timestamp === selectedVersion,
+                    )?.displayLabel;
+                    if (!confirm(`Restaurar versão de ${label}?`)) return;
+                    const res = await fetch(
+                      `/api/agents/${name}/config-history/restore`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ timestamp: selectedVersion }),
+                      },
+                    );
+                    if (res.ok) {
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Restaurar esta versão
+                </button>
+              )}
+            </div>
+          )}
           <textarea
             className="textarea"
             value={configText}
@@ -283,6 +346,9 @@ export default function AgentDetailPage() {
             <button className="btn" onClick={() => validateConfig(configText)} disabled={saving}>
               Validar
             </button>
+            <Link href={`/agents/${name}/config-wizard`} className="btn btn-primary">
+              Wizard
+            </Link>
             {agent.isDefault && agent.hasOverride && (
               <button className="btn" style={{ color: "var(--warning)", borderColor: "var(--warning)" }} onClick={restoreDefault} disabled={saving}>
                 Restaurar Default

@@ -5,18 +5,8 @@ import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
 import { parseDomainTags } from "../../../lib/domain";
 import { readMergedConfig } from "../../../lib/config-merge";
-
-const PROJECT_ROOT = join(process.cwd(), "..");
-const AGENTS_DIR = join(PROJECT_ROOT, "agents");
-const DEFAULTS_DIR = join(AGENTS_DIR, "_defaults");
-
-function resolveAgentDir(name: string): { dir: string; isDefault: boolean } | null {
-  const userDir = join(AGENTS_DIR, name);
-  if (existsSync(userDir) && existsSync(join(userDir, "config.yaml"))) return { dir: userDir, isDefault: false };
-  const defaultDir = join(DEFAULTS_DIR, name);
-  if (existsSync(defaultDir) && existsSync(join(defaultDir, "config.yaml"))) return { dir: defaultDir, isDefault: true };
-  return null;
-}
+import { resolveAgentDir } from "../../../lib/agents";
+import { saveConfigToHistory } from "../../../lib/config-history";
 
 export const dynamic = "force-dynamic";
 
@@ -143,7 +133,15 @@ export async function PUT(
         return NextResponse.json({ error: "Config inválida", errors: result.errors }, { status: 422 });
       }
       const targetFile = isDefault ? "config.override.yaml" : "config.yaml";
-      writeFileSync(join(agentDir, targetFile), body.config);
+      const targetPath = join(agentDir, targetFile);
+      if (existsSync(targetPath)) {
+        try {
+          saveConfigToHistory(agentDir, readFileSync(targetPath, "utf-8"));
+        } catch {
+          // history is best-effort — config write proceeds regardless
+        }
+      }
+      writeFileSync(targetPath, body.config, "utf-8");
     }
     if (body.soul !== undefined) {
       writeFileSync(join(agentDir, "IDENTITY.md"), body.soul);
