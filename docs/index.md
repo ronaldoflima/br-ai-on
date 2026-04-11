@@ -39,4 +39,4 @@ br-ai-on/
 
 ## Versão
 
-Dashboard: 1.3.1 | Última atualização dos docs: 2026-04-10
+Dashboard: 1.3.2 | Última atualização dos docs: 2026-04-11
