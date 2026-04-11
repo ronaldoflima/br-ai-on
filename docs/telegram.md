@@ -2,16 +2,30 @@
 
 O BR.AI.ON possui uma bridge Telegram que permite enviar mensagens ao Claude Code e receber respostas diretamente no Telegram. Funciona via **long-polling** — sem necessidade de domínio público ou SSL.
 
-## Como funciona
+## Arquitetura
 
 ```
 Telegram ──► telegram-bridge.sh ──► sessão tmux (Claude Code)
                                             │
                      ◄─────────── telegram-hook.sh (Stop hook)
+
+Agentes autônomos ──► lib/telegram.sh ──► Telegram (notificações diretas)
 ```
 
-- `scripts/telegram-bridge.sh` — loop de long-polling que recebe mensagens e as envia para uma sessão tmux do Claude Code
-- `scripts/telegram-hook.sh` — Stop hook registrado no Claude Code que captura a resposta final e a envia ao Telegram
+- `lib/telegram.sh` — Biblioteca compartilhada de envio. Usada pela bridge, hook, cron e qualquer agente. Fail-silent como lib (no-op se token ausente), fail-loud como comando.
+- `scripts/telegram-bridge.sh` — loop de long-polling que recebe mensagens e as envia para uma sessão tmux do Claude Code. Usa `lib/telegram.sh` para envio de respostas.
+- `scripts/telegram-hook.sh` — Stop hook registrado no Claude Code que captura a resposta final e a envia ao Telegram via `lib/telegram.sh`.
+
+### Notificação direta por agentes
+
+Qualquer agente com `integrations.telegram.enabled: true` no config pode enviar mensagens diretamente:
+
+```bash
+bash lib/telegram.sh send "mensagem"              # chat padrão
+bash lib/telegram.sh send "mensagem" --chat-id ID # chat específico
+```
+
+O `agent-wrapup` (step 8) envia automaticamente um resumo da sessão via Telegram quando habilitado.
 
 ## Setup
 

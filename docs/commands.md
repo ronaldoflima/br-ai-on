@@ -31,6 +31,7 @@ Exit point de toda sessão. Persiste estado, memória, métricas e arquiva hando
 5. Arquivar handoffs processados
 6. Detectar/marcar conclusão de jobs
 7. Logar métricas e heartbeat "idle"
+8. Notificar via Telegram (se `integrations.telegram.enabled: true` no config)
 
 **Uso:** Chamado pelo agente ao final da sessão ou pelo cron antes de encerrar.
 

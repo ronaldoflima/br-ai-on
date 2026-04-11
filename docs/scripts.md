@@ -19,12 +19,25 @@ Gera TOTP (2FA) para o dashboard — cria secret, QR code, salva no `.env`.
 ## Telegram
 
 ### telegram-bridge.sh
-Bridge bidirecional Telegram ↔ Claude Code. Long-polling do Telegram, envia mensagens para sessão tmux do Claude.
+Bridge bidirecional Telegram ↔ Claude Code. Long-polling do Telegram, envia mensagens para sessão tmux do Claude. Usa `lib/telegram.sh` para envio. Inclui validação de divergência com `origin/main` antes de deploy.
 
 Comandos: `/start`, `/status`, `/clear`, `/reset`, `/pause`, `/unpause`, `/deploy [branch]`.
 
 ### telegram-hook.sh
-Stop hook do Claude Code — captura resposta do assistente e envia de volta ao Telegram (chunks de 4096 chars).
+Stop hook do Claude Code — captura resposta do assistente e envia de volta ao Telegram via `lib/telegram.sh`.
+
+## Release
+
+### release.sh
+Script de release com versionamento semântico. Bumpa `package.json` + `package-lock.json`, cria commit e tag.
+
+```bash
+./release.sh patch   # 1.3.1 → 1.3.2
+./release.sh minor   # 1.3.2 → 1.4.0
+./release.sh major   # 1.4.0 → 2.0.0
+```
+
+Também disponível via `npm run release` no dashboard.
 
 ## Utilitários
 

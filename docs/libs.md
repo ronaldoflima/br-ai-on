@@ -28,6 +28,28 @@ python3 lib/agent-scheduler.py --mark-ran <nome>  # registra execução
 
 ## Comunicação
 
+### telegram.sh
+Biblioteca compartilhada para envio de mensagens Telegram. Centraliza `tg_send` e `tg_typing` usadas pela bridge, hook e cron. Funciona como lib (source) e como comando direto.
+
+**Como lib** (fail-silent: no-op se token/chat_id ausentes):
+```bash
+source lib/telegram.sh
+tg_send "mensagem"                    # usa TELEGRAM_ALLOWED_CHAT_ID do .env
+tg_send "mensagem" "$chat_id"         # chat_id explícito
+tg_typing                             # indicador de digitação
+tg_typing "$chat_id"
+```
+
+**Como comando** (fail-loud: erro se token ausente):
+```bash
+bash lib/telegram.sh send "mensagem"              # chat padrão do .env
+bash lib/telegram.sh send "mensagem" --chat-id ID # chat específico
+bash lib/telegram.sh typing
+bash lib/telegram.sh typing --chat-id ID
+```
+
+Chunking automático em 4000 chars. `tg_notify` é alias de `tg_send` (backward compat).
+
 ### handoff.sh
 Sistema de handoffs peer-to-peer entre agentes.
 
