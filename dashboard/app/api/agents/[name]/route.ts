@@ -135,9 +135,13 @@ export async function PUT(
       const targetFile = isDefault ? "config.override.yaml" : "config.yaml";
       const targetPath = join(agentDir, targetFile);
       if (existsSync(targetPath)) {
-        saveConfigToHistory(agentDir, readFileSync(targetPath, "utf-8"));
+        try {
+          saveConfigToHistory(agentDir, readFileSync(targetPath, "utf-8"));
+        } catch {
+          // history is best-effort — config write proceeds regardless
+        }
       }
-      writeFileSync(targetPath, body.config);
+      writeFileSync(targetPath, body.config, "utf-8");
     }
     if (body.soul !== undefined) {
       writeFileSync(join(agentDir, "IDENTITY.md"), body.soul);
