@@ -138,18 +138,18 @@ export function IdentidadeSection({ form, update, errors }: SectionProps) {
 
       <div className="form-group">
         <label className="form-label">layer</label>
-        <select
-          className="select"
+        <input
+          className="input"
+          list="layer-suggestions"
           value={form.layer}
           onChange={(e) => update({ layer: e.target.value })}
-        >
-          <option value="">— opcional —</option>
+          placeholder="infrastructure, business, service..."
+        />
+        <datalist id="layer-suggestions">
           {VALID_LAYERS.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
+            <option key={l} value={l} />
           ))}
-        </select>
+        </datalist>
       </div>
 
       <div className="form-group">
