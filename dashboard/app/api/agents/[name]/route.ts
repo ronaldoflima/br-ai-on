@@ -159,7 +159,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
   const { name } = await params;
@@ -169,8 +169,19 @@ export async function DELETE(
     return NextResponse.json({ error: "agent not found" }, { status: 404 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const overrideOnly = searchParams.get("override") === "true";
+
   try {
-    rmSync(resolved.dir, { recursive: true, force: true });
+    if (overrideOnly) {
+      const overridePath = join(resolved.dir, "config.override.yaml");
+      if (!existsSync(overridePath)) {
+        return NextResponse.json({ error: "override not found" }, { status: 404 });
+      }
+      rmSync(overridePath);
+    } else {
+      rmSync(resolved.dir, { recursive: true, force: true });
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

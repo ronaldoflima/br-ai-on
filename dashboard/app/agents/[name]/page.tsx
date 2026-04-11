@@ -123,6 +123,16 @@ export default function AgentDetailPage() {
     if (res.ok) router.push("/agents");
   };
 
+  const restoreDefault = async () => {
+    if (!confirm(`Remover o override e restaurar o config padrão de "${name}"?`)) return;
+    const res = await fetch(`/api/agents/${name}?override=true`, { method: "DELETE" });
+    if (res.ok) {
+      const data = await fetch(`/api/agents/${name}`).then((r) => r.json()) as AgentDetail;
+      setAgent(data);
+      setConfigText(data.configRaw);
+    }
+  };
+
   if (!agent) return <div className="empty-state">Carregando...</div>;
 
   const config = agent.config as Record<string, unknown>;
@@ -273,6 +283,11 @@ export default function AgentDetailPage() {
             <button className="btn" onClick={() => validateConfig(configText)} disabled={saving}>
               Validar
             </button>
+            {agent.isDefault && agent.hasOverride && (
+              <button className="btn" style={{ color: "var(--warning)", borderColor: "var(--warning)" }} onClick={restoreDefault} disabled={saving}>
+                Restaurar Default
+              </button>
+            )}
             {configErrors.length === 0 && saveStatus === "" && configText !== agent?.configRaw && (
               <span style={{ fontSize: 13, color: "var(--text-muted)" }}>não salvo</span>
             )}
