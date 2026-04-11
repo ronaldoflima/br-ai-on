@@ -33,7 +33,7 @@ const KNOWN_SCHEDULE_FIELDS = new Set([
 ]);
 
 const KNOWN_BUDGET_FIELDS = new Set([
-  "max_sessions_per_day", "max_tokens_per_session",
+  "max_sessions_per_day",
 ]);
 
 export function validateAgentConfig(raw: string): ValidationResult {
@@ -132,9 +132,6 @@ export function validateAgentConfig(raw: string): ValidationResult {
     }
     if (!budget.max_sessions_per_day || typeof budget.max_sessions_per_day !== "number" || budget.max_sessions_per_day < 1) {
       errors.push({ field: "budget.max_sessions_per_day", message: "budget.max_sessions_per_day deve ser número >= 1" });
-    }
-    if (!budget.max_tokens_per_session || typeof budget.max_tokens_per_session !== "number" || budget.max_tokens_per_session < 1000) {
-      errors.push({ field: "budget.max_tokens_per_session", message: "budget.max_tokens_per_session deve ser número >= 1000" });
     }
   }
 
