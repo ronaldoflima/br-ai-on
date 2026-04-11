@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import type { AgentDetail, EpisodicEntry, ConfigError } from "../../lib/types";
 import { relativeTime } from "../../lib/utils";
 import { renderMarkdown } from "../../lib/markdown";
@@ -139,11 +140,21 @@ export default function AgentDetailPage() {
 
   const restoreDefault = async () => {
     if (!confirm(`Remover o override e restaurar o config padrão de "${name}"?`)) return;
-    const res = await fetch(`/api/agents/${name}?override=true`, { method: "DELETE" });
-    if (res.ok) {
-      const data = await fetch(`/api/agents/${name}`).then((r) => r.json()) as AgentDetail;
-      setAgent(data);
-      setConfigText(data.configRaw);
+    try {
+      const res = await fetch(`/api/agents/${name}?override=true`, { method: "DELETE" });
+      if (res.ok) {
+        const data = await fetch(`/api/agents/${name}`).then((r) => r.json()) as AgentDetail;
+        setAgent(data);
+        setConfigText(data.configRaw);
+        setSaveStatus("Default restaurado!");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } else {
+        setSaveStatus("Erro ao restaurar default");
+        setTimeout(() => setSaveStatus(""), 2000);
+      }
+    } catch {
+      setSaveStatus("Erro de conexão");
+      setTimeout(() => setSaveStatus(""), 2000);
     }
   };
 
@@ -343,9 +354,9 @@ export default function AgentDetailPage() {
             <button className="btn" onClick={() => validateConfig(configText)} disabled={saving}>
               Validar
             </button>
-            <a href={`/agents/${name}/config-wizard`} className="btn btn-primary">
+            <Link href={`/agents/${name}/config-wizard`} className="btn btn-primary">
               Wizard
-            </a>
+            </Link>
             {agent.isDefault && agent.hasOverride && (
               <button className="btn" style={{ color: "var(--warning)", borderColor: "var(--warning)" }} onClick={restoreDefault} disabled={saving}>
                 Restaurar Default
