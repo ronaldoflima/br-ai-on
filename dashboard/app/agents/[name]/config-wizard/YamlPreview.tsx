@@ -20,7 +20,7 @@ export function YamlPreview({ yaml }: Props) {
           onClick={copyToClipboard}
           style={{ fontSize: 12 }}
         >
-          Copiar
+          Copiar YAML
         </button>
       </div>
       <pre className={styles.previewCode}>{yaml}</pre>
