@@ -278,8 +278,6 @@ export default function TerminalPage() {
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.trim()) sendText(input);
-      else sendKey("Enter");
     }
   };
 
@@ -623,7 +621,7 @@ export default function TerminalPage() {
               key="text-input"
               ref={inputRef}
               className={`input ${styles.textInput}`}
-              placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
+              placeholder="Digite e clique em Enviar..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleInputKeyDown}

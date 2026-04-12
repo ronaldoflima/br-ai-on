@@ -11,8 +11,13 @@ O prompt contém `Agent: <nome>` — use esse nome como agente roteador em todos
 
 ## 1. Determinar Pasta do Inbox
 
-Se o prompt contiver `Folder: /caminho/para/pasta`, use esse caminho como pasta do inbox.
-Caso contrário, use `$BRAION/agents/inbox/` como pasta padrão (onde `$BRAION` é o BR.AI.ON base do prompt).
+Use **Read** para carregar `$BRAION/config/integrations.json`.
+
+Encontre em `obsidian_rules` a regra cujo `agent` corresponde ao nome do agente roteador (do prompt) **e** `enabled` seja `true`. Use o campo `folder` dessa regra como `INBOX_FOLDER`.
+
+Se o prompt contiver `Folder: /caminho/para/pasta`, esse valor tem precedência sobre a regra de integração.
+
+Se nenhuma regra habilitada for encontrada e `Folder:` não for fornecido, encerre com erro no log: `"Nenhuma regra de integração Obsidian encontrada para este agente"`.
 
 Guarde esse caminho como `INBOX_FOLDER`.
 

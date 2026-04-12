@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
   if (typeof text !== "string") return NextResponse.json({ error: "Texto inválido" }, { status: 400 });
 
   try {
-    await spawnTmux(["send-keys", "-t", session, text, "Enter"]);
+    await spawnTmux(["send-keys", "-l", "-t", session, text]);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Falha ao enviar teclas" }, { status: 500 });

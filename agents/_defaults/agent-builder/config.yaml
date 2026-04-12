@@ -22,5 +22,8 @@ schedule:
   run_alone: false
 
 budget:
-  max_tokens_per_session: 80000
   max_sessions_per_day: 5
+
+integrations:
+  telegram:
+    enabled: true

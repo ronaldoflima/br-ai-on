@@ -10,11 +10,13 @@ Orquestrador principal, roda a cada 5min via cron. Responsável por:
 - Rotear notas do inbox para agentes (regras + AI fallback)
 - Processar handoffs pendentes (iniciar sessões ou arquivar)
 - Iniciar agentes "alive" que estão prontos (via scheduler)
-- Monitorar e encerrar sessões stale/idle
+- Monitorar sessões ociosas (kill automático removido na v1.3.0)
+- Suporte a `permission_mode` configurável por agente via `runtime.claude.permission_mode`
+- Detecção de processo Telegram filtrada por usuário (`pgrep -u`)
 
 ### agent-scheduler.py
 Engine de scheduling em Python. Lê todos os `config.yaml`, compara intervalos com `schedule_state.json`, e retorna JSON com agentes categorizados:
-- `due` — prontos para execução
+- `due` — prontos para execução (inclui `permission_mode` no output)
 - `waiting` — intervalo não expirou
 - `inactive` — mode disabled/handoff-only
 - `budget_blocked` — limite diário atingido
@@ -25,6 +27,28 @@ python3 lib/agent-scheduler.py --mark-ran <nome>  # registra execução
 ```
 
 ## Comunicação
+
+### telegram.sh
+Biblioteca compartilhada para envio de mensagens Telegram. Centraliza `tg_send` e `tg_typing` usadas pela bridge, hook e cron. Funciona como lib (source) e como comando direto.
+
+**Como lib** (fail-silent: no-op se token/chat_id ausentes):
+```bash
+source lib/telegram.sh
+tg_send "mensagem"                    # usa TELEGRAM_ALLOWED_CHAT_ID do .env
+tg_send "mensagem" "$chat_id"         # chat_id explícito
+tg_typing                             # indicador de digitação
+tg_typing "$chat_id"
+```
+
+**Como comando** (fail-loud: erro se token ausente):
+```bash
+bash lib/telegram.sh send "mensagem"              # chat padrão do .env
+bash lib/telegram.sh send "mensagem" --chat-id ID # chat específico
+bash lib/telegram.sh typing
+bash lib/telegram.sh typing --chat-id ID
+```
+
+Chunking automático em 4000 chars. `tg_notify` é alias de `tg_send` (backward compat).
 
 ### handoff.sh
 Sistema de handoffs peer-to-peer entre agentes.

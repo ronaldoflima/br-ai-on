@@ -30,13 +30,15 @@ WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
+source "$BRAION/lib/telegram.sh"
+
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
 }
 
 # ── 0a. Telegram bridge ───────────────────────────────────────────────────────
 if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
-  if ! pgrep -f "telegram-bridge.sh" > /dev/null 2>&1; then
+  if ! pgrep -u "$(whoami)" -f "telegram-bridge.sh" > /dev/null 2>&1; then
     log "Telegram bridge não está rodando — iniciando em background"
     nohup bash "$BRAION/scripts/telegram-bridge.sh" >> "$BRAION/logs/telegram-bridge.log" 2>&1 &
     disown $!
@@ -187,8 +189,39 @@ except Exception:
 " 2>/dev/null
 }
 
+build_agent_system_prompt() {
+  local agent=$1 config=${2:-}
+  local content=""
+
+  local identity="$BRAION/agents/$agent/IDENTITY.md"
+  [ -f "$identity" ] && content=$(cat "$identity")
+
+  local user_md="$BRAION/USER.md"
+  [ -f "$user_md" ] && content="${content}"$'\n\n'"$(cat "$user_md")"
+
+  local agents_md="$BRAION/AGENTS.md"
+  [ -f "$agents_md" ] && content="${content}"$'\n\n'"$(cat "$agents_md")"
+
+  if [ -n "$config" ] && [ -f "$config" ]; then
+    local custom
+    custom=$(python3 -c "
+import yaml, sys, os
+try:
+    cfg = yaml.safe_load(open('$config'))
+    sp = cfg.get('runtime', {}).get('claude', {}).get('system_prompt', '')
+    if not sp: sys.exit(0)
+    if os.path.isfile(sp): sp = open(sp).read().strip()
+    if sp: print(sp)
+except Exception: pass
+" 2>/dev/null)
+    [ -n "$custom" ] && content="${content}"$'\n\n'"${custom}"
+  fi
+
+  printf '%s' "$content"
+}
+
 start_session() {
-  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} custom_cmd="${5:-}" perm_mode="${6:-acceptEdits}"
+  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} perm_mode=${5:-acceptEdits} custom_cmd=${6:-} sp_content=${7:-}
   [ -z "$working_dir" ] && working_dir="$BRAION"
   [ -d "$working_dir" ] || { log "WARN $session — diretório '$working_dir' não existe, usando $BRAION"; working_dir="$BRAION"; }
 
@@ -200,18 +233,23 @@ start_session() {
   session_clear_idle "$session"
   tmux new-session -d -s "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
 
-  # Se tem comando customizado, usa ele; senão usa o claude padrão
   if [ -n "$custom_cmd" ]; then
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    tmux send-keys -t "$session" "claude --model $model --permission-mode $perm_mode --add-dir $BRAION --add-dir $HOME/.config/br-ai-on" Enter
-    log "START $session em $working_dir (model=$model, permission_mode=$perm_mode)"
+    local cmd="claude --model $model --permission-mode $perm_mode --add-dir $BRAION --add-dir $HOME/.config/br-ai-on"
+    if [ -n "$sp_content" ]; then
+      local sp_file="/tmp/braion-sp-${session}.txt"
+      printf '%s' "$sp_content" > "$sp_file"
+      cmd="$cmd --append-system-prompt \"\$(cat $sp_file)\""
+    fi
+    log "START $session: \"$cmd\""
+    tmux send-keys -t "$session" "$cmd" Enter
   fi
 
-  # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 60s
+  # Aguarda Claude estar pronto — hook flag ou fallback grep, máximo 120s
   local waited=0
-  while [ $waited -lt 60 ]; do
+  while [ $waited -lt 120 ]; do
     sleep 2
     waited=$((waited + 2))
     if session_is_idle "$session"; then
@@ -221,6 +259,21 @@ start_session() {
   done
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
+
+  # Verifica se Claude recebeu o prompt (sai do estado idle em até 10s)
+  local submit_waited=0
+  while [ $submit_waited -lt 10 ]; do
+    sleep 2
+    submit_waited=$((submit_waited + 2))
+    if ! session_is_idle "$session"; then
+      break
+    fi
+  done
+  # Se ainda idle após 10s, Claude não processou o Enter — tenta novamente
+  if session_is_idle "$session"; then
+    log "RETRY $session — Claude não saiu do idle após envio do prompt, reenviando Enter"
+    tmux send-keys -t "$session" Enter
+  fi
 
   # Watcher em background: invoca /braion:agent-wrapup quando Claude fica idle,
   # aguarda o wrapup terminar e então mata a sessão.
@@ -374,9 +427,10 @@ for check_dir in "$OBSIDIAN_INBOX" $AI_ROUTE_FOLDERS; do
   [ "$check_dir" != "$OBSIDIAN_INBOX" ] && folder_param="Folder: $check_dir. "
 
   log "Inbox: $dir_count nota(s) em $check_dir — iniciando inbox-router AI"
+  inbox_sp=$(build_agent_system_prompt "inbox-router" "$BRAION/agents/inbox-router/config.yaml")
   start_session "braion-inbox-router" "$BRAION" \
     "Read $BRAION/commands/braion/agent-inbox-router.md and follow the instructions exactly. ${folder_param}Agent: inbox-router. BR.AI.ON base: $BRAION." \
-    "${inbox_router_model:-$DEFAULT_MODEL}"
+    "${inbox_router_model:-$DEFAULT_MODEL}" "acceptEdits" "" "$inbox_sp"
   break
 done
 
@@ -401,7 +455,7 @@ notify_user_handoff() {
     tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN" 2>/dev/null || true
     local tg_prompt='Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.'
     tmux send-keys -t "$session" \
-      "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
+      "$CLAUDE --verbose --permission-mode bypassPermissions --append-system-prompt '$tg_prompt'" Enter
     local waited=0
     while [ $waited -lt 30 ]; do
       sleep 2; waited=$((waited + 2))
@@ -414,13 +468,7 @@ notify_user_handoff() {
 
   if ! session_is_idle "$session"; then
     log "Handoff $ho_id → telegram direto (sessão $session ocupada)"
-    local chat_id="${TELEGRAM_ALLOWED_CHAT_ID:-}"
-    if [ -n "$chat_id" ]; then
-      local msg="📬 Handoff ${ho_id} de ${from}: ${description}"
-      curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${chat_id}" --data-urlencode "text=${msg}" \
-        -d "disable_web_page_preview=true" > /dev/null
-    fi
+    tg_notify "📬 Handoff ${ho_id} de ${from}: ${description}"
     return 0
   fi
 
@@ -534,8 +582,9 @@ for config in "$BRAION/agents"/*/config.yaml; do
     agent_model=$(get_agent_model "$config")
     agent_cmd=$(get_agent_command "$config")
     agent_perm=$(get_agent_permission_mode "$config")
+    agent_sp=$(build_agent_system_prompt "$agent" "$config")
 
-    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd" "${agent_perm:-acceptEdits}"
+    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "${agent_perm:-acceptEdits}" "$agent_cmd" "$agent_sp"
   done
 done
 
@@ -550,8 +599,8 @@ if [ "$due_count" -gt 0 ]; then
   marked_agents=""
 
   echo "$scheduler_output" | jq -r '
-    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // ""), (.permission_mode // "acceptEdits")] | @tsv
-  ' 2>/dev/null | while IFS=$'\t' read -r agent_name agent_dir agent_model run_alone agent_cmd agent_perm; do
+    .due[]? | [.name, (.directory // ""), (.model // "claude-sonnet-4-6"), (.run_alone // false | tostring), (.command // ""), (.permission_mode // "acceptEdits")] | join("\u001f")
+  ' 2>/dev/null | while IFS=$'\x1f' read -r agent_name agent_dir agent_model run_alone agent_cmd agent_perm; do
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
@@ -568,7 +617,7 @@ if [ "$due_count" -gt 0 ]; then
     fi
 
     if [ "$run_alone" = "true" ]; then
-      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^braion-' || true)
+      active_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^braion-' | grep -v '^braion-telegram$' | wc -l)
       if [ "${active_sessions:-0}" -gt 0 ]; then
         log "SKIP $session — run_alone mas há $active_sessions sessão(ões) ativa(s)"
         continue
@@ -577,9 +626,11 @@ if [ "$due_count" -gt 0 ]; then
 
     [ -z "$agent_dir" ] && agent_dir="$BRAION"
 
+    alive_sp=$(build_agent_system_prompt "$agent_name" "$BRAION/agents/${agent_name}/config.yaml")
+
     prompt="Read $BRAION/commands/braion/agent-init.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$agent_cmd" "${agent_perm:-acceptEdits}"
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "${agent_perm:-acceptEdits}" "$agent_cmd" "$alive_sp"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"

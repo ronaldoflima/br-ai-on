@@ -136,7 +136,6 @@ schedule:
   run_alone: false           # true = roda sem outros agentes simultâneos
 
 budget:
-  max_tokens_per_session: 50000
   max_sessions_per_day: 10
 
 integrations:
@@ -240,6 +239,32 @@ Quando `command` está definido, o orquestrador usa esse comando em vez de `$CLA
 - Métricas diárias JSONL para analytics (`metrics/YYYY-MM-DD.jsonl`)
 - Dashboard web em `dashboard/` (Next.js 15, porta 3040)
 - Estado acessível via arquivos para debugging manual
+
+### Telegram — Notificação Direta
+
+Qualquer agente pode enviar mensagem ao usuário via Telegram usando `lib/telegram.sh`:
+
+```bash
+# Enviar mensagem para o chat padrão (TELEGRAM_ALLOWED_CHAT_ID)
+bash lib/telegram.sh send "mensagem aqui"
+
+# Enviar para chat específico
+bash lib/telegram.sh send "mensagem" --chat-id 12345
+
+# Indicador de digitação
+bash lib/telegram.sh typing
+```
+
+**Quando usar notificação direta vs handoff:**
+
+| Cenário | Usar |
+|---|---|
+| Alerta urgente, erro, confirmação rápida | `lib/telegram.sh send` |
+| Resultado de tarefa, relatório, entregável | `lib/handoff.sh send ... user` |
+| Notificação de progresso (longa) | `lib/telegram.sh send` |
+
+A lib carrega `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_CHAT_ID` do `.env` automaticamente.
+Respeita o campo `integrations.telegram.enabled` do `config.yaml` — agentes devem verificar antes de enviar.
 
 ## Orquestrador
 
