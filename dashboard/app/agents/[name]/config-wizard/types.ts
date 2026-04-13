@@ -6,9 +6,15 @@ export const VALID_MODELS = [
 ] as const;
 export type ModelId = (typeof VALID_MODELS)[number];
 
+// Permission modes: valores genéricos + nativos do claude (retrocompat).
+// Fase 3 vai derivar por backend via dashboard/app/lib/cli-backend.ts.
 export const VALID_PERMISSION_MODES = [
-  "acceptEdits",
+  // genéricos (portáveis entre backends)
   "auto",
+  "confirm",
+  "bypass",
+  // claude-native (retrocompat com configs existentes)
+  "acceptEdits",
   "bypassPermissions",
   "plan",
   "dontAsk",

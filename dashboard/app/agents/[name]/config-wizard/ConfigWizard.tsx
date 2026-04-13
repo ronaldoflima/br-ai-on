@@ -27,7 +27,22 @@ import styles from "./config-wizard.module.css";
 function configToForm(raw: Record<string, unknown>): WizardFormState {
   const schedule = (raw.schedule ?? {}) as Record<string, unknown>;
   const budget = (raw.budget ?? {}) as Record<string, unknown>;
-  const runtime = (raw.runtime ?? {}) as Record<string, Record<string, unknown>>;
+  const runtime = (raw.runtime ?? {}) as Record<string, unknown>;
+
+  // Lê permission_mode preferindo formato novo (runtime.permission_mode);
+  // cai em runtime.<backend>.permission_mode p/ retrocompat (ex: runtime.claude.*).
+  const readPermissionMode = (): string => {
+    const top = runtime.permission_mode;
+    if (typeof top === "string") return top;
+    for (const [bk, bkCfg] of Object.entries(runtime)) {
+      if (bk === "permission_mode" || bk === "system_prompt") continue;
+      if (bkCfg && typeof bkCfg === "object" && !Array.isArray(bkCfg)) {
+        const pm = (bkCfg as Record<string, unknown>).permission_mode;
+        if (typeof pm === "string") return pm;
+      }
+    }
+    return "";
+  };
 
   return {
     name: String(raw.name ?? ""),
@@ -41,8 +56,7 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
     version: String(raw.version ?? "1.0.0"),
     model: (raw.model as ModelId) ?? "claude-sonnet-4-6",
     fallback_model: (raw.fallback_model as ModelId) ?? "claude-haiku-4-5",
-    permission_mode:
-      (runtime.claude?.permission_mode as PermissionMode | "") ?? "",
+    permission_mode: readPermissionMode() as PermissionMode | "",
     working_directory: String(raw.working_directory ?? raw.directory ?? ""),
     command: String(raw.command ?? ""),
     capabilities: Array.isArray(raw.capabilities)
@@ -88,8 +102,10 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
   if (form.working_directory) config.working_directory = form.working_directory;
   if (form.command) config.command = form.command;
   if (form.capabilities.length > 0) config.capabilities = form.capabilities;
+  // Formato novo (canônico): runtime.permission_mode. Saves antigos em
+  // runtime.claude.permission_mode continuam sendo lidos (retrocompat).
   if (form.permission_mode) {
-    config.runtime = { claude: { permission_mode: form.permission_mode } };
+    config.runtime = { permission_mode: form.permission_mode };
   }
   if (Object.keys(form.integrations).length > 0) {
     config.integrations = form.integrations;

@@ -225,19 +225,25 @@ export function ModeloSection({ form, update, errors }: SectionProps) {
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
 export function RuntimeSection({ form, update, errors }: SectionProps) {
-  const hasError = Boolean(fieldError(errors, "runtime.claude.permission_mode"));
-  const permissionModeError = fieldError(errors, "runtime.claude.permission_mode");
+  const hasError =
+    Boolean(fieldError(errors, "runtime.permission_mode")) ||
+    Boolean(fieldError(errors, "runtime.claude.permission_mode"));
+  const permissionModeError =
+    fieldError(errors, "runtime.permission_mode") ||
+    fieldError(errors, "runtime.claude.permission_mode");
 
   return (
     <AccordionSection title="Runtime" hasError={hasError}>
       <div className={styles.legend}>
-        <strong>permission_mode</strong>: controla autonomia do agente.{" "}
-        <em>acceptEdits</em> pede confirmação para edições de arquivo;{" "}
-        <em>auto</em> executa tudo automaticamente; <em>bypassPermissions</em>{" "}
-        ignora todas as permissões (use com cuidado); <em>plan</em> só planeja
-        sem executar; <em>dontAsk</em> similar ao auto.{" "}
-        <strong>working_directory</strong> e <strong>command</strong> são
-        opcionais — definem onde e como iniciar o agente.
+        <strong>permission_mode</strong>: controla autonomia do agente.
+        Valores genéricos (portáveis entre backends):{" "}
+        <em>auto</em> aceita edits automaticamente, <em>confirm</em> pede
+        confirmação, <em>bypass</em> ignora todas as permissões (use com
+        cuidado). Os valores claude-native (<em>acceptEdits</em>,{" "}
+        <em>bypassPermissions</em>, <em>plan</em>, <em>dontAsk</em>) continuam
+        aceitos por retrocompat. <strong>working_directory</strong> e{" "}
+        <strong>command</strong> são opcionais — definem onde e como iniciar o
+        agente.
       </div>
 
       <div className="form-group">
