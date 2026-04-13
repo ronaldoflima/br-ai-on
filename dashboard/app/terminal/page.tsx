@@ -205,6 +205,17 @@ export default function TerminalPage() {
     } catch {}
   }, [selected]);
 
+  const sendLiteral = useCallback(async (text: string) => {
+    if (!selected || !text) return;
+    try {
+      await fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: selected, literal: text }),
+      });
+    } catch {}
+  }, [selected]);
+
   const sendText = async (text: string) => {
     if (!selected || !text.trim()) return;
     setSending(true);
@@ -231,10 +242,8 @@ export default function TerminalPage() {
     if (composingRef.current) return;
     const val = e.target.value;
     e.target.value = "";
-    for (const char of val) {
-      sendKey(char);
-    }
-  }, [sendKey]);
+    if (val) sendLiteral(val);
+  }, [sendLiteral]);
 
   const handleCompositionStart = useCallback(() => {
     composingRef.current = true;
@@ -244,12 +253,8 @@ export default function TerminalPage() {
     composingRef.current = false;
     const data = e.data;
     (e.target as HTMLInputElement).value = "";
-    if (data) {
-      for (const char of [...data]) {
-        sendKey(char);
-      }
-    }
-  }, [sendKey]);
+    if (data) sendLiteral(data);
+  }, [sendLiteral]);
 
   const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
