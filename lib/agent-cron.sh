@@ -22,7 +22,7 @@ fi
 OBSIDIAN_VAULT=${OBSIDIAN_VAULT:-$HOME/obsidian}
 OBSIDIAN_BASE=${OBSIDIAN_BASE:-geral}
 OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
-CLAUDE=${CLAUDE:-claude}
+CLI_BACKEND=${CLI_BACKEND:-${CLAUDE:-claude}}
 DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-6}
 LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
@@ -31,6 +31,7 @@ WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 mkdir -p "$(dirname "$LOG_FILE")"
 
 source "$BRAION/lib/telegram.sh"
+source "$BRAION/lib/cli.sh"
 
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
@@ -57,21 +58,8 @@ session_running() {
 
 IDLE_DIR="$HOME/.config/br-ai-on/idle"
 
-session_is_idle() {
-  local session=$1
-  tmux has-session -t "$session" 2>/dev/null || return 1
-  # Preferência: flag file do Stop hook
-  [ -f "$IDLE_DIR/$session" ] && return 0
-  # Fallback: grep no pane (para instalações sem o hook configurado)
-  local pane
-  pane=$(tmux capture-pane -t "$session" -p 2>/dev/null)
-  echo "$pane" | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0' || return 1
-  ! echo "$pane" | grep -qE 'Running…|Thinking|Thundering'
-}
-
-session_clear_idle() {
-  rm -f "$IDLE_DIR/$1"
-}
+session_is_idle()    { cli_session_is_idle    "$1"; }
+session_clear_idle() { cli_session_clear_idle "$1"; }
 
 session_is_stale() {
   local session=$1
@@ -237,12 +225,13 @@ start_session() {
     tmux send-keys -t "$session" "$custom_cmd" Enter
     log "START $session em $working_dir (command=$custom_cmd)"
   else
-    local cmd="claude --model $model --permission-mode $perm_mode --add-dir $BRAION --add-dir $HOME/.config/br-ai-on"
+    local sp_file=""
     if [ -n "$sp_content" ]; then
-      local sp_file="/tmp/braion-sp-${session}.txt"
+      sp_file="/tmp/braion-sp-${session}.txt"
       printf '%s' "$sp_content" > "$sp_file"
-      cmd="$cmd --append-system-prompt \"\$(cat $sp_file)\""
     fi
+    local cmd
+    cmd=$(cli_build_start_cmd "$model" "$perm_mode" "$sp_file" "false" "$BRAION" "$HOME/.config/br-ai-on")
     log "START $session: \"$cmd\""
     tmux send-keys -t "$session" "$cmd" Enter
   fi
@@ -292,8 +281,7 @@ start_session() {
       if _idle; then
         if [ "$wrapup_sent" = false ]; then
           rm -f "$_idle_dir/$_session"
-          tmux send-keys -t "$_session" -l '/braion:agent-wrapup'
-          tmux send-keys -t "$_session" Enter
+          cli_send_command "$_session" '/braion:agent-wrapup'
           wrapup_sent=true
           echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] WRAPUP $_session — /braion:agent-wrapup enviado" >> "$log_file"
           sleep 60
@@ -453,9 +441,11 @@ notify_user_handoff() {
     tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
     tmux set-environment -t "$session" TELEGRAM_CHAT_ID "${TELEGRAM_ALLOWED_CHAT_ID:-}" 2>/dev/null || true
     tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN" 2>/dev/null || true
-    local tg_prompt='Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.'
-    tmux send-keys -t "$session" \
-      "$CLAUDE --verbose --permission-mode bypassPermissions --append-system-prompt '$tg_prompt'" Enter
+    local tg_sp_file="/tmp/braion-sp-${session}.txt"
+    printf '%s' 'Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.' > "$tg_sp_file"
+    local tg_cmd
+    tg_cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "bypassPermissions" "$tg_sp_file" "true")
+    tmux send-keys -t "$session" "$tg_cmd" Enter
     local waited=0
     while [ $waited -lt 30 ]; do
       sleep 2; waited=$((waited + 2))
@@ -516,7 +506,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
       if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
         log "Handoff $ho_id → injetando em sessão waiting braion-${agent}"
         claimed_path=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$handoff_file" 2>/dev/null || echo "")
-        tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_path}" Enter
+        cli_send_command "braion-${agent}" "/braion:agent-inbox-router ${claimed_path}"
         continue
       fi
       log "Handoff $ho_id expects:info — arquivando sem sessão"
@@ -545,7 +535,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
             reply_job=$(awk '/^job_id:/{print $2}' "$reply_file" 2>/dev/null || echo "")
             if [ "$reply_job" = "$job_id" ]; then
               claimed_reply=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$reply_file" 2>/dev/null || echo "")
-              tmux send-keys -t "braion-${agent}" "/braion:agent-inbox-router ${claimed_reply}" Enter
+              cli_send_command "braion-${agent}" "/braion:agent-inbox-router ${claimed_reply}"
               sleep 2
             fi
           done

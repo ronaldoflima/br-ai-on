@@ -16,11 +16,12 @@ if ! command -v tmux &>/dev/null; then
 fi
 echo "[ok] tmux disponivel"
 
-if ! command -v claude &>/dev/null; then
-  echo "[!] claude CLI nao encontrado no PATH"
+source "$PROJECT_DIR/lib/cli.sh"
+if ! cli_check_available; then
+  echo "[!] $CLI_BACKEND CLI nao encontrado no PATH"
   exit 1
 fi
-echo "[ok] claude CLI disponivel ($(command -v claude))"
+echo "[ok] $CLI_BACKEND CLI disponivel ($(command -v "$CLI_BACKEND"))"
 
 # 2. Verificar script principal
 if [[ ! -f "$CRON_SCRIPT" ]]; then

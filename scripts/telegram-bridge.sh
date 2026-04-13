@@ -21,7 +21,7 @@ echo "BRAION: $BRAION"
 
 BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"
-CLAUDE="claude"
+CLI_BACKEND="${CLI_BACKEND:-${CLAUDE:-claude}}"
 DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
 SESSION_PREFIX="braion-telegram"
 OFFSET_FILE="/tmp/tgbridge-offset-$(whoami).txt"
@@ -33,6 +33,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 # ── Utilidades ────────────────────────────────────────────────────────────────
 source "$BRAION/lib/telegram.sh"
+source "$BRAION/lib/cli.sh"
 
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"
@@ -59,14 +60,7 @@ session_running() {
   tmux has-session -t "$1" 2>/dev/null
 }
 
-session_is_idle() {
-  local session="$1"
-  tmux has-session -t "$session" 2>/dev/null || return 1
-  # O prompt idle do Claude Code usa NBSP (c2 a0) após ❯, enquanto o echo do
-  # input do usuário usa espaço regular (20). LC_ALL=C garante match byte-a-byte.
-  tmux capture-pane -t "$session" -p 2>/dev/null \
-    | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
-}
+session_is_idle() { cli_session_is_idle "$1"; }
 
 ensure_session() {
   local session="$1" chat_id="$2"
@@ -82,10 +76,11 @@ ensure_session() {
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
   tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$BOT_TOKEN" 2>/dev/null || true
 
-  # System prompt lido diretamente do arquivo via $(cat ...) avaliado pela shell da sessão tmux
   local prompt_file="$BRAION/prompts/system-prompts/chat-telegram.md"
-  log "START claude --append-system-prompt via \$(cat '$prompt_file') em $session"
-  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode bypassPermissions --append-system-prompt \"\$(cat '$prompt_file')\"" Enter
+  local cmd
+  cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "bypassPermissions" "$prompt_file" "true")
+  log "START $CLI_BACKEND via cli_build_start_cmd em $session"
+  tmux send-keys -t "$session" "$cmd" Enter
 
   # Aguarda prompt ❯ (máx 5s)
   local waited=0
