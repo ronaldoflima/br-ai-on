@@ -22,6 +22,7 @@ import {
   ColaboradoresSection,
 } from "./sections";
 import { YamlPreview } from "./YamlPreview";
+import { defaultModel, fallbackModel } from "../../../lib/cli-backend-client";
 import styles from "./config-wizard.module.css";
 
 function configToForm(raw: Record<string, unknown>): WizardFormState {
@@ -54,8 +55,8 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
       : [],
     layer: String(raw.layer ?? ""),
     version: String(raw.version ?? "1.0.0"),
-    model: (raw.model as ModelId) ?? "claude-sonnet-4-6",
-    fallback_model: (raw.fallback_model as ModelId) ?? "claude-haiku-4-5",
+    model: (raw.model as ModelId) ?? defaultModel(),
+    fallback_model: (raw.fallback_model as ModelId) ?? fallbackModel(),
     permission_mode: readPermissionMode() as PermissionMode | "",
     working_directory: String(raw.working_directory ?? raw.directory ?? ""),
     command: String(raw.command ?? ""),

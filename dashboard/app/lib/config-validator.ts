@@ -1,30 +1,24 @@
 import { parse } from "yaml";
 import type { ConfigError } from "./types";
+import {
+  ALL_VALID_MODELS,
+  ALL_VALID_PERMISSION_MODES,
+} from "./cli-backend-client";
 
 export interface ValidationResult {
   valid: boolean;
   errors: ConfigError[];
 }
 
-const VALID_MODELS = [
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5",
-  "claude-haiku-4-5-20251001",
-];
+// Validator aceita TODOS os modelos/modes conhecidos (união entre backends)
+// para permitir mudança de CLI_BACKEND sem invalidar configs existentes.
+// A UI (wizard) mostra só os do backend ativo via validModels() / validPermissionModes().
+const VALID_MODELS = ALL_VALID_MODELS;
+const VALID_PERMISSION_MODES = ALL_VALID_PERMISSION_MODES;
 
 const VALID_MODES = ["alive", "handoff-only", "disabled"];
 
 const INTERVAL_RE = /^\d+(s|m|h|d)$/;
-
-// Permission modes aceitos: genéricos (auto/confirm/bypass) + nativos do claude (retrocompat).
-// A Fase 3 vai derivar esta lista do backend ativo via dashboard/app/lib/cli-backend.ts.
-const VALID_PERMISSION_MODES = [
-  // genéricos
-  "auto", "confirm", "bypass",
-  // claude-native (retrocompat)
-  "acceptEdits", "bypassPermissions", "plan", "dontAsk", "default",
-];
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "name", "display_name", "domain", "layer", "directory", "working_directory",
