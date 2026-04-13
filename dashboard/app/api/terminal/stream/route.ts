@@ -75,8 +75,10 @@ function insertCursorMarker(
 }
 
 async function captureWithCursor(session: string, lines: number): Promise<string> {
-  const text = await capturePane(session, lines);
-  const cursor = await getCursorInfo(session);
+  const [text, cursor] = await Promise.all([
+    capturePane(session, lines),
+    getCursorInfo(session),
+  ]);
   if (!cursor) return text;
   return insertCursorMarker(text, cursor);
 }
