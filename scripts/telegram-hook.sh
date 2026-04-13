@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/telegram-hook.sh
-# Hook Stop para enviar respostas do Claude ao Telegram
-# Executado pelo Claude Code quando termina de responder (apenas sessões telegram)
+# Hook stop-like: envia respostas do backend AI ao Telegram.
+# Invocado pelo backend quando termina de responder (apenas sessões telegram).
 
 LAST_ASSISTANT_MESSAGE=$(jq -r '.last_assistant_message')
 

@@ -17,6 +17,7 @@ Modos de schedule (config.yaml → schedule.mode):
 
 import json
 import os
+import subprocess
 import sys
 import glob
 from datetime import datetime, timezone, timedelta
@@ -32,6 +33,46 @@ SCHEDULE_STATE_FILE = os.path.join(BRAION_BASE, "agents", "shared", "schedule_st
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 VALID_MODES = {"alive", "handoff-only", "disabled"}
+
+CLI_BACKEND = os.environ.get("CLI_BACKEND") or os.environ.get("CLAUDE") or "claude"
+
+
+def _cli_query(fn_name, fallback):
+    """Invoca uma função de lib/cli.sh e retorna stdout ou fallback em erro."""
+    try:
+        cli_sh = os.path.join(BRAION_BASE, "lib", "cli.sh")
+        result = subprocess.run(
+            ["bash", "-c", f"source {cli_sh}; {fn_name}"],
+            capture_output=True, text=True, timeout=5,
+            env={**os.environ, "CLI_BACKEND": CLI_BACKEND},
+        )
+        out = result.stdout.strip()
+        return out if out else fallback
+    except Exception:
+        return fallback
+
+
+def cli_default_model():
+    return _cli_query("cli_default_model", "claude-sonnet-4-6")
+
+
+def cli_fallback_model():
+    return _cli_query("cli_fallback_model", "claude-haiku-4-5")
+
+
+def cli_permission_mode_default():
+    return _cli_query("cli_permission_mode_default", "acceptEdits")
+
+
+def read_permission_mode(cfg):
+    """Lê permission_mode com retrocompat runtime.claude.* → runtime.*."""
+    runtime = cfg.get("runtime", {}) or {}
+    val = runtime.get("permission_mode")
+    if val is None:
+        val = (runtime.get(CLI_BACKEND, {}) or {}).get("permission_mode")
+    if val is None and CLI_BACKEND != "claude":
+        val = (runtime.get("claude", {}) or {}).get("permission_mode")
+    return val if val is not None else cli_permission_mode_default()
 
 
 def parse_interval(interval_str):
@@ -167,10 +208,10 @@ def compute_schedule(configs, schedule_state, now):
                 "identity": obsidian_cfg.get("identity", f"🤖 {name}"),
             }
 
-        model = cfg.get("model", "claude-sonnet-4-6")
-        fallback_model = cfg.get("fallback_model", "claude-haiku-4-5")
+        model = cfg.get("model") or cli_default_model()
+        fallback_model = cfg.get("fallback_model") or cli_fallback_model()
 
-        permission_mode = cfg.get("runtime", {}).get("claude", {}).get("permission_mode", "acceptEdits")
+        permission_mode = read_permission_mode(cfg)
 
         base_entry = {
             "name": name,

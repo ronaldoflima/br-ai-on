@@ -47,52 +47,22 @@ else
   fi
 fi
 
-# 7. Registrar Stop hooks no settings.json do Claude Code
-SETTINGS_FILE="$HOME/.claude/settings.json"
-
+# 7. Registrar hooks stop-like no backend (se suportado)
 echo ""
-echo "=== Stop hooks ==="
+echo "=== stop-like hooks ($CLI_BACKEND) ==="
 
-register_stop_hook() {
+register_hook_wrapper() {
   local hook_script="$1" timeout="$2" label="$3"
-
-  if [[ ! -f "$SETTINGS_FILE" ]]; then
-    echo "[!] $SETTINGS_FILE nao encontrado — adicione $label manualmente"
-    return
-  fi
-
-  if ! command -v jq &>/dev/null; then
-    echo "[!] jq nao encontrado — verifique $label manualmente em $SETTINGS_FILE"
-    return
-  fi
-
-  local needle
-  needle=$(basename "$hook_script")
-
-  if jq -e ".hooks.Stop[]?.hooks[]? | select(.command | contains(\"$needle\"))" "$SETTINGS_FILE" >/dev/null 2>&1; then
-    echo "[ok] $label ja registrado"
-    return
-  fi
-
-  python3 - "$SETTINGS_FILE" "$hook_script" "$timeout" <<'PYEOF'
-import sys, json
-settings_path, hook_script, timeout = sys.argv[1], sys.argv[2], int(sys.argv[3])
-with open(settings_path) as f:
-    s = json.load(f)
-s.setdefault("hooks", {}).setdefault("Stop", [])
-stop = s["hooks"]["Stop"]
-if not stop:
-    stop.append({"matcher": ".*", "hooks": []})
-stop[0].setdefault("hooks", []).append({"type": "command", "command": hook_script, "timeout": timeout})
-with open(settings_path, "w") as f:
-    json.dump(s, f, indent=2, ensure_ascii=False)
-    f.write("\n")
-PYEOF
-  echo "[ok] $label registrado"
+  cli_hook_register stop-like "$hook_script" "$timeout"
+  case $? in
+    0) echo "[ok] $label registrado" ;;
+    1) echo "[!] falha ao registrar $label (verifique $(cli_hook_config_path) e jq)" ;;
+    2) echo "[skip] $label — backend $CLI_BACKEND não suporta hooks ainda" ;;
+  esac
 }
 
-register_stop_hook "${PROJECT_DIR}/scripts/agent-idle-hook.sh"    5  "agent-idle-hook.sh"
-register_stop_hook "${PROJECT_DIR}/scripts/telegram-hook.sh"      15 "telegram-hook.sh"
+register_hook_wrapper "${PROJECT_DIR}/scripts/agent-idle-hook.sh"    5  "agent-idle-hook.sh"
+register_hook_wrapper "${PROJECT_DIR}/scripts/telegram-hook.sh"      15 "telegram-hook.sh"
 
 echo ""
 echo "Comandos uteis:"
@@ -101,4 +71,4 @@ echo "  crontab -e                           # editar manualmente"
 echo "  tail -f ${LOG_FILE}   # logs ao vivo"
 echo "  touch ${PROJECT_DIR}/.paused         # pausar agentes"
 echo "  rm ${PROJECT_DIR}/.paused            # retomar agentes"
-echo "  ls ~/.config/br-ai-on/idle/          # sessoes em idle aguardando wrapup"
+echo "  ls ${IDLE_DIR:-\$HOME/.config/br-ai-on/idle}/  # sessoes idle aguardando wrapup"
