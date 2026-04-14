@@ -7,7 +7,7 @@ const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 
 const AGENT_RE = /^[a-z][a-z0-9_-]*$/;
-const FILENAME_RE = /^[A-Z0-9_-]+_[a-z-]+\.md$/;
+const FILENAME_RE = /^[A-Z0-9_-]+_[a-z0-9-]+\.md$/;
 
 export const dynamic = "force-dynamic";
 

@@ -85,6 +85,8 @@ export default function TerminalPage() {
     return 100;
   });
   const outputRef = useRef<HTMLPreElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileDirectInputRef = useRef<HTMLInputElement>(null);
@@ -117,10 +119,19 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    const el = outputRef.current;
+    const el = scrollContainerRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (atBottom) el.scrollTop = el.scrollHeight;
+    const onScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [selected]);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (isAtBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [output]);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +175,7 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
+    isAtBottomRef.current = true;
     if (!selected) {
       setOutput("");
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
@@ -194,6 +206,17 @@ export default function TerminalPage() {
     } catch {}
   }, [selected]);
 
+  const sendLiteral = useCallback(async (text: string) => {
+    if (!selected || !text) return;
+    try {
+      await fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: selected, literal: text }),
+      });
+    } catch {}
+  }, [selected]);
+
   const sendText = async (text: string) => {
     if (!selected || !text.trim()) return;
     setSending(true);
@@ -220,10 +243,8 @@ export default function TerminalPage() {
     if (composingRef.current) return;
     const val = e.target.value;
     e.target.value = "";
-    for (const char of val) {
-      sendKey(char);
-    }
-  }, [sendKey]);
+    if (val) sendLiteral(val);
+  }, [sendLiteral]);
 
   const handleCompositionStart = useCallback(() => {
     composingRef.current = true;
@@ -233,12 +254,8 @@ export default function TerminalPage() {
     composingRef.current = false;
     const data = e.data;
     (e.target as HTMLInputElement).value = "";
-    if (data) {
-      for (const char of [...data]) {
-        sendKey(char);
-      }
-    }
-  }, [sendKey]);
+    if (data) sendLiteral(data);
+  }, [sendLiteral]);
 
   const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
@@ -262,8 +279,6 @@ export default function TerminalPage() {
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.trim()) sendText(input);
-      else sendKey("Enter");
     }
   };
 
@@ -537,6 +552,7 @@ export default function TerminalPage() {
       )}
 
       <div
+        ref={scrollContainerRef}
         className={styles.outputScroll}
         style={{ outline: "1px solid " + (directMode && directFocused ? "var(--primary)" : "transparent") }}
         onClick={textSelectable ? undefined : () => directMode ? mobileDirectInputRef.current?.focus() : inputRef.current?.focus()}
@@ -615,7 +631,7 @@ export default function TerminalPage() {
               key="text-input"
               ref={inputRef}
               className={`input ${styles.textInput}`}
-              placeholder={isMobile ? "Digite e pressione Enviar..." : "Digite e pressione Enter para enviar..."}
+              placeholder="Digite e clique em Enviar..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleInputKeyDown}

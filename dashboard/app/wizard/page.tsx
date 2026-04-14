@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { defaultModel, validModels } from "../lib/cli-backend-client";
 
 const STEPS = ["Básico", "Personalidade", "Configuração", "Revisão & Envio"];
 
@@ -19,7 +20,7 @@ export default function WizardPage() {
 
   const [scheduleMode, setScheduleMode] = useState<"alive" | "handoff-only" | "disabled">("handoff-only");
   const [interval, setInterval] = useState("30m");
-  const [model, setModel] = useState("claude-sonnet-4-6");
+  const [model, setModel] = useState(defaultModel());
   const [maxSessions, setMaxSessions] = useState(10);
   const [maxTokens, setMaxTokens] = useState(50000);
 
@@ -176,9 +177,9 @@ ${scheduleMode === "alive" ? `- Interval: ${interval}\n` : ""}- Model: ${model}
             <div className="form-group">
               <label className="form-label">Modelo</label>
               <select className="select" value={model} onChange={(e) => setModel(e.target.value)}>
-                <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
-                <option value="claude-opus-4-6">claude-opus-4-6</option>
-                <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+                {validModels().map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
               </select>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

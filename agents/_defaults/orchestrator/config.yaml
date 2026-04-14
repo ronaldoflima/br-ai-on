@@ -8,14 +8,13 @@ domain:
   - fan-out
   - fan-in
 layer: infrastructure
-version: "1.0"
+version: 1.0.0
 
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
 
 runtime:
-  claude:
-    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
+  permission_mode: acceptEdits  # generic: auto | confirm | bypass — ou valor nativo do backend
 
 capabilities:
   - Decomposição de tarefas complexas em sub-tarefas
@@ -29,7 +28,6 @@ schedule:
   run_alone: false
 
 budget:
-  max_tokens_per_session: 150000
   max_sessions_per_day: 20
 
 integrations:

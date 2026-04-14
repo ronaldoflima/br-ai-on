@@ -30,13 +30,9 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
   > "$BRAION/agents/$AGENT/state/heartbeat.json"
 ```
 
-## 2. Carregar Identidade
+## 2. Carregar Estado
 
-Leia em ordem:
-- `<BR.AI.ON base>/agents/<nome>/IDENTITY.md` — sua identidade e regras
-- `<BR.AI.ON base>/agents/<nome>/state/current_objective.md`
-- `<BR.AI.ON base>/agents/<nome>/state/decisions.md`
-- `<BR.AI.ON base>/agents/<nome>/memory/semantic.md`
+O system prompt desta sessão já contém identidade, perfil do usuário, regras operacionais, estado persistente (objetivo, decisões, tarefas), memória semântica e episódica, e handoffs pendentes do inbox.
 
 ## 3. Processar o Handoff
 
@@ -113,12 +109,14 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" --arg ho "<HO_
 
 > O timeout de waiting é de 30 minutos (configurável via WAITING_TIMEOUT). Se expirar, o cron mata a sessão.
 
-**g) Archive** ao concluir:
+**g) Notificar** — se a ação for crítica ou precisar de atenção do usuário:
 ```bash
-bash "$BRAION/lib/handoff.sh" archive "$AGENT" "$new_path"
+bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<resultado>" "<próximos passos>"
 ```
 
-## 4. Salvar Estado
+## 4. Salvar Estado (Checkpoint)
+
+Salve o estado imediatamente após o processamento. Este é o primeiro checkpoint — o wrapup fará o segundo.
 
 - Atualize `<BR.AI.ON base>/agents/<nome>/state/decisions.md` com decisões tomadas
 - Se aprendeu algo novo, atualize `<BR.AI.ON base>/agents/<nome>/memory/semantic.md`
@@ -129,22 +127,19 @@ bash "$BRAION/lib/memory.sh" log_episodic "<ação>" "<contexto>" "<resultado>" 
 bash "$BRAION/lib/logger.sh" "$AGENT" "Handoffs processados" '{"count": N}'
 ```
 
-## 5. Notificar
+## 5. Heartbeat — Awaiting Review
 
-Se a ação for crítica ou precisar de atenção do usuário, envie um handoff para `user`:
-```bash
-bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<resultado>" "<próximos passos>"
-```
-
-## 6. Heartbeat Final e Encerramento
+**NÃO archive o handoff e NÃO mate a sessão.** O handoff permanece em `in_progress/` e a sessão fica aberta para o usuário interagir.
 
 ```bash
 jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
-  '{last_ping: $ts, agent: $a, status: "completed"}' \
+  '{last_ping: $ts, agent: $a, status: "awaiting_review", waiting_since: $ts}' \
   > "$BRAION/agents/$AGENT/state/heartbeat.json"
 ```
 
-Após salvar o heartbeat, mate a sessão tmux para liberar o slot:
-```bash
-tmux kill-session -t "$(tmux display-message -p '#S')" 2>/dev/null || true
-```
+Informe ao usuário:
+- O que foi feito
+- Que a sessão está aberta para review/interação
+- Que o `/braion:agent-wrapup` será executado automaticamente pelo cron quando a sessão ficar idle, ou pode ser chamado manualmente
+
+> O cron respeita o status `awaiting_review` e não mata a sessão. O timeout padrão é 3 dias (REVIEW_TIMEOUT). Quando o timeout expira ou o usuário encerra a interação, o cron envia `/braion:agent-wrapup` que detecta o status e faz o wrapup completo (archive + encerramento).

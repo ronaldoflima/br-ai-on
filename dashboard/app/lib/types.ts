@@ -66,6 +66,7 @@ export interface AgentSummary {
   schedule_mode: "alive" | "handoff-only" | "disabled";
   model: string;
   layer: string;
+  _searchText?: string;
 }
 
 export interface AgentDetail {
@@ -78,6 +79,8 @@ export interface AgentDetail {
   semantic: string;
   episodic: EpisodicEntry[];
   heartbeat: Record<string, unknown>;
+  isDefault?: boolean;
+  hasOverride?: boolean;
 }
 
 export interface EpisodicEntry {
