@@ -148,7 +148,7 @@ Verifique se o agente tem Telegram habilitado no config.yaml (`integrations.tele
 
 ### Modo `review`:
 ```bash
-bash lib/telegram.sh send "⏸️ [<nome>] Sessão em review — <resumo curto>. Sessão aberta para interação (timeout: 30min)"
+bash lib/telegram.sh send "⏸️ [<nome>] Sessão em review — <resumo curto>. Sessão aberta para interação (timeout: 3d)"
 ```
 
 ### Modo `full`:

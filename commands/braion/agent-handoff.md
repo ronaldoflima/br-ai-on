@@ -142,4 +142,4 @@ Informe ao usuário:
 - Que a sessão está aberta para review/interação
 - Que o `/braion:agent-wrapup` será executado automaticamente pelo cron quando a sessão ficar idle, ou pode ser chamado manualmente
 
-> O cron respeita o status `awaiting_review` e não mata a sessão. O timeout padrão é 30 minutos (REVIEW_TIMEOUT). Quando o timeout expira ou o usuário encerra a interação, o cron envia `/braion:agent-wrapup` que detecta o status e faz o wrapup completo (archive + encerramento).
+> O cron respeita o status `awaiting_review` e não mata a sessão. O timeout padrão é 3 dias (REVIEW_TIMEOUT). Quando o timeout expira ou o usuário encerra a interação, o cron envia `/braion:agent-wrapup` que detecta o status e faz o wrapup completo (archive + encerramento).
