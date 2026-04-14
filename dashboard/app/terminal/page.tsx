@@ -67,6 +67,7 @@ export default function TerminalPage() {
   const [showFiles, setShowFiles] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null);
   const [mobileView, setMobileView] = useState<"terminal" | "files" | "fileviewer">("terminal");
+  const [fullScreen, setFullScreen] = useState(false);
   const [filePanelWidth, setFilePanelWidth] = useState(400);
   const resizingRef = useRef(false);
   const resizeStartXRef = useRef(0);
@@ -463,6 +464,15 @@ export default function TerminalPage() {
               📁
             </button>
           )}
+          {!isMobile && (
+            <button
+              className={`btn ${styles.toolbarBtn} ${fullScreen ? styles.toolbarBtnActive : ""}`}
+              onClick={() => setFullScreen((v) => !v)}
+              title={fullScreen ? "Sair do modo tela cheia" : "Modo tela cheia"}
+            >
+              {fullScreen ? "⊡" : "⊞"}
+            </button>
+          )}
           <button
             className={`btn ${styles.toolbarBtn}`}
             onClick={() => { setLoadingSessions(true); fetchSessions(); if (selected) connectSSE(selected, captureLines, refreshRate); }}
@@ -636,10 +646,12 @@ export default function TerminalPage() {
   ) : null;
 
   return (
-    <div ref={containerRef} className={isMobile && selected ? styles.wrapperMobileSelected : styles.wrapper} style={{ height: vpHeight ?? "100dvh" }}>
-      <div className={`page-header ${styles.header}`}>
-        <h1 className="page-title">Terminais</h1>
-      </div>
+    <div ref={containerRef} className={fullScreen ? styles.wrapperFullScreen : (isMobile && selected ? styles.wrapperMobileSelected : styles.wrapper)} style={{ height: vpHeight ?? "100dvh" }}>
+      {!fullScreen && (
+        <div className={`page-header ${styles.header}`}>
+          <h1 className="page-title">Terminais</h1>
+        </div>
+      )}
 
       {isMobile ? (
         <div className={styles.mobileLayout}>
