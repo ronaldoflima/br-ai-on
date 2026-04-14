@@ -538,6 +538,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
   [ -d "$inbox_dir" ] || continue
 
   working_dir=$(awk '/^working_directory:/{print $2}' "$config" 2>/dev/null || echo "")
+  working_dir="${working_dir/#\~/$HOME}"
   [ -z "$working_dir" ] && working_dir="$BRAION"
 
   for handoff_file in "$inbox_dir"/HO-*.md; do
@@ -681,7 +682,8 @@ if [ "$due_count" -gt 0 ]; then
 
     prompt="Read $BRAION/commands/braion/agent-init.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "${agent_perm:-$_default_perm}" "$agent_cmd" "$alive_sp"
+    _mapped_perm=$(cli_permission_mode_map "${agent_perm:-$_default_perm}")
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$_mapped_perm" "$agent_cmd" "$alive_sp"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"
