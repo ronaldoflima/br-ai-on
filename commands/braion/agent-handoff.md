@@ -32,12 +32,7 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
 
 ## 2. Carregar Estado
 
-Sua identidade (IDENTITY.md), perfil do usuário (USER.md) e regras operacionais (AGENTS.md) já foram carregados via system prompt.
-
-Leia o estado operacional:
-- `<BR.AI.ON base>/agents/<nome>/state/current_objective.md`
-- `<BR.AI.ON base>/agents/<nome>/state/decisions.md`
-- `<BR.AI.ON base>/agents/<nome>/memory/semantic.md`
+O system prompt desta sessão já contém identidade, perfil do usuário, regras operacionais, estado persistente (objetivo, decisões, tarefas), memória semântica e episódica, e handoffs pendentes do inbox.
 
 ## 3. Processar o Handoff
 

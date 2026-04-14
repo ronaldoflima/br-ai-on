@@ -77,79 +77,6 @@ python3 lib/agent-scheduler.py --mark-ran <nome>  # registra execução
 - `semantic.md` — ler no init, atualizar no wrapup se descobriu algo novo
 - `episodic.jsonl` — registrar ações importantes (importance 1-5) via `lib/memory.sh log_episodic`
 
-## Comunicação via Obsidian Inbox
-
-Canal assíncrono bidirecional entre usuário e agentes via notas Obsidian.
-
-### Estrutura
-- `agents/inbox/` — notas ativas
-
-### Formato da Nota
-```yaml
----
-to: <agente>        # opcional — se vazio, orchestrator roteia automaticamente
-status: pending     # pending | processing | review | done
-created: YYYY-MM-DDTHH:MM
-assigned_to:        # preenchido pelo roteamento automático
----
-
-Mensagem do usuário aqui
-```
-
-### Estados
-- `pending` → `processing` → `done` (agente resolve sozinho)
-- `pending` → `processing` → `review` → `done` (precisa aprovação)
-- `review` → `pending` (usuário devolve com comentário)
-
-### Conversa
-Respostas são appendadas na mesma nota com separador `---`:
-- Bloco do agente: começa com `**🤖 <nome>** · <timestamp>`
-- Bloco do usuário: qualquer texto sem prefixo de agente
-- Mensagem pendente: último bloco não é do agente E status != done
-
-### Configuração por agente (`config.yaml`)
-```yaml
-integrations:
-  obsidian:
-    enabled: true
-    inbox: "agents/inbox"
-    identity: "🤖 <nome>"
-```
-
-## Schema do config.yaml
-
-```yaml
-name: <nome>
-# directory field removed — paths resolved dynamically
-display_name: <Display Name>
-domain: <Domínio>
-version: "0.x.0"
-model: claude-sonnet-4-6
-fallback_model: claude-haiku-4-5
-# command opcional: substitui o comando padrão do Claude Code
-# command: "ollama launch claude --model kimi-k2.5:cloud"
-
-schedule:
-  mode: alive | handoff-only | disabled
-  interval: "30m"            # 15m, 1h, 2h, 7d (usado apenas em modo alive)
-  priority: 2                # menor = mais prioritário
-  run_alone: false           # true = roda sem outros agentes simultâneos
-
-budget:
-  max_sessions_per_day: 10
-
-integrations:
-  notion:
-    enabled: true
-  telegram:
-    enabled: true
-  obsidian:
-    enabled: true
-    inbox: "agents/inbox"
-    identity: "🤖 <nome>"
-  # + específicas: calendar, home_assistant, github, habit, expense, notebooklm
-```
-
 ### Modos de schedule
 
 | Modo | Comportamento |
@@ -164,34 +91,18 @@ Campos específicos por agente (`evaluation`, `optimization`, `targets`) são ad
 
 ## Handoffs Peer-to-Peer
 
-### Estrutura
+Usar $BRAION/lib/handoff.sh — Helper para handoffs entre agentes
+A config colaborators do config pode ter lista de agentes prováveis para contribuir
 
-Arquivo: `agents/<nome>/handoffs/inbox/HO-<YYYYMMDD>-<NNN>_from-<agente>.md`
+### Uso:
+ - handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id] [job_id]
 
-```yaml
----
-id: HO-20260325-001
-from: <agente_remetente>
-to: <agente_destinatario> | user
-created: <timestamp ISO 8601>
-status: pending | archived
-expects: action | info | review | orchestrate
-reply_to: null | <ID do handoff original>
-job_id: null | <ID do job>
-thread_id: null | <ID da thread>
----
-
-## Descricao
-## Contexto
-## Esperado
-```
-
-### Campo `to`
+#### Campo `to`
 
 - `to: <agente>` — outro agente precisa executar algo
 - `to: user` — resultado/notificação para o usuário; cron arquiva sem iniciar sessão
 
-### Campo `expects`
+#### Campo `expects`
 
 - `action` — destinatário deve executar algo e pode responder com resultado
 - `review` — destinatário deve revisar e pode responder com parecer
@@ -208,7 +119,7 @@ thread_id: null | <ID da thread>
 5. **Arquivo**: move processados para `handoffs/archive/` no wrapup
 
 ```bash
-lib/handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado]
+lib/handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id] [job_id]
 lib/handoff.sh list <agent>
 lib/handoff.sh archive <agent> <caminho_arquivo>
 lib/handoff.sh next_id

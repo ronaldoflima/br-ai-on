@@ -178,7 +178,7 @@ def compute_schedule(configs, schedule_state, now):
         interval_s = parse_interval(interval_str)
         priority = sched.get("priority", 99)
         run_alone = sched.get("run_alone", False)
-        directory = cfg.get("directory", BRAION_BASE)
+        directory = cfg.get("directory") or cfg.get("working_directory") or BRAION_BASE
 
         last_run_str = schedule_state.get(name, "1970-01-01T00:00:00Z")
         try:

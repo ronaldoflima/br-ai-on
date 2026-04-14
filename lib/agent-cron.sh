@@ -198,13 +198,73 @@ build_agent_system_prompt() {
   local agents_md="$BRAION/AGENTS.md"
   [ -f "$agents_md" ] && content="${content}"$'\n\n'"$(cat "$agents_md")"
 
+  local agent_dir="$BRAION/agents/$agent"
+
+  # Estado persistente
+  local state_block=""
+  local obj_file="$agent_dir/state/current_objective.md"
+  local dec_file="$agent_dir/state/decisions.md"
+  local tasks_file="$agent_dir/state/completed_tasks.md"
+  [ -f "$obj_file" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$(cat "$obj_file")"
+  [ -f "$dec_file" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(tail -n 80 "$dec_file")"
+  [ -f "$tasks_file" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(tail -n 60 "$tasks_file")"
+  [ -n "$state_block" ] && content="${content}"$'\n\n## Estado da Sessão Anterior'"${state_block}"
+
+  # Memória
+  local mem_block=""
+  local sem_file="$agent_dir/memory/semantic.md"
+  local epi_file="$agent_dir/memory/episodic.jsonl"
+  [ -f "$sem_file" ] && mem_block="${mem_block}"$'\n\n### Memória Semântica\n'"$(cat "$sem_file")"
+  [ -f "$epi_file" ] && mem_block="${mem_block}"$'\n\n### Episódios Recentes\n'"$(tail -n 10 "$epi_file")"
+  [ -n "$mem_block" ] && content="${content}"$'\n\n## Memória'"${mem_block}"
+
+  # Handoffs pendentes
+  local inbox_dir="$agent_dir/handoffs/inbox"
+  if [ -d "$inbox_dir" ]; then
+    local handoff_block=""
+    for hf in "$inbox_dir"/HO-*.md; do
+      [ -f "$hf" ] || continue
+      handoff_block="${handoff_block}"$'\n\n---\n'"$(cat "$hf")"
+    done
+    if [ -n "$handoff_block" ]; then
+      local ts
+      ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      content="${content}"$'\n\n## Handoffs Pendentes (lidos em '"$ts"')'"${handoff_block}"
+    fi
+  fi
+
   if [ -n "$config" ] && [ -f "$config" ]; then
     local custom
     custom=$(python3 -c "
 import yaml, sys, os
+braion = os.environ.get('BRAION', os.path.dirname(os.path.dirname(os.path.abspath('$config'))))
 backend = os.environ.get('CLI_BACKEND', 'claude')
 try:
     cfg = yaml.safe_load(open('$config')) or {}
+
+    # collaborators capabilities
+    collaborators = cfg.get('collaborators') or []
+    if collaborators:
+        lines = ['## Colaboradores']
+        for col in collaborators:
+            name = col.get('agent', '')
+            if not name:
+                continue
+            col_config = os.path.join(braion, 'agents', name, 'config.yaml')
+            try:
+                col_cfg = yaml.safe_load(open(col_config)) or {}
+                caps = col_cfg.get('capabilities') or []
+                reason = col.get('reason', '')
+                line = f'- **{name}**: ' + '; '.join(caps)
+                if reason:
+                    line += f' ({reason})'
+                lines.append(line)
+            except Exception:
+                pass
+        if len(lines) > 1:
+            print('\n'.join(lines))
+
+    # runtime.system_prompt
     runtime = cfg.get('runtime', {}) or {}
     sp = runtime.get('system_prompt')
     if not sp:
@@ -477,7 +537,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
   inbox_dir="$agent_dir/handoffs/inbox"
   [ -d "$inbox_dir" ] || continue
 
-  working_dir=$(awk '/^directory:/{print $2}' "$config" 2>/dev/null || echo "")
+  working_dir=$(awk '/^working_directory:/{print $2}' "$config" 2>/dev/null || echo "")
   [ -z "$working_dir" ] && working_dir="$BRAION"
 
   for handoff_file in "$inbox_dir"/HO-*.md; do
