@@ -119,13 +119,20 @@ Symlinks externos: agent-builder, braion, extract-tasks, netsuite-monitor, super
 
 ## Runtime e Permission Mode
 
-Desde v1.3.0, cada agente pode definir o `permission_mode` do Claude Code via campo `runtime` no config.yaml:
+Cada agente define o `permission_mode` do CLI AI via campo `runtime` no config.yaml:
 
 ```yaml
+# Formato canônico (v1.3.2+)
+runtime:
+  permission_mode: auto  # auto | confirm | bypass (genéricos) ou valores nativos do backend
+
+# Formato legado (aceito com retrocompat, nunca escrito)
 runtime:
   claude:
-    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
+    permission_mode: acceptEdits
 ```
+
+Valores genéricos (`auto`, `confirm`, `bypass`) são traduzidos para o modo nativo do backend via `cli_permission_mode_map`. Valores nativos do Claude Code (`acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) continuam aceitos por retrocompat.
 
 O cron lê esse campo e passa `--permission-mode <valor>` ao iniciar a sessão. Default: `acceptEdits`.
 
