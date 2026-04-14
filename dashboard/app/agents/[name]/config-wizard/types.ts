@@ -1,19 +1,13 @@
-export const VALID_MODELS = [
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5",
-  "claude-haiku-4-5-20251001",
-] as const;
-export type ModelId = (typeof VALID_MODELS)[number];
+// Delegado para dashboard/app/lib/cli-backend-client.ts (Fase 3).
+// O wizard exibe somente os valores do backend ATIVO; o validator aceita
+// a união com retrocompat via ALL_VALID_* (outro módulo).
+import { validModels, validPermissionModes } from "../../../lib/cli-backend-client";
 
-export const VALID_PERMISSION_MODES = [
-  "acceptEdits",
-  "auto",
-  "bypassPermissions",
-  "plan",
-  "dontAsk",
-] as const;
-export type PermissionMode = (typeof VALID_PERMISSION_MODES)[number];
+export const VALID_MODELS = validModels();
+export type ModelId = string;
+
+export const VALID_PERMISSION_MODES = validPermissionModes();
+export type PermissionMode = string;
 
 export const VALID_SCHEDULE_MODES = [
   "alive",
@@ -42,11 +36,11 @@ export interface WizardCollaborator {
 }
 
 export function isModelId(v: string): v is ModelId {
-  return (VALID_MODELS as readonly string[]).includes(v);
+  return VALID_MODELS.includes(v);
 }
 
 export function isPermissionMode(v: string): v is PermissionMode {
-  return (VALID_PERMISSION_MODES as readonly string[]).includes(v);
+  return VALID_PERMISSION_MODES.includes(v);
 }
 
 export function isScheduleMode(v: string): v is ScheduleMode {

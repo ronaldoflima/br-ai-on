@@ -1,25 +1,24 @@
 import { parse } from "yaml";
 import type { ConfigError } from "./types";
+import {
+  ALL_VALID_MODELS,
+  ALL_VALID_PERMISSION_MODES,
+} from "./cli-backend-client";
 
 export interface ValidationResult {
   valid: boolean;
   errors: ConfigError[];
 }
 
-const VALID_MODELS = [
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5",
-  "claude-haiku-4-5-20251001",
-];
+// Validator aceita TODOS os modelos/modes conhecidos (união entre backends)
+// para permitir mudança de CLI_BACKEND sem invalidar configs existentes.
+// A UI (wizard) mostra só os do backend ativo via validModels() / validPermissionModes().
+const VALID_MODELS = ALL_VALID_MODELS;
+const VALID_PERMISSION_MODES = ALL_VALID_PERMISSION_MODES;
 
 const VALID_MODES = ["alive", "handoff-only", "disabled"];
 
 const INTERVAL_RE = /^\d+(s|m|h|d)$/;
-
-const VALID_CLAUDE_PERMISSION_MODES = [
-  "acceptEdits", "auto", "bypassPermissions", "plan", "dontAsk",
-];
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "name", "display_name", "domain", "layer", "directory", "working_directory",
@@ -192,24 +191,37 @@ export function validateAgentConfig(raw: string): ValidationResult {
     }
   }
 
-  // runtime: opcional, configurações específicas por executor de AI
+  // runtime: opcional, configurações específicas do backend AI CLI.
+  // Formato novo (canônico): runtime.permission_mode (genérico ou nativo)
+  // Formato legado (aceito): runtime.<backend>.permission_mode — ex: runtime.claude.permission_mode
   if (cfg.runtime !== undefined) {
     if (typeof cfg.runtime !== "object" || cfg.runtime === null || Array.isArray(cfg.runtime)) {
       errors.push({ field: "runtime", message: "runtime deve ser um objeto" });
     } else {
       const runtime = cfg.runtime as Record<string, unknown>;
-      const claude = runtime.claude as Record<string, unknown> | undefined;
-      if (claude !== undefined) {
-        if (typeof claude !== "object" || claude === null || Array.isArray(claude)) {
-          errors.push({ field: "runtime.claude", message: "runtime.claude deve ser um objeto" });
-        } else {
-          const pm = claude.permission_mode;
-          if (pm !== undefined && !VALID_CLAUDE_PERMISSION_MODES.includes(pm as string)) {
-            errors.push({
-              field: "runtime.claude.permission_mode",
-              message: `permission_mode inválido "${pm}". Válidos: ${VALID_CLAUDE_PERMISSION_MODES.join(", ")}`,
-            });
-          }
+
+      // Formato novo: runtime.permission_mode
+      const pmTop = runtime.permission_mode;
+      if (pmTop !== undefined && !VALID_PERMISSION_MODES.includes(pmTop as string)) {
+        errors.push({
+          field: "runtime.permission_mode",
+          message: `permission_mode inválido "${pmTop}". Válidos: ${VALID_PERMISSION_MODES.join(", ")}`,
+        });
+      }
+
+      // Formato legado: runtime.<backend>.permission_mode (ex: runtime.claude.*)
+      for (const [bk, bkCfg] of Object.entries(runtime)) {
+        if (bk === "permission_mode" || bk === "system_prompt") continue;
+        if (typeof bkCfg !== "object" || bkCfg === null || Array.isArray(bkCfg)) {
+          errors.push({ field: `runtime.${bk}`, message: `runtime.${bk} deve ser um objeto` });
+          continue;
+        }
+        const pm = (bkCfg as Record<string, unknown>).permission_mode;
+        if (pm !== undefined && !VALID_PERMISSION_MODES.includes(pm as string)) {
+          errors.push({
+            field: `runtime.${bk}.permission_mode`,
+            message: `permission_mode inválido "${pm}". Válidos: ${VALID_PERMISSION_MODES.join(", ")}`,
+          });
         }
       }
     }

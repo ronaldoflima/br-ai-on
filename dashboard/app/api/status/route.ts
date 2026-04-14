@@ -3,6 +3,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
 import { parseDomainTags } from "../../lib/domain";
+import { defaultModel } from "../../lib/cli-backend";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -50,7 +51,7 @@ export async function GET() {
     let version = "0.0.0";
     let intervalMs = 3600000;
     let scheduleMode = "handoff-only";
-    let model = "claude-sonnet-4-6";
+    let model = defaultModel();
     const configPath = join(agentDir, "config.yaml");
     if (existsSync(configPath)) {
       try {
@@ -58,7 +59,7 @@ export async function GET() {
         displayName = config.display_name || name;
         domain = parseDomainTags(config.domain);
         version = config.version || "0.0.0";
-        model = config.model || "claude-sonnet-4-6";
+        model = config.model || defaultModel();
         const sched = config?.schedule || {};
         scheduleMode = sched.mode || (sched.enabled === true ? "alive" : "handoff-only");
         if (sched.interval) {

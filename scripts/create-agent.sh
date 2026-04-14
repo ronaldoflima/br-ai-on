@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/../lib/cli.sh"
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BOLD='\033[1m'
@@ -77,10 +81,11 @@ fi
 echo ""
 
 # Model
-echo "O modelo de IA usado pelo agente."
-prompt "Modelo [claude-sonnet-4-6]:"
+_default_model=$(cli_default_model)
+echo "O modelo de IA usado pelo agente (backend: $CLI_BACKEND)."
+prompt "Modelo [$_default_model]:"
 read -r model
-model="${model:-claude-sonnet-4-6}"
+model="${model:-$_default_model}"
 
 echo ""
 
@@ -147,13 +152,14 @@ else
     interval_line="  interval: \"30m\""
 fi
 
+_fallback_model=$(cli_fallback_model)
 cat > "$base/config.yaml" << EOF
 name: $agent_name
 display_name: $display_name
 domain: $domain
 version: "0.1.0"
 model: $model
-fallback_model: claude-haiku-4-5
+fallback_model: $_fallback_model
 
 schedule:
   mode: $schedule_mode
@@ -203,4 +209,7 @@ success "handoffs/archive/"
 header "Agente '$display_name' criado com sucesso!"
 
 echo "Proximo passo: edite $base/IDENTITY.md para refinar a personalidade."
-echo "Para iniciar: use /braion:agent-init com o agente '$agent_name'."
+case "$CLI_BACKEND" in
+  claude) echo "Para iniciar: use /braion:agent-init com o agente '$agent_name'." ;;
+  *)      echo "Para iniciar: invoque o comando agent-init (ver commands/braion/agent-init.md) com o agente '$agent_name'." ;;
+esac

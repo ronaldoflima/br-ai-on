@@ -5,15 +5,17 @@ domain:
   - infraestrutura
   - criacao-de-agentes
 layer: infrastructure
-version: "0.1.0"
+version: "0.2.0"
 model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
 
 capabilities:
-  - Criar novos agentes com IDENTITY, config e estrutura
-  - Scaffold de diretórios e templates padrão
-  - Definir identidade e regras de comportamento
-  - Configurar integrações e collaborators
+  - Criar novos agentes com IDENTITY, config e estrutura completa
+  - Validar config.yaml contra schema e heurísticas do ecossistema
+  - Consultar catálogo de agentes existentes para evitar sobreposição
+  - Definir identidade, regras de comportamento e contexto operacional
+  - Configurar integrações, runtime, collaborators e working_directory
+  - Dimensionar budget e escolher modelo baseado no tipo de agente
 
 schedule:
   mode: handoff-only
@@ -22,8 +24,16 @@ schedule:
   run_alone: false
 
 budget:
+  max_tokens_per_session: 80000
   max_sessions_per_day: 5
+
+runtime:
+  permission_mode: bypassPermissions
 
 integrations:
   telegram:
     enabled: true
+  notion:
+    enabled: false
+  obsidian:
+    enabled: false
