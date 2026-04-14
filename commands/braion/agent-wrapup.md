@@ -7,6 +7,23 @@ description: Encerra sessão do agente — salva estado, memória, métricas e a
 
 Você está encerrando uma sessão como agente autônomo. O prompt contém `Agent: <nome>` — use esse nome em todos os paths abaixo.
 
+## 0. Detectar Modo
+
+Leia o heartbeat atual do agente para determinar o modo de execução:
+
+```bash
+current_status=$(jq -r '.status // ""' agents/<nome>/state/heartbeat.json 2>/dev/null || echo "")
+has_in_progress=$(ls agents/<nome>/handoffs/in_progress/HO-*.md 2>/dev/null | head -1)
+```
+
+| Condição | Modo | Comportamento |
+|----------|------|---------------|
+| `status == "awaiting_review"` | **full** | Segunda chamada após review — arquiva handoffs, encerra sessão |
+| `has_in_progress` não vazio E `status != "awaiting_review"` | **review** | Primeira chamada com handoff processado — salva estado, NÃO arquiva, NÃO encerra |
+| Nenhuma das anteriores | **full** | Sessão sem handoff (alive) — comportamento padrão |
+
+Guarde o modo (`review` ou `full`) para os passos seguintes.
+
 ## 1. Salvar Estado Persistente
 
 ### Objetivo da Sessão
@@ -63,17 +80,22 @@ Critério de importance:
 
 ## 4. Arquivar Handoffs Processados
 
-Para cada handoff processado nesta sessão, mova para o archive:
+> **Modo `review`**: pule este passo inteiro. Os handoffs permanecem em `in_progress/` para que o usuário possa revisar antes do encerramento final.
+
+> **Modo `full`**: archive todos os handoffs processados — tanto do inbox quanto do in_progress:
 
 ```bash
-bash lib/handoff.sh archive <nome> agents/<nome>/handoffs/inbox/<arquivo>.md
+for ho_file in agents/<nome>/handoffs/inbox/HO-*.md agents/<nome>/handoffs/in_progress/HO-*.md; do
+  [ -f "$ho_file" ] || continue
+  bash lib/handoff.sh archive <nome> "$ho_file"
+done
 ```
-
-Apenas arquive handoffs que foram de fato processados. Handoffs pendentes permanecem no inbox.
 
 ## 4b. Marcar Job como Completo (se aplicável)
 
-Se o handoff processado pertencia a um job, marque o agente como completo:
+> **Modo `review`**: pule este passo.
+
+> **Modo `full`**: se o handoff pertencia a um job, marque como completo:
 
 ```bash
 for ho_file in agents/<nome>/handoffs/in_progress/HO-*.md agents/<nome>/handoffs/archive/HO-*.md; do
@@ -86,8 +108,6 @@ for ho_file in agents/<nome>/handoffs/in_progress/HO-*.md agents/<nome>/handoffs
 done
 ```
 
-Isso é automático — você não precisa saber se estava num job. O wrapup detecta e marca.
-
 ## 5. Logar Métricas
 
 Registre a sessão nas métricas diárias:
@@ -98,7 +118,17 @@ bash lib/metrics.sh log "<nome>" "session" "success" <latency_ms> <tokens_in> <t
 
 Se não souber os valores exatos de tokens/latência, use 0.
 
-## 6. Heartbeat — Idle
+## 6. Heartbeat
+
+### Modo `review`:
+
+Marque o agente como `awaiting_review` — o cron respeitará este status e não matará a sessão:
+
+```bash
+jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "awaiting_review", waiting_since: $ts}' > agents/<nome>/state/heartbeat.json
+```
+
+### Modo `full`:
 
 Marque o agente como idle:
 
@@ -109,13 +139,19 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome
 ## 7. Log de Encerramento
 
 ```bash
-bash lib/logger.sh wrapup "Sessão encerrada" '{"objective": "<objetivo>", "tasks_completed": <n>}'
+bash lib/logger.sh wrapup "Sessão encerrada" '{"objective": "<objetivo>", "tasks_completed": <n>, "mode": "<review|full>"}'
 ```
 
 ## 8. Notificar via Telegram
 
-Verifique se o agente tem Telegram habilitado no config.yaml (`integrations.telegram.enabled: true`). Se sim, envie um resumo da sessão:
+Verifique se o agente tem Telegram habilitado no config.yaml (`integrations.telegram.enabled: true`). Se sim:
 
+### Modo `review`:
+```bash
+bash lib/telegram.sh send "⏸️ [<nome>] Sessão em review — <resumo curto>. Sessão aberta para interação (timeout: 3d)"
+```
+
+### Modo `full`:
 ```bash
 bash lib/telegram.sh send "✅ [<nome>] Sessão encerrada — <n> tarefa(s) concluída(s). <resumo curto do que foi feito>"
 ```
@@ -124,7 +160,15 @@ Se `integrations.telegram.enabled` for `false` ou não existir, pule este passo.
 
 ## 9. Confirmar
 
-Ao terminar, informe brevemente:
+### Modo `review`:
+Informe brevemente:
+- O que foi feito nesta sessão
+- Estado salvo (checkpoint)
+- Que a sessão está **aberta para review** — o usuário pode interagir
+- Que o wrapup final será executado automaticamente pelo cron quando ficar idle, ou pode ser chamado manualmente com `/braion:agent-wrapup`
+
+### Modo `full`:
+Informe brevemente:
 - O que foi feito nesta sessão
 - Estado salvo (objetivo, decisões, memória atualizada?)
 - Próximo foco ou handoffs pendentes para a próxima sessão

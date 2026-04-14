@@ -25,6 +25,7 @@ OBSIDIAN_INBOX=${OBSIDIAN_INBOX:-$OBSIDIAN_VAULT/$OBSIDIAN_BASE/agents/inbox}
 LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
 WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
+REVIEW_TIMEOUT=${REVIEW_TIMEOUT:-259200}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -73,18 +74,47 @@ session_is_stale() {
   [ "$elapsed" -gt "$STALE_THRESHOLD" ]
 }
 
+heartbeat_is_awaiting_review() {
+  local heartbeat_file=$1
+  [ -f "$heartbeat_file" ] || return 1
+  local status
+  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  [ "$status" = "awaiting_review" ]
+}
+
+heartbeat_review_expired() {
+  local heartbeat_file=$1
+  [ -f "$heartbeat_file" ] || return 0
+  local waiting_since now elapsed
+  waiting_since=$(jq -r '.waiting_since // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  [ -z "$waiting_since" ] && return 0
+  now=$(date -u +%s)
+  elapsed=$(( now - $(date -u -d "$waiting_since" +%s 2>/dev/null || echo 0) ))
+  [ "$elapsed" -gt "$REVIEW_TIMEOUT" ]
+}
+
 kill_stale_session() {
   local session=$1
+
+  local agent_name
+  agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
+  local heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
+
+  if heartbeat_is_awaiting_review "$heartbeat"; then
+    if heartbeat_review_expired "$heartbeat"; then
+      log "KILL $session — review timeout expirado (> ${REVIEW_TIMEOUT}s)"
+      tmux kill-session -t "$session" 2>/dev/null
+      return 0
+    fi
+    return 1
+  fi
+
   if session_is_idle "$session"; then
     log "KILL $session — $CLI_BACKEND em prompt idle, sessão concluída"
     session_clear_idle "$session"
     tmux kill-session -t "$session" 2>/dev/null
     return 0
   fi
-
-  local agent_name
-  agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
-  local heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
 
   if heartbeat_is_waiting "$heartbeat"; then
     if heartbeat_waiting_expired "$heartbeat"; then
@@ -330,14 +360,32 @@ start_session() {
     tmux send-keys -t "$session" Enter
   fi
 
-  # Watcher em background: invoca /braion:agent-wrapup quando backend fica idle,
-  # aguarda o wrapup terminar e então mata a sessão.
+  # Watcher em background: invoca /braion:agent-wrapup quando backend fica idle.
+  # Se o wrapup entrar em modo review (awaiting_review), aguarda interação do
+  # usuário ou timeout antes de encerrar.
   local log_file="$LOG_FILE"
   local _session="$session"
   local _idle_dir="$IDLE_DIR"
+  local _agent_name
+  _agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
+  local _heartbeat="$BRAION/agents/${_agent_name}/state/heartbeat.json"
+  local _review_timeout="$REVIEW_TIMEOUT"
   (
     _idle() {
       [ -f "$_idle_dir/$_session" ]
+    }
+
+    _heartbeat_status() {
+      jq -r '.status // ""' "$_heartbeat" 2>/dev/null || echo ""
+    }
+
+    _review_expired() {
+      local ws now elapsed
+      ws=$(jq -r '.waiting_since // ""' "$_heartbeat" 2>/dev/null || echo "")
+      [ -z "$ws" ] && return 0
+      now=$(date -u +%s)
+      elapsed=$(( now - $(date -u -d "$ws" +%s 2>/dev/null || echo 0) ))
+      [ "$elapsed" -gt "$_review_timeout" ]
     }
 
     sleep 30
@@ -345,6 +393,23 @@ start_session() {
     while tmux has-session -t "$_session" 2>/dev/null; do
       sleep 5
       if _idle; then
+        local status
+        status=$(_heartbeat_status)
+
+        if [ "$status" = "awaiting_review" ]; then
+          if _review_expired; then
+            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] REVIEW_TIMEOUT $_session — review timeout expirado, enviando wrapup final" >> "$log_file"
+            rm -f "$_idle_dir/$_session"
+            cli_send_slash_command "$_session" '/braion:agent-wrapup'
+            sleep 60
+            rm -f "$_idle_dir/$_session"
+            tmux kill-session -t "$_session" 2>/dev/null
+            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada após review timeout" >> "$log_file"
+            break
+          fi
+          continue
+        fi
+
         if [ "$wrapup_sent" = false ]; then
           rm -f "$_idle_dir/$_session"
           cli_send_slash_command "$_session" '/braion:agent-wrapup'
@@ -356,6 +421,11 @@ start_session() {
           tmux kill-session -t "$_session" 2>/dev/null
           echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] DONE $_session — sessão encerrada após wrapup" >> "$log_file"
           break
+        fi
+      else
+        if [ "$wrapup_sent" = true ] && [ "$(_heartbeat_status)" = "awaiting_review" ]; then
+          wrapup_sent=false
+          echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] REVIEW_INTERACT $_session — interação detectada, reset wrapup flag" >> "$log_file"
         fi
       fi
     done
