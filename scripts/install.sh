@@ -82,14 +82,19 @@ check_deps
 
 setup_commands() {
   local commands_dir="$REPO_DIR/commands/braion"
-  local target_dir="$HOME/.claude/commands/braion"
 
   if [ ! -d "$commands_dir" ]; then
     echo "WARN: $commands_dir não encontrado — pulando setup de commands"
     return
   fi
 
-  mkdir -p "$HOME/.claude/commands"
+  # Resolve diretório de instalação de commands via abstração CLI
+  source "$REPO_DIR/lib/cli.sh"
+  local install_dir
+  install_dir=$(cli_commands_install_dir)
+  local target_dir="$install_dir/braion"
+
+  mkdir -p "$install_dir"
 
   if [ -L "$target_dir" ]; then
     rm "$target_dir"
@@ -100,6 +105,7 @@ setup_commands() {
   ln -sf "$commands_dir" "$target_dir"
   echo "Commands linkados: $target_dir -> $commands_dir"
 
+  # Limpa symlinks legados dentro do repo (claude-code)
   if [ -d "$REPO_DIR/.claude/commands/braion" ]; then
     rm -rf "$REPO_DIR/.claude/commands/braion"
     echo "Symlinks antigos removidos de .claude/commands/braion"

@@ -11,6 +11,7 @@ import { join } from "path";
 import { parse, stringify } from "yaml";
 import { parseDomainTags } from "../../lib/domain";
 import { readMergedConfig } from "../../lib/config-merge";
+import { defaultModel, fallbackModel } from "../../lib/cli-backend";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -81,7 +82,7 @@ export async function GET() {
         version: config.version || "0.0.0",
         schedule_interval: sched.interval || "",
         schedule_mode: mode,
-        model: config.model || "claude-sonnet-4-6",
+        model: config.model || defaultModel(),
         soul_preview: soulPreview,
         layer: (config.layer as string) || "",
         _searchText,
@@ -134,8 +135,8 @@ export async function POST(request: NextRequest) {
       display_name,
       domain: parseDomainTags(domain),
       version: "0.1.0",
-      model: "claude-sonnet-4-6",
-      fallback_model: "claude-haiku-4-5",
+      model: defaultModel(),
+      fallback_model: fallbackModel(),
       schedule: {
         mode: "handoff-only",
         interval: "1h",

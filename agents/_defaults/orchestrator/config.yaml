@@ -14,8 +14,7 @@ model: claude-sonnet-4-6
 fallback_model: claude-haiku-4-5
 
 runtime:
-  claude:
-    permission_mode: acceptEdits  # acceptEdits | auto | bypassPermissions | plan | dontAsk
+  permission_mode: acceptEdits  # generic: auto | confirm | bypass — ou valor nativo do backend
 
 capabilities:
   - Decomposição de tarefas complexas em sub-tarefas

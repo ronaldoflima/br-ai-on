@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
 import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub, IconChevronLeft, IconChevronRight } from "./icons";
+import { backendLabel } from "../lib/cli-backend-client";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType; children?: NavItem[] };
 
@@ -24,7 +25,8 @@ const NAV: NavItem[] = [
   { href: "/integrations", label: "Integrações", icon: IconIntegrations },
 ];
 
-const CLAUDE_CODE_NAV = [
+// Nav items específicos do backend AI CLI (label vem de cli-backend).
+const BACKEND_NAV = [
   { href: "/memories", label: "Memórias", icon: IconMemories },
 ];
 
@@ -136,8 +138,8 @@ export function Sidebar() {
               </li>
             )
           )}
-          {!collapsed && <li className={styles.sectionLabel}>Claude Code</li>}
-          {CLAUDE_CODE_NAV.map((item) => (
+          {!collapsed && <li className={styles.sectionLabel}>{backendLabel()}</li>}
+          {BACKEND_NAV.map((item) => (
             <li key={item.href}>
               <Link
                 href={item.href}

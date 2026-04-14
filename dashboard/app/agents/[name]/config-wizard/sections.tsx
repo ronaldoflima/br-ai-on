@@ -16,6 +16,13 @@ import {
 } from "./types";
 import styles from "./config-wizard.module.css";
 
+function genId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 type Update = (patch: Partial<WizardFormState>) => void;
 
 interface SectionProps {
@@ -225,19 +232,25 @@ export function ModeloSection({ form, update, errors }: SectionProps) {
 // ─── Runtime ──────────────────────────────────────────────────────────────────
 
 export function RuntimeSection({ form, update, errors }: SectionProps) {
-  const hasError = Boolean(fieldError(errors, "runtime.claude.permission_mode"));
-  const permissionModeError = fieldError(errors, "runtime.claude.permission_mode");
+  const hasError =
+    Boolean(fieldError(errors, "runtime.permission_mode")) ||
+    Boolean(fieldError(errors, "runtime.claude.permission_mode"));
+  const permissionModeError =
+    fieldError(errors, "runtime.permission_mode") ||
+    fieldError(errors, "runtime.claude.permission_mode");
 
   return (
     <AccordionSection title="Runtime" hasError={hasError}>
       <div className={styles.legend}>
-        <strong>permission_mode</strong>: controla autonomia do agente.{" "}
-        <em>acceptEdits</em> pede confirmação para edições de arquivo;{" "}
-        <em>auto</em> executa tudo automaticamente; <em>bypassPermissions</em>{" "}
-        ignora todas as permissões (use com cuidado); <em>plan</em> só planeja
-        sem executar; <em>dontAsk</em> similar ao auto.{" "}
-        <strong>working_directory</strong> e <strong>command</strong> são
-        opcionais — definem onde e como iniciar o agente.
+        <strong>permission_mode</strong>: controla autonomia do agente.
+        Valores genéricos (portáveis entre backends):{" "}
+        <em>auto</em> aceita edits automaticamente, <em>confirm</em> pede
+        confirmação, <em>bypass</em> ignora todas as permissões (use com
+        cuidado). Os valores claude-native (<em>acceptEdits</em>,{" "}
+        <em>bypassPermissions</em>, <em>plan</em>, <em>dontAsk</em>) continuam
+        aceitos por retrocompat. <strong>working_directory</strong> e{" "}
+        <strong>command</strong> são opcionais — definem onde e como iniciar o
+        agente.
       </div>
 
       <div className="form-group">
@@ -290,7 +303,7 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
 
 export function CapabilitiesSection({ form, update }: SectionProps) {
   const [capItems, setCapItems] = useState(() =>
-    form.capabilities.map((value) => ({ id: crypto.randomUUID(), value })),
+    form.capabilities.map((value) => ({ id: genId(), value })),
   );
   const [newCap, setNewCap] = useState("");
 
@@ -310,7 +323,7 @@ export function CapabilitiesSection({ form, update }: SectionProps) {
   function addCap() {
     const v = newCap.trim();
     if (v) {
-      syncUp([...capItems, { id: crypto.randomUUID(), value: v }]);
+      syncUp([...capItems, { id: genId(), value: v }]);
       setNewCap("");
     }
   }
@@ -565,7 +578,7 @@ export function IntegracoesSection({ form, update }: SectionProps) {
 export function ColaboradoresSection({ form, update }: SectionProps) {
   const [colItems, setColItems] = useState(() =>
     form.collaborators.map((col) => ({
-      id: col.id ?? crypto.randomUUID(),
+      id: col.id ?? genId(),
       agent: col.agent,
     })),
   );
@@ -576,7 +589,7 @@ export function ColaboradoresSection({ form, update }: SectionProps) {
   }
 
   function addCollaborator() {
-    syncUp([...colItems, { id: crypto.randomUUID(), agent: "" }]);
+    syncUp([...colItems, { id: genId(), agent: "" }]);
   }
 
   function removeCollaborator(id: string) {

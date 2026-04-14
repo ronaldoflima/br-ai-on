@@ -2,8 +2,24 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGINS_DIR="$ROOT/hub/plugins/claude"
-COMMANDS_DIR="$ROOT/.claude/commands"
+# shellcheck disable=SC1091
+source "$ROOT/lib/cli.sh"
+
+# Estrutura: hub/plugins/<backend>/<plugin>/
+# Retrocompat: se hub/plugins/<backend> não existe, cai em hub/plugins/claude
+if [ -d "$ROOT/hub/plugins/$CLI_BACKEND" ]; then
+  PLUGINS_DIR="$ROOT/hub/plugins/$CLI_BACKEND"
+else
+  PLUGINS_DIR="$ROOT/hub/plugins/claude"
+fi
+
+# Onde instalar commands: depende do backend (ex: ~/.claude/commands, ~/.codex/prompts)
+# Retrocompat: se houver .claude/commands no repo, mantém (instalação legada local)
+if [ -d "$ROOT/.claude/commands" ]; then
+  COMMANDS_DIR="$ROOT/.claude/commands"
+else
+  COMMANDS_DIR=$(cli_commands_install_dir)
+fi
 
 usage() {
   cat <<'EOF'
@@ -53,7 +69,7 @@ get_config_example() {
 }
 
 list_plugins() {
-  echo "Plugins disponíveis em plugins/claude/:"
+  echo "Plugins disponíveis em ${PLUGINS_DIR#$ROOT/}/:"
   echo ""
   for dir in "$PLUGINS_DIR"/*/; do
     [ -d "$dir" ] || continue
@@ -79,7 +95,7 @@ list_plugins() {
 }
 
 list_installed() {
-  echo "Plugins instalados em .claude/commands/:"
+  echo "Plugins instalados em $COMMANDS_DIR/:"
   echo ""
   local found=0
   for dir in "$COMMANDS_DIR"/*/; do
@@ -115,7 +131,7 @@ install_plugin() {
   local target_dir="$COMMANDS_DIR/$name"
 
   if [ ! -d "$plugin_dir" ]; then
-    echo "❌ Plugin '$name' não encontrado em plugins/claude/"
+    echo "❌ Plugin '$name' não encontrado em ${PLUGINS_DIR#$ROOT/}/"
     exit 1
   fi
 
@@ -232,7 +248,7 @@ status_plugin() {
   local target_dir="$COMMANDS_DIR/$name"
 
   if [ ! -d "$plugin_dir" ]; then
-    echo "❌ Plugin '$name' não encontrado em plugins/claude/"
+    echo "❌ Plugin '$name' não encontrado em ${PLUGINS_DIR#$ROOT/}/"
     exit 1
   fi
 
