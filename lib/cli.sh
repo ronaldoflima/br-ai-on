@@ -365,11 +365,11 @@ cli_permission_mode_map() {
   case "$CLI_BACKEND" in
     claude)
       case "$generic" in
-        auto)           echo "acceptEdits" ;;
+        auto)           echo "auto" ;;
         confirm)        echo "default" ;;
         bypass)         echo "bypassPermissions" ;;
         # retrocompat: valores já nativos
-        acceptEdits|default|bypassPermissions|plan) echo "$generic" ;;
+        acceptEdits|default|bypassPermissions|plan|dontAsk) echo "$generic" ;;
         "")             echo "acceptEdits" ;;
         *)              echo "$generic" ;;
       esac
