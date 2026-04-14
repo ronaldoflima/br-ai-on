@@ -4,18 +4,15 @@ Skills do Claude Code em `commands/braion/` que definem o ciclo de vida dos agen
 
 ## agent-init
 
-Entry point de toda sessão de agente. Carrega identidade, estado persistente, handoffs pendentes e define o objetivo da sessão.
+Entry point de toda sessão de agente. Define objetivo e registra heartbeat.
 
-**Fluxo:**
-1. Budget check → rejeita se limite diário atingido
-2. Heartbeat → status "started"
-3. Carregar IDENTITY.md + USER.md + AGENTS.md
-4. Carregar state/ (objective, decisions, completed_tasks)
-5. Carregar memory/ (semantic + episodic)
-6. Listar handoffs pendentes no inbox
-7. Carregar config.yaml
-8. Definir objetivo da sessão
-9. Registrar init no log
+Desde v1.3.2, identidade (IDENTITY.md, USER.md, AGENTS.md), estado persistente (objective, decisions, completed_tasks), memória (semantic + episodic), handoffs pendentes e capabilities dos collaborators são **injetados automaticamente via `--append-system-prompt`** pelo cron — o init não precisa mais lê-los manualmente.
+
+**Fluxo (simplificado de 8→4 passos):**
+1. Heartbeat → status "started"
+2. Carregar config.yaml (limites e integrações)
+3. Definir objetivo da sessão
+4. Registrar init no log
 
 **Uso:** Automático — injetado pelo cron ao iniciar sessão tmux.
 
@@ -41,7 +38,7 @@ Processa um handoff específico atribuído ao agente.
 
 **Fluxo:**
 1. Claim do handoff (move para in_progress)
-2. Carregar contexto + thread history
+2. Contexto e estado já disponíveis via system prompt (não precisa reler)
 3. Executar ação conforme `expects` (action/review)
 4. Responder ao remetente se necessário
 5. Arquivar e atualizar estado

@@ -2,6 +2,35 @@
 
 Scripts utilitários compartilhados por todos os agentes e pelo cron.
 
+## Abstração de Backend
+
+### cli.sh
+Camada de abstração entre o projeto e o CLI AI concreto. **Nenhum outro script deve ter paths, modelos ou flags hardcoded** — tudo passa por `cli.sh`.
+
+Variável `CLI_BACKEND` (padrão: `claude`) controla o backend globalmente. Backends suportados: `claude`, `codex` (parcial), `gemini` (futuro).
+
+**API pública:**
+
+| Categoria | Funções |
+|-----------|---------|
+| Availability | `cli_check_available`, `cli_default_model`, `cli_fallback_model`, `cli_valid_models` |
+| Session | `cli_build_start_cmd`, `cli_send_command`, `cli_send_slash_command`, `cli_send_clear`, `cli_wait_ready` |
+| State | `cli_session_is_idle`, `cli_session_clear_idle`, `cli_prompt_glyph`, `cli_busy_patterns` |
+| Paths | `cli_config_dir`, `cli_commands_install_dir`, `cli_hook_config_path`, `cli_projects_dir` |
+| Hooks | `cli_hook_register`, `cli_hook_event_name` |
+| Permissions | `cli_permission_mode_map`, `cli_permission_mode_default` |
+
+**Mapeamento de permissions (genérico → backend):**
+- `auto` / `confirm` / `bypass` → traduzidos para o modo nativo do backend ativo
+- Valores legados (`acceptEdits`, `bypassPermissions`, etc.) aceitos com retrocompat
+
+```bash
+source lib/cli.sh
+cli_default_model          # → claude-sonnet-4-6
+cli_permission_mode_map "auto"  # → auto (claude) ou equivalente
+cli_build_start_cmd "$model" "$perm" "$sp_file" "$verbose"
+```
+
 ## Orquestração
 
 ### agent-cron.sh
@@ -11,8 +40,10 @@ Orquestrador principal, roda a cada 5min via cron. Responsável por:
 - Processar handoffs pendentes (iniciar sessões ou arquivar)
 - Iniciar agentes "alive" que estão prontos (via scheduler)
 - Monitorar sessões ociosas (kill automático removido na v1.3.0)
-- Suporte a `permission_mode` configurável por agente via `runtime.claude.permission_mode`
+- Construir system prompt com estado, memória, handoffs e collaborators (`build_agent_system_prompt`)
+- Suporte a `permission_mode` via `runtime.permission_mode` (lê legado `runtime.claude.*` com retrocompat)
 - Detecção de processo Telegram filtrada por usuário (`pgrep -u`)
+- Usa `cli.sh` para modelos, permissões, waiting e slash commands
 
 ### agent-scheduler.py
 Engine de scheduling em Python. Lê todos os `config.yaml`, compara intervalos com `schedule_state.json`, e retorna JSON com agentes categorizados:
@@ -20,6 +51,8 @@ Engine de scheduling em Python. Lê todos os `config.yaml`, compara intervalos c
 - `waiting` — intervalo não expirou
 - `inactive` — mode disabled/handoff-only
 - `budget_blocked` — limite diário atingido
+
+Consulta `lib/cli.sh` via subprocess para modelos default/fallback. Suporta retrocompat `runtime.claude.permission_mode` → `runtime.permission_mode`.
 
 ```bash
 python3 lib/agent-scheduler.py              # status completo

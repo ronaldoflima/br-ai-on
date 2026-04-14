@@ -32,8 +32,9 @@ Página principal de interação com sessões tmux dos agentes. Features:
 - **Sessões tmux**: painel lateral colapsável com lista de sessões e indicadores de status (dot colorido)
 - **File Explorer**: painel de navegação de arquivos com drag-to-resize, integrado via endpoint `/api/terminal/files`
 - **File Viewer**: visualizador de arquivos selecionados no explorer
-- **Input de texto**: envio de comandos para sessões tmux ativas
+- **Input de texto**: envio de comandos para sessões tmux ativas, com batching de keystrokes em modo direto (PR #33)
 - **Auto-scroll**: scroll automático para novas linhas de output (PR #26)
+- **SSE otimizado**: capturePane e getCursorInfo executados em paralelo via Promise.all (PR #33)
 - **Text selection toggle**: botão para habilitar/desabilitar seleção de texto no terminal
 - **URL linkification**: URLs no output do terminal são convertidas em links clicáveis
 - **Mobile**: scroll touch otimizado, layout responsivo
@@ -42,7 +43,7 @@ Página principal de interação com sessões tmux dos agentes. Features:
 
 | Componente | Função |
 |------------|--------|
-| `Sidebar` | Navegação principal com Integrações na nav principal e modo colapsado persistido em localStorage |
+| `Sidebar` | Navegação principal com label dinâmico via `backendLabel()`, Integrações na nav principal, modo colapsado persistido em localStorage |
 | `FileExplorer` | Árvore de diretórios com navegação hierárquica |
 | `FileViewer` | Visualizador de conteúdo de arquivos |
 | `FilterSection` | Filtros reutilizáveis com collapse, contadores e ordenação por relevância |
@@ -77,12 +78,24 @@ Página principal de interação com sessões tmux dos agentes. Features:
 - APIs assíncronas com `spawn` (substituído `execSync` por segurança e performance)
 - Validação de config com `config-validator.ts`
 
+## Abstração de Backend (cli-backend)
+
+O dashboard espelha `lib/cli.sh` em TypeScript via dois módulos:
+
+| Módulo | Escopo | Exports principais |
+|--------|--------|--------------------|
+| `cli-backend-client.ts` | Client-safe | `CLI_BACKEND`, `backendLabel()`, `defaultModel()`, `fallbackModel()`, `validModels()`, `validPermissionModes()` |
+| `cli-backend.ts` | Server-side | Re-exporta client + `configDir()`, `commandsInstallDir()`, `projectsDir()` |
+
+Nenhum arquivo fora destes módulos contém modelos, paths ou strings hardcoded do backend. `CLI_BACKEND` (env var) alterna entre backends sem rebuild.
+
 ## Config Validator
 
 O dashboard valida configs de agentes em tempo real. Campos validados:
 
 - **Obrigatórios**: name, display_name, version, model, fallback_model, domain, schedule, budget
-- **runtime.claude.permission_mode**: acceptEdits, auto, bypassPermissions, plan, dontAsk
+- **runtime.permission_mode**: auto, confirm, bypass (genéricos) + valores nativos do backend (retrocompat `runtime.claude.*` aceita)
+- **Modelos**: validação contra `ALL_VALID_MODELS` (união de todos backends) para não invalidar configs ao trocar `CLI_BACKEND`
 - **layer**: campo opcional para categorização (infrastructure, business, service, auxiliary)
 - **capabilities**: array de strings descrevendo o que o agente pode fazer
 

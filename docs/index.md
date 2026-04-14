@@ -1,6 +1,6 @@
 # BR.AI.ON — Documentação
 
-> Ecossistema de agentes AI pessoais orquestrado pelo Claude Code
+> Ecossistema de agentes AI pessoais com backend AI plugável
 
 ## Guias
 
@@ -39,4 +39,4 @@ br-ai-on/
 
 ## Versão
 
-Dashboard: 1.3.2 | Última atualização dos docs: 2026-04-11
+Dashboard: 1.3.2 | Última atualização dos docs: 2026-04-14
