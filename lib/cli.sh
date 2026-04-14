@@ -29,8 +29,6 @@
 #   State detection
 #     cli_session_is_idle <session>       — sessão está em prompt aguardando input?
 #     cli_session_clear_idle <session>    — remove flag de idle
-#     cli_prompt_glyph                    — glyph do prompt (ex: ❯ no claude)
-#     cli_busy_patterns                   — regex de estados "ocupado"
 #
 #   Paths / Filesystem
 #     cli_config_dir                      — ~/.claude | ~/.codex | ~/.gemini
@@ -190,53 +188,11 @@ cli_wait_ready() {
 
 # ── State detection ───────────────────────────────────────────────────────────
 
-# Glyph do prompt idle do backend (bytes brutos; use LC_ALL=C para match).
-cli_prompt_glyph() {
-  case "$CLI_BACKEND" in
-    claude) printf '\xe2\x9d\xaf\xc2\xa0' ;;  # ❯ + NBSP
-    codex)  printf '' ;;                       # codex não tem glyph fixo
-    gemini) printf '' ;;
-    *)      printf '' ;;
-  esac
-}
-
-# Regex (egrep) de patterns que indicam sessão ocupada (NÃO idle).
-cli_busy_patterns() {
-  case "$CLI_BACKEND" in
-    claude) echo 'Running…|Thinking|Thundering' ;;
-    codex)  echo 'Running|Thinking' ;;
-    gemini) echo 'Thinking|Processing' ;;
-    *)      echo 'Running|Thinking' ;;
-  esac
-}
-
 # cli_session_is_idle <session>
 cli_session_is_idle() {
   local session="$1"
   tmux has-session -t "$session" 2>/dev/null || return 1
-
-  case "$CLI_BACKEND" in
-    claude)
-      # Preferência: flag do Stop hook
-      [ -f "$_CLI_IDLE_DIR/$session" ] && return 0
-      # Fallback: capture-pane + glyph
-      local pane glyph busy
-      pane=$(tmux capture-pane -t "$session" -p 2>/dev/null)
-      glyph=$(cli_prompt_glyph)
-      busy=$(cli_busy_patterns)
-      echo "$pane" | LC_ALL=C grep -qF "$glyph" || return 1
-      ! echo "$pane" | grep -qE "$busy"
-      ;;
-    codex|gemini)
-      # Sem glyph fixo ainda: fallback por PID do processo
-      ! tmux list-panes -t "$session" -F '#{pane_pid}' 2>/dev/null \
-        | xargs -I{} ps -o comm= -p {} 2>/dev/null \
-        | grep -q "$CLI_BACKEND"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  [ -f "$_CLI_IDLE_DIR/$session" ]
 }
 
 # cli_session_clear_idle <session>
