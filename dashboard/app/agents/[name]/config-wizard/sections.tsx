@@ -16,6 +16,13 @@ import {
 } from "./types";
 import styles from "./config-wizard.module.css";
 
+function genId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 type Update = (patch: Partial<WizardFormState>) => void;
 
 interface SectionProps {
@@ -296,7 +303,7 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
 
 export function CapabilitiesSection({ form, update }: SectionProps) {
   const [capItems, setCapItems] = useState(() =>
-    form.capabilities.map((value) => ({ id: crypto.randomUUID(), value })),
+    form.capabilities.map((value) => ({ id: genId(), value })),
   );
   const [newCap, setNewCap] = useState("");
 
@@ -316,7 +323,7 @@ export function CapabilitiesSection({ form, update }: SectionProps) {
   function addCap() {
     const v = newCap.trim();
     if (v) {
-      syncUp([...capItems, { id: crypto.randomUUID(), value: v }]);
+      syncUp([...capItems, { id: genId(), value: v }]);
       setNewCap("");
     }
   }
@@ -571,7 +578,7 @@ export function IntegracoesSection({ form, update }: SectionProps) {
 export function ColaboradoresSection({ form, update }: SectionProps) {
   const [colItems, setColItems] = useState(() =>
     form.collaborators.map((col) => ({
-      id: col.id ?? crypto.randomUUID(),
+      id: col.id ?? genId(),
       agent: col.agent,
     })),
   );
@@ -582,7 +589,7 @@ export function ColaboradoresSection({ form, update }: SectionProps) {
   }
 
   function addCollaborator() {
-    syncUp([...colItems, { id: crypto.randomUUID(), agent: "" }]);
+    syncUp([...colItems, { id: genId(), agent: "" }]);
   }
 
   function removeCollaborator(id: string) {
