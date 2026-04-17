@@ -130,14 +130,23 @@ export async function GET(request: NextRequest) {
 
     const items = entries.map((e) => {
       const fullPath = join(resolvedDir, e.name);
+      let isDir = e.isDirectory();
+      let isFile = e.isFile();
+      if (e.isSymbolicLink()) {
+        try {
+          const target = statSync(fullPath);
+          isDir = target.isDirectory();
+          isFile = target.isFile();
+        } catch {}
+      }
       let size = 0;
-      try { if (e.isFile()) size = statSync(fullPath).size; } catch {}
+      try { if (isFile) size = statSync(fullPath).size; } catch {}
       return {
         name: e.name,
-        isDir: e.isDirectory(),
+        isDir,
         size,
-        sizeFormatted: e.isFile() ? formatSize(size) : "",
-        type: e.isDirectory() ? "dir" : getFileType(e.name),
+        sizeFormatted: isFile ? formatSize(size) : "",
+        type: isDir ? "dir" : getFileType(e.name),
       };
     }).sort((a, b) => {
       if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
