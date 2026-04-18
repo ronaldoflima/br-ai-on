@@ -91,6 +91,12 @@ ensure_session() {
   else
     log "WARN $session — prompt não detectado após 5s, continuando"
   fi
+
+  # cli_wait_ready consome o idle flag como sinal de "pronto".
+  # Recria o flag para que handle_message aceite a primeira mensagem.
+  mkdir -p "${IDLE_DIR:-$HOME/.config/br-ai-on/idle}"
+  touch "${IDLE_DIR:-$HOME/.config/br-ai-on/idle}/$session"
+
   return 0
 }
 
@@ -292,6 +298,9 @@ handle_message() {
     tg_send "⏳ Backend AI ainda está processando a mensagem anterior. Aguarde." "$chat_id"
     return
   fi
+
+  # Consome o idle flag antes de enviar — send_and_wait aguarda o Stop hook recriá-lo
+  cli_session_clear_idle "$session"
 
   tg_typing "$chat_id"
 
