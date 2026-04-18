@@ -324,6 +324,7 @@ start_session() {
 
   session_clear_idle "$session"
   tmux new-session -d -s "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+  sleep 1  # aguarda shell inicializar antes de enviar comandos
 
   if [ -n "$custom_cmd" ]; then
     tmux send-keys -t "$session" "$custom_cmd" Enter
@@ -331,7 +332,8 @@ start_session() {
   else
     local sp_file=""
     if [ -n "$sp_content" ]; then
-      sp_file="/tmp/braion-sp-${session}.txt"
+      # mktemp evita colisão de permissão com arquivos criados por outros usuários
+      sp_file=$(mktemp "/tmp/braion-sp-${session}-XXXXXX.txt" 2>/dev/null) || sp_file="/tmp/braion-sp-${session}-$$.txt"
       printf '%s' "$sp_content" > "$sp_file"
     fi
     local cmd
@@ -345,18 +347,26 @@ start_session() {
   tmux send-keys -t "$session" -l "$prompt"
   tmux send-keys -t "$session" Enter
 
-  # Verifica se backend recebeu o prompt (sai do estado idle em até 10s)
+  # Verifica se o backend está processando o prompt (tokens > 0 ou pane mudou).
+  # cli_wait_ready já consumiu o idle flag, então não podemos usar session_is_idle
+  # para detectar início do processamento — usamos conteúdo do pane.
   local submit_waited=0
+  local pane_before
+  pane_before=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
   while [ $submit_waited -lt 10 ]; do
     sleep 2
     submit_waited=$((submit_waited + 2))
-    if ! session_is_idle "$session"; then
-      break
+    local pane_now
+    pane_now=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
+    if [ "$pane_now" != "$pane_before" ]; then
+      break  # pane mudou → Claude está processando
     fi
   done
-  # Se ainda idle após 10s, o backend não processou o Enter — tenta novamente
-  if session_is_idle "$session"; then
-    log "RETRY $session — $CLI_BACKEND não saiu do idle após envio do prompt, reenviando Enter"
+  # Se pane não mudou após 10s, o Enter não foi aceito — tenta novamente
+  local pane_final
+  pane_final=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
+  if [ "$pane_final" = "$pane_before" ]; then
+    log "RETRY $session — pane sem mudança após envio do prompt, reenviando Enter"
     tmux send-keys -t "$session" Enter
   fi
 
@@ -432,6 +442,12 @@ start_session() {
   ) &
   disown $!
 }
+
+# ── -1. Limpar sessões stale ──────────────────────────────────────────────────
+while IFS= read -r stale_session; do
+  [ -n "$stale_session" ] || continue
+  kill_stale_session "$stale_session" || true
+done < <(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^braion-' | grep -v '^braion-telegram$' || true)
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
 git_pull_vault() {

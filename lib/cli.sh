@@ -188,6 +188,16 @@ cli_wait_ready() {
 
 # ── State detection ───────────────────────────────────────────────────────────
 
+# cli_prompt_glyph — caractere de prompt do backend (para filtrar output)
+cli_prompt_glyph() {
+  case "$CLI_BACKEND" in
+    claude) echo "❯" ;;
+    codex)  echo ">" ;;
+    gemini) echo ">" ;;
+    *)      echo "" ;;
+  esac
+}
+
 # cli_session_is_idle <session>
 cli_session_is_idle() {
   local session="$1"
