@@ -41,6 +41,11 @@ const SPECIAL_KEYS: { label: string; key: string; ctrl?: boolean; title: string 
 
 const ansiConverter = new AnsiToHtml({ fg: "#d4d4d4", bg: "#0d0d0d", escapeXML: true, stream: false });
 
+// Zero-width space: keeps the hidden direct-mode input non-empty so mobile
+// browsers always have a diff to detect and fire onChange for the first
+// keystroke after the virtual keyboard opens.
+const DIRECT_ANCHOR = "\u200B";
+
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
 
 function linkifyHtml(html: string): string {
@@ -241,8 +246,8 @@ export default function TerminalPage() {
 
   const handleDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (composingRef.current) return;
-    const val = e.target.value;
-    e.target.value = "";
+    const val = e.target.value.replace(/\u200B/g, "");
+    e.target.value = DIRECT_ANCHOR;
     if (val) sendLiteral(val);
   }, [sendLiteral]);
 
@@ -253,7 +258,7 @@ export default function TerminalPage() {
   const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
     composingRef.current = false;
     const data = e.data;
-    (e.target as HTMLInputElement).value = "";
+    (e.target as HTMLInputElement).value = DIRECT_ANCHOR;
     if (data) sendLiteral(data);
   }, [sendLiteral]);
 
@@ -600,6 +605,7 @@ export default function TerminalPage() {
             <input
               key="direct-input"
               ref={mobileDirectInputRef}
+              defaultValue={DIRECT_ANCHOR}
               onChange={handleDirectChange}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
