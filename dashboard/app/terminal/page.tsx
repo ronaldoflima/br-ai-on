@@ -228,16 +228,20 @@ export default function TerminalPage() {
     composingRef.current = true;
   }, []);
 
-  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
-    composingRef.current = false;
-    const data = e.data;
-    (e.target as HTMLInputElement).value = "";
-    if (data) {
-      for (const char of [...data]) {
-        sendKey(char);
-      }
+  const handleDirectInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    if (!composingRef.current) return;
+    const target = e.target as HTMLInputElement;
+    const val = target.value;
+    target.value = "";
+    for (const char of val) {
+      sendKey(char);
     }
   }, [sendKey]);
+
+  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
+    composingRef.current = false;
+    (e.target as HTMLInputElement).value = "";
+  }, []);
 
   const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
@@ -575,6 +579,7 @@ export default function TerminalPage() {
               key="direct-input"
               ref={mobileDirectInputRef}
               onChange={handleDirectChange}
+              onInput={handleDirectInput}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
               onKeyDown={handleDirectInputKeyDown}
