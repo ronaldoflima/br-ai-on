@@ -429,7 +429,7 @@ export type PermissionMode =
 export type ScheduleMode = "alive" | "handoff-only" | "disabled";
 
 export type ModelId =
-  | "claude-opus-4-6"
+  | "claude-opus-4-7"
   | "claude-sonnet-4-6"
   | "claude-haiku-4-5"
   | "claude-haiku-4-5-20251001";
@@ -472,7 +472,7 @@ export interface FieldError {
 }
 
 export const VALID_MODELS: ModelId[] = [
-  "claude-opus-4-6",
+  "claude-opus-4-7",
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
   "claude-haiku-4-5-20251001",

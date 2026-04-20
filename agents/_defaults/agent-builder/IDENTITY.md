@@ -68,7 +68,7 @@ domain:
   - <dominio-2>
 layer: <infrastructure|development|analytics|integration|productivity|documentation|finance>
 version: "0.1.0"
-model: <claude-sonnet-4-6|claude-opus-4-6|claude-haiku-4-5>
+model: <claude-sonnet-4-6|claude-opus-4-7|claude-haiku-4-5>
 fallback_model: claude-haiku-4-5
 
 capabilities:
@@ -129,7 +129,7 @@ integrations:
 
 | Critério | Modelo | Justificativa |
 |----------|--------|---------------|
-| Análise profunda, documentação, decisões complexas | `claude-opus-4-6` | Melhor compreensão e raciocínio |
+| Análise profunda, documentação, decisões complexas | `claude-opus-4-7` | Melhor compreensão e raciocínio |
 | Desenvolvimento, integração, tarefas estruturadas | `claude-sonnet-4-6` | Bom equilíbrio custo/qualidade |
 | Triagem, roteamento, tarefas simples | `claude-haiku-4-5` | Rápido e barato |
 

@@ -235,9 +235,16 @@ ${output:0:800}
   local origin_ahead
   origin_ahead=$(cd "$BRAION" && git rev-list main..origin/main --count 2>/dev/null || echo 0)
   if [ "$origin_ahead" -gt 0 ]; then
-    tg_send "⚠️ origin/main tem ${origin_ahead} commit(s) à frente do local. Faça pull de main antes de deployar." "$chat_id"
-    log "DEPLOY ABORT — origin/main ${origin_ahead} commit(s) à frente"
-    return
+    tg_send "📥 origin/main tem ${origin_ahead} commit(s) à frente do local. Fazendo pull automático..." "$chat_id"
+    log "DEPLOY — origin/main ${origin_ahead} commit(s) à frente, fazendo pull automático"
+    if ! output=$(cd "$BRAION" && git pull origin main 2>&1); then
+      tg_send "❌ Erro no git pull automático:
+\`\`\`
+${output:0:800}
+\`\`\`" "$chat_id"
+      log "DEPLOY ERROR git pull automático: $output"
+      return
+    fi
   fi
 
   local git_cmds="git checkout \"$branch\" && git pull origin \"$branch\""
