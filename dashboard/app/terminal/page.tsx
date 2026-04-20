@@ -278,7 +278,6 @@ export default function TerminalPage() {
       e.preventDefault();
       sendKey(e.key, ctrl, meta, shift);
     }
-    // Caracteres regulares (incluindo acentuados compostos) são tratados pelo onChange
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
