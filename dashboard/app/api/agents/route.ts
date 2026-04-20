@@ -10,6 +10,8 @@ import {
 import { join } from "path";
 import { parse, stringify } from "yaml";
 import { parseDomainTags } from "../../lib/domain";
+import { readMergedConfig } from "../../lib/config-merge";
+import { defaultModel, fallbackModel } from "../../lib/cli-backend";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -34,13 +36,18 @@ export async function GET() {
   const combined = [...userAgents, ...defaultAgents.filter((a) => !seen.has(a.name))];
 
   const agents = combined.map(({ name, baseDir }) => {
-      const configPath = join(baseDir, name, "config.yaml");
-      const soulPath = join(baseDir, name, "IDENTITY.md");
+      const agentDir = join(baseDir, name);
+      const soulPath = join(agentDir, "IDENTITY.md");
+      const isDefault = baseDir === DEFAULTS_DIR;
       let config: Record<string, unknown> = {};
-      try {
-        config = parse(readFileSync(configPath, "utf-8"));
-      } catch {
-        // ignore parse errors
+      if (isDefault) {
+        ({ config } = readMergedConfig(agentDir));
+      } else {
+        try {
+          config = parse(readFileSync(join(agentDir, "config.yaml"), "utf-8"));
+        } catch {
+          // ignore parse errors
+        }
       }
       let soulPreview = "";
       try {
@@ -53,16 +60,32 @@ export async function GET() {
       }
       const sched = (config.schedule || {}) as Record<string, unknown>;
       const mode = sched.mode || (sched.enabled === true ? "alive" : "handoff-only");
+      const domainTags = parseDomainTags(config.domain);
+      const _searchText = [
+        name,
+        config.display_name || name,
+        ...domainTags,
+        config.model || "",
+        (config.layer as string) || "",
+        config.version || "",
+        sched.mode || "",
+        sched.interval || "",
+        ...(Array.isArray(config.capabilities) ? config.capabilities : []),
+        config.working_directory || "",
+        config.fallback_model || "",
+      ].filter(Boolean).join(" ").toLowerCase();
+
       return {
         name,
         display_name: config.display_name || name,
-        domain: parseDomainTags(config.domain),
+        domain: domainTags,
         version: config.version || "0.0.0",
         schedule_interval: sched.interval || "",
         schedule_mode: mode,
-        model: config.model || "claude-sonnet-4-6",
+        model: config.model || defaultModel(),
         soul_preview: soulPreview,
         layer: (config.layer as string) || "",
+        _searchText,
       };
     });
 
@@ -112,14 +135,13 @@ export async function POST(request: NextRequest) {
       display_name,
       domain: parseDomainTags(domain),
       version: "0.1.0",
-      model: "claude-sonnet-4-6",
-      fallback_model: "claude-haiku-4-5",
+      model: defaultModel(),
+      fallback_model: fallbackModel(),
       schedule: {
         mode: "handoff-only",
         interval: "1h",
       },
       budget: {
-        max_tokens_per_session: 50000,
         max_sessions_per_day: 10,
       },
       integrations: {

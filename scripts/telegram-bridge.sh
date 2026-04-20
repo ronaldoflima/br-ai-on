@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # scripts/telegram-bridge.sh
-# Telegram ↔ Claude Code bridge via tmux long-polling
+# Telegram ↔ AI CLI bridge via tmux long-polling
 #
 # Uso: bash scripts/telegram-bridge.sh
 #      Mantém sessões tmux com prefixo "braion-telegram-<chat_id>"
 #
 # Comandos Telegram:
 #   /start   — mensagem de boas-vindas
-#   /clear   — limpa contexto do Claude (/clear)
+#   /clear   — limpa contexto do backend AI (/clear)
 #   /reset   — destrói e recria a sessão
 #   /status  — mostra estado da sessão
-#   qualquer texto — enviado ao Claude
+#   qualquer texto — enviado ao backend AI
 
 set -euo pipefail
 
@@ -19,42 +19,23 @@ BRAION="$(cd "$(dirname "$0")/.." && pwd)"
 echo "BRAION: $BRAION"
 [ -f "$BRAION/.env" ] && set -a && source "$BRAION/.env" && set +a
 
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}" 
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 ALLOWED_CHAT="${TELEGRAM_ALLOWED_CHAT_ID:-}"
-CLAUDE="claude"
-DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
 SESSION_PREFIX="braion-telegram"
-OFFSET_FILE="/tmp/tgbridge-offset.txt"
+OFFSET_FILE="/tmp/tgbridge-offset-$(whoami).txt"
 LOG_FILE="$BRAION/logs/telegram-bridge.log"
-IDLE_TIMEOUT=180   # segundos aguardando resposta do Claude
+IDLE_TIMEOUT=180   # segundos aguardando resposta do backend AI
 RESPONSE_LINES=300 # máximo de linhas a capturar
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # ── Utilidades ────────────────────────────────────────────────────────────────
+source "$BRAION/lib/telegram.sh"
+source "$BRAION/lib/cli.sh"
+DEFAULT_MODEL="${DEFAULT_MODEL:-$(cli_default_model)}"
+
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"
-}
-
-tg_send() {
-  local chat_id="$1" text="$2"
-  # Telegram: máximo 4096 chars por mensagem — envia em chunks se necessário
-  local max=4000
-  while [ "${#text}" -gt 0 ]; do
-    local chunk="${text:0:$max}"
-    text="${text:$max}"
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-      -d "chat_id=${chat_id}" \
-      --data-urlencode "text=${chunk}" \
-      -d "disable_web_page_preview=true" \
-      > /dev/null
-  done
-}
-
-tg_typing() {
-  local chat_id="$1"
-  curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendChatAction" \
-    -d "chat_id=${chat_id}" -d "action=typing" > /dev/null
 }
 
 strip_ansi() {
@@ -62,6 +43,10 @@ strip_ansi() {
 }
 
 clean_response() {
+  local glyph
+  glyph=$(cli_prompt_glyph)
+  local filter="cat"
+  [ -n "$glyph" ] && filter="grep -v \"^$glyph\""
   strip_ansi \
     | grep -v '^[[:space:]]*$' \
     | grep -v '^─\+$' \
@@ -69,7 +54,7 @@ clean_response() {
     | grep -v 'accept edits' \
     | grep -v '⏵⏵' \
     | grep -v '│.*tokens' \
-    | grep -v '^❯' \
+    | eval "$filter" \
     | sed '/^$/N;/^\n$/d'
 }
 
@@ -78,14 +63,7 @@ session_running() {
   tmux has-session -t "$1" 2>/dev/null
 }
 
-session_is_idle() {
-  local session="$1"
-  tmux has-session -t "$session" 2>/dev/null || return 1
-  # O prompt idle do Claude Code usa NBSP (c2 a0) após ❯, enquanto o echo do
-  # input do usuário usa espaço regular (20). LC_ALL=C garante match byte-a-byte.
-  tmux capture-pane -t "$session" -p 2>/dev/null \
-    | LC_ALL=C grep -qP '\xe2\x9d\xaf\xc2\xa0'
-}
+session_is_idle() { cli_session_is_idle "$1"; }
 
 ensure_session() {
   local session="$1" chat_id="$2"
@@ -101,27 +79,29 @@ ensure_session() {
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
   tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$BOT_TOKEN" 2>/dev/null || true
 
-  # System prompt carregado de arquivo (fallback inline se arquivo não existir)
-  local tg_prompt=$(cat $BRAION/prompts/system-prompts/chat-telegram.md 2>/dev/null || echo "You are a helpful assistant. Keep responses concise for Telegram/chat, format for mobile, NO tables/ASCII art. Use bullets and short paragraphs. Be concise.")
-  log "tmux send-keys -t \"$session\" \"$CLAUDE --permission-mode acceptEdits --append-system-prompt '$tg_prompt'\" Enter"
-  tmux send-keys -t "$session" "$CLAUDE --verbose --permission-mode acceptEdits --append-system-prompt '$tg_prompt'" Enter
+  local prompt_file="$BRAION/prompts/system-prompts/chat-telegram.md"
+  local cmd
+  cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "$(cli_permission_mode_map bypass)" "$prompt_file" "true")
+  log "START $CLI_BACKEND via cli_build_start_cmd em $session"
+  tmux send-keys -t "$session" "$cmd" Enter
 
-  # Aguarda prompt ❯ (máx 5s)
-  local waited=0
-  while [ $waited -lt 5 ]; do
-    sleep 1
-    waited=$((waited + 1))
-    if tmux capture-pane -t "$session" -p 2>/dev/null | grep -qP '\xe2\x9d\xaf'; then
-      log "READY $session (${waited}s)"
-      return 0
-    fi
-  done
-  log "WARN $session — prompt não detectado após ${waited}s, continuando"
+  # Aguarda backend estar pronto (máx 5s)
+  if cli_wait_ready "$session" 5; then
+    log "READY $session"
+  else
+    log "WARN $session — prompt não detectado após 5s, continuando"
+  fi
+
+  # cli_wait_ready consome o idle flag como sinal de "pronto".
+  # Recria o flag para que handle_message aceite a primeira mensagem.
+  mkdir -p "${IDLE_DIR:-$HOME/.config/br-ai-on/idle}"
+  touch "${IDLE_DIR:-$HOME/.config/br-ai-on/idle}/$session"
+
   return 0
 }
 
 # ── Enviar mensagem e aguardar processamento ───────────────────────────────────
-# Captura a resposta do Claude diretamente do tmux.
+# Captura a resposta do backend AI diretamente do tmux.
 send_and_wait() {
   local session="$1" message="$2"
 
@@ -133,14 +113,14 @@ send_and_wait() {
   tmux send-keys -t "$session" -l "$message"
   tmux send-keys -t "$session" Enter
 
-  # Aguarda Claude começar a processar (❯ some) — até 10s
+  # Aguarda backend começar a processar — até 10s
   local w=0
   while [ $w -lt 10 ]; do
     sleep 1; w=$((w + 1))
     session_is_idle "$session" || break
   done
 
-  # Aguarda Claude terminar (❯ reaparece) — até IDLE_TIMEOUT
+  # Aguarda backend terminar — até IDLE_TIMEOUT
   local waited=0
   while [ $waited -lt $IDLE_TIMEOUT ]; do
     sleep 2; waited=$((waited + 2))
@@ -155,7 +135,7 @@ send_and_wait() {
     | clean_response \
     | sed '/^'"$before_prompt"'/,$d' \
     | head -n -1 \
-    | grep -v "^$CLAUDE " \
+    | grep -v "^$CLI_BACKEND " \
     | grep -v "^─\+$")
 
   echo "$response"
@@ -165,10 +145,11 @@ send_and_wait() {
 handle_start() {
   local chat_id="$1" session="$2"
   ensure_session "$session" "$chat_id"
-  tg_send "$chat_id" "🤖 *BR.AI.ON* conectado
+  tg_send "🤖 *BR.AI.ON* conectado
 Sessão: \`$session\`
+Backend: \`$CLI_BACKEND\`
 
-Envie qualquer mensagem para o Claude Code.
+Envie qualquer mensagem para o backend AI.
 
 Comandos:
 • /clear — limpar contexto
@@ -177,18 +158,18 @@ Comandos:
 • /pause — pausar agentes
 • /unpause — retomar agentes
 • /deploy — deploy da branch main
-• /deploy <branch> — deploy de branch específica"
+• /deploy <branch> — deploy de branch específica" "$chat_id"
 }
 
 handle_clear() {
   local chat_id="$1" session="$2"
   if ! session_running "$session"; then
-    tg_send "$chat_id" "⚠️ Sem sessão ativa. Envie uma mensagem para iniciar."
+    tg_send "⚠️ Sem sessão ativa. Envie uma mensagem para iniciar." "$chat_id"
     return
   fi
-  tmux send-keys -t "$session" "/clear" Enter
+  cli_send_clear "$session"
   sleep 2
-  tg_send "$chat_id" "✅ Contexto limpo."
+  tg_send "✅ Contexto limpo." "$chat_id"
   log "CLEAR $session"
 }
 
@@ -200,26 +181,26 @@ handle_reset() {
   fi
   sleep 1
   ensure_session "$session" "$chat_id"
-  tg_send "$chat_id" "🔄 Sessão reiniciada."
+  tg_send "🔄 Sessão reiniciada." "$chat_id"
 }
 
 handle_status() {
   local chat_id="$1" session="$2"
   if ! session_running "$session"; then
-    tg_send "$chat_id" "💤 Sem sessão ativa."
+    tg_send "💤 Sem sessão ativa." "$chat_id"
     return
   fi
   if session_is_idle "$session"; then
-    tg_send "$chat_id" "✅ Sessão \`$session\` ativa e aguardando."
+    tg_send "✅ Sessão \`$session\` ativa e aguardando (backend: $CLI_BACKEND)." "$chat_id"
   else
-    tg_send "$chat_id" "⏳ Sessão \`$session\` processando..."
+    tg_send "⏳ Sessão \`$session\` processando (backend: $CLI_BACKEND)..." "$chat_id"
   fi
 }
 
 handle_pause() {
   local chat_id="$1"
   touch "$BRAION/.paused"
-  tg_send "$chat_id" "⏸ BR.AI.ON pausado. Agentes não serão iniciados até /unpause."
+  tg_send "⏸ BR.AI.ON pausado. Agentes não serão iniciados até /unpause." "$chat_id"
   log "PAUSE — arquivo .paused criado"
 }
 
@@ -227,66 +208,91 @@ handle_unpause() {
   local chat_id="$1"
   if [ -f "$BRAION/.paused" ]; then
     rm -f "$BRAION/.paused"
-    tg_send "$chat_id" "▶️ BR.AI.ON retomado. Agentes voltam ao ciclo normal."
+    tg_send "▶️ BR.AI.ON retomado. Agentes voltam ao ciclo normal." "$chat_id"
     log "UNPAUSE — arquivo .paused removido"
   else
-    tg_send "$chat_id" "ℹ️ BR.AI.ON já estava ativo (sem arquivo .paused)."
+    tg_send "ℹ️ BR.AI.ON já estava ativo (sem arquivo .paused)." "$chat_id"
   fi
 }
 
 handle_deploy() {
   local chat_id="$1" branch="${2:-main}"
   log "DEPLOY — branch=$branch iniciado por chat_id=$chat_id"
-  tg_send "$chat_id" "🚀 Deploy iniciado (branch: \`$branch\`)..."
+  tg_send "🚀 Deploy iniciado (branch: \`$branch\`)..." "$chat_id"
 
   local output errors=""
 
-  tg_send "$chat_id" "📦 Fazendo checkout e pull..."
-  local git_cmds="git fetch origin && git checkout \"$branch\" && git pull origin \"$branch\""
+  tg_send "📦 Fazendo checkout e pull..." "$chat_id"
+  if ! output=$(cd "$BRAION" && git fetch origin 2>&1); then
+    tg_send "❌ Erro no git fetch:
+\`\`\`
+${output:0:800}
+\`\`\`" "$chat_id"
+    log "DEPLOY ERROR git fetch: $output"
+    return
+  fi
+
+  local origin_ahead
+  origin_ahead=$(cd "$BRAION" && git rev-list main..origin/main --count 2>/dev/null || echo 0)
+  if [ "$origin_ahead" -gt 0 ]; then
+    tg_send "📥 origin/main tem ${origin_ahead} commit(s) à frente do local. Fazendo pull automático..." "$chat_id"
+    log "DEPLOY — origin/main ${origin_ahead} commit(s) à frente, fazendo pull automático"
+    if ! output=$(cd "$BRAION" && git pull origin main 2>&1); then
+      tg_send "❌ Erro no git pull automático:
+\`\`\`
+${output:0:800}
+\`\`\`" "$chat_id"
+      log "DEPLOY ERROR git pull automático: $output"
+      return
+    fi
+  fi
+
+  local git_cmds="git checkout \"$branch\" && git pull origin \"$branch\""
   [ "$branch" != "main" ] && git_cmds="$git_cmds && git pull origin main"
   if ! output=$(cd "$BRAION" && eval "$git_cmds" 2>&1); then
     errors="$output"
-    tg_send "$chat_id" "❌ Erro no git:
+    tg_send "❌ Erro no git:
 \`\`\`
 ${errors:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR git: $errors"
     return
   fi
 
-  tg_send "$chat_id" "📦 Instalando dependências..."
+  tg_send "📦 Instalando dependências..." "$chat_id"
   if ! output=$(cd "$BRAION/dashboard" && npm install 2>&1); then
-    tg_send "$chat_id" "❌ Erro no npm install:
+    tg_send "❌ Erro no npm install:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR npm install: $output"
     return
   fi
 
-  tg_send "$chat_id" "🔨 Building..."
+  tg_send "🔨 Building..." "$chat_id"
+  rm -rf "$BRAION/dashboard/.next"
   if ! output=$(cd "$BRAION/dashboard" && npm run build 2>&1); then
-    tg_send "$chat_id" "❌ Erro no npm build:
+    tg_send "❌ Erro no npm build:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR npm build: $output"
     return
   fi
 
-  tg_send "$chat_id" "🔄 Reiniciando serviço..."
+  tg_send "🔄 Reiniciando serviço..." "$chat_id"
   local uid
   uid=$(id -u)
   if ! output=$(XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user stop braion 2>&1 && XDG_RUNTIME_DIR="/run/user/${uid}" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" systemctl --user start braion 2>&1); then
-    tg_send "$chat_id" "❌ Erro no systemctl:
+    tg_send "❌ Erro no systemctl:
 \`\`\`
 ${output:0:800}
-\`\`\`"
+\`\`\`" "$chat_id"
     log "DEPLOY ERROR systemctl: $output"
     return
   fi
 
-  tg_send "$chat_id" "✅ Deploy concluído! Branch \`$branch\` em produção."
+  tg_send "✅ Deploy concluído! Branch \`$branch\` em produção." "$chat_id"
   log "DEPLOY OK — branch=$branch"
 }
 
@@ -296,9 +302,12 @@ handle_message() {
   ensure_session "$session" "$chat_id"
 
   if ! session_is_idle "$session"; then
-    tg_send "$chat_id" "⏳ Claude ainda está processando a mensagem anterior. Aguarde."
+    tg_send "⏳ Backend AI ainda está processando a mensagem anterior. Aguarde." "$chat_id"
     return
   fi
+
+  # Consome o idle flag antes de enviar — send_and_wait aguarda o Stop hook recriá-lo
+  cli_session_clear_idle "$session"
 
   tg_typing "$chat_id"
 
@@ -307,7 +316,7 @@ handle_message() {
   response=$(send_and_wait "$session" "$text")
 
   if [ -n "$response" ]; then
-    tg_send "$chat_id" "$response"
+    tg_send "$response" "$chat_id"
     log "DONE $session — resposta enviada (${#response} chars)"
   else
     log "WARN $session — resposta vazia. Aguardando hook"
@@ -321,7 +330,7 @@ main() {
   local offset
   offset=$(cat "$OFFSET_FILE" 2>/dev/null || echo 0)
 
-  log "START telegram-bridge (@br_ai_on_bot) — offset=$offset"
+  log "START telegram-bridge (@br_ai_on_bot) — offset=$offset — backend=$CLI_BACKEND"
 
   while true; do
     local updates
@@ -361,7 +370,7 @@ main() {
       # Verificar acesso
       if [ -n "$ALLOWED_CHAT" ] && [ "$chat_id" != "$ALLOWED_CHAT" ]; then
         log "DENY chat_id=$chat_id"
-        tg_send "$chat_id" "⛔ Acesso não autorizado."
+        tg_send "⛔ Acesso não autorizado." "$chat_id"
         continue
       fi
 
@@ -376,7 +385,7 @@ main() {
         /unpause)     handle_unpause "$chat_id" ;;
         /deploy)      handle_deploy  "$chat_id" "main" ;;
         /deploy\ *)   handle_deploy  "$chat_id" "${text#/deploy }" ;;
-        /*)           tg_send "$chat_id" "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." ;;
+        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
         *)            handle_message "$chat_id" "$session" "$text" ;;
       esac
 

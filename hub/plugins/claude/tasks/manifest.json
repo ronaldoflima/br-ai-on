@@ -21,6 +21,6 @@
     "mcp": ["Microsoft_365"],
     "optional_mcp": ["Notion", "obsidian"]
   },
-  "install_dir": ".claude/commands/tasks",
+  "install_dir": "tasks",
   "post_install": "Execute /tasks:config init para configurar suas variáveis pessoais"
 }

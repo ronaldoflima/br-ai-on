@@ -94,11 +94,7 @@ export default function AgentsPage() {
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(
-        (a) =>
-          a.name.toLowerCase().includes(q) ||
-          a.display_name.toLowerCase().includes(q)
-      );
+      result = result.filter((a) => a._searchText?.includes(q));
     }
 
     if (scheduleFilter.size > 0) {
