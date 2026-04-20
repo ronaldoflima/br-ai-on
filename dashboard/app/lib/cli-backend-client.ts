@@ -41,11 +41,10 @@ const FALLBACK_MODELS: Record<CliBackend, string> = {
 
 const VALID_MODELS_BY_BACKEND: Record<CliBackend, readonly string[]> = {
   claude: [
-    "claude-opus-4-6",
+    "claude-opus-4-7",
     "claude-sonnet-4-6",
     "claude-haiku-4-5",
-    "claude-haiku-4-5-20251001",
-    "claude-opus-4-5",
+    "claude-opus-4-6",
     "claude-sonnet-4-5",
   ],
   codex: ["gpt-5-codex", "gpt-5-mini", "o4-mini"],
