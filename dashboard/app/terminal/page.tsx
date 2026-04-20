@@ -87,7 +87,6 @@ export default function TerminalPage() {
   const sseRef = useRef<EventSource | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileDirectInputRef = useRef<HTMLInputElement>(null);
-  const composingRef = useRef(false);
 
   const fetchSessions = () => {
     fetch("/api/terminal")
@@ -215,33 +214,20 @@ export default function TerminalPage() {
     setSending(false);
   };
 
-  const handleDirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (composingRef.current) return;
-    const val = e.target.value;
-    e.target.value = "";
-    for (const char of val) {
-      sendKey(char);
-    }
-  }, [sendKey]);
-
-  const handleCompositionStart = useCallback(() => {
-    composingRef.current = true;
-  }, []);
-
-  const handleDirectInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-    if (!composingRef.current) return;
-    const target = e.target as HTMLInputElement;
-    const val = target.value;
-    target.value = "";
-    for (const char of val) {
-      sendKey(char);
-    }
-  }, [sendKey]);
-
-  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
-    composingRef.current = false;
-    (e.target as HTMLInputElement).value = "";
-  }, []);
+  useEffect(() => {
+    const el = mobileDirectInputRef.current;
+    if (!el || !directMode) return;
+    const handler = () => {
+      const val = el.value;
+      if (!val) return;
+      el.value = "";
+      for (const char of val) {
+        sendKey(char);
+      }
+    };
+    el.addEventListener("input", handler);
+    return () => el.removeEventListener("input", handler);
+  }, [sendKey, directMode]);
 
   const handleDirectInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
@@ -259,7 +245,6 @@ export default function TerminalPage() {
       e.preventDefault();
       sendKey(e.key, ctrl, meta, shift);
     }
-    // Caracteres regulares (incluindo acentuados compostos) são tratados pelo onChange
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -578,10 +563,6 @@ export default function TerminalPage() {
             <input
               key="direct-input"
               ref={mobileDirectInputRef}
-              onChange={handleDirectChange}
-              onInput={handleDirectInput}
-              onCompositionStart={handleCompositionStart}
-              onCompositionEnd={handleCompositionEnd}
               onKeyDown={handleDirectInputKeyDown}
               onFocus={() => setDirectFocused(true)}
               onBlur={() => setDirectFocused(false)}
