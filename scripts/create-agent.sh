@@ -70,12 +70,24 @@ while true; do
 done
 
 interval=""
+cron_expr=""
 if [[ "$schedule_mode" == "alive" ]]; then
     echo ""
-    echo "O intervalo define a frequencia de execucao automatica."
-    prompt "Intervalo (ex: 15m, 30m, 1h, 2h) [30m]:"
-    read -r interval
-    interval="${interval:-30m}"
+    echo "Escolha o tipo de agendamento:"
+    echo "  ${BOLD}interval${NC} — intervalo fixo (ex: 30m, 1h, 2h)"
+    echo "  ${BOLD}cron${NC}     — expressao cron (ex: */15 * * * *, 0 8 * * 1-5)"
+    prompt "Tipo (interval/cron) [interval]:"
+    read -r sched_type
+    sched_type="${sched_type:-interval}"
+    if [[ "$sched_type" == "cron" ]]; then
+        prompt "Expressao cron (5 campos: min hour dom mon dow):"
+        read -r cron_expr
+    else
+        echo "O intervalo define a frequencia de execucao automatica."
+        prompt "Intervalo (ex: 15m, 30m, 1h, 2h) [30m]:"
+        read -r interval
+        interval="${interval:-30m}"
+    fi
 fi
 
 echo ""
@@ -145,11 +157,13 @@ Dominio: $domain
 - $domain
 EOF
 
-interval_line=""
-if [[ -n "$interval" ]]; then
-    interval_line="  interval: \"$interval\""
+schedule_lines=""
+if [[ -n "$cron_expr" ]]; then
+    schedule_lines="  cron: \"$cron_expr\""
+elif [[ -n "$interval" ]]; then
+    schedule_lines="  interval: \"$interval\""
 else
-    interval_line="  interval: \"30m\""
+    schedule_lines="  interval: \"30m\""
 fi
 
 _fallback_model=$(cli_fallback_model)
@@ -163,7 +177,7 @@ fallback_model: $_fallback_model
 
 schedule:
   mode: $schedule_mode
-$interval_line
+$schedule_lines
   priority: $priority
   run_alone: false
 
