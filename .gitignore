@@ -21,6 +21,7 @@ agents/**/handoffs/inbox/*
 !agents/**/handoffs/inbox/.gitkeep
 agents/**/handoffs/artifacts/*
 !agents/**/handoffs/artifacts/.gitkeep
+agents/shared/lib/
 agents/shared/schedule_state.json
 agents/shared/triggers.jsonl
 USER.md
