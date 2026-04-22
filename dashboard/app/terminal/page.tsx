@@ -278,7 +278,6 @@ export default function TerminalPage() {
       e.preventDefault();
       sendKey(e.key, ctrl, meta, shift);
     }
-    // Caracteres regulares (incluindo acentuados compostos) são tratados pelo onChange
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -616,7 +615,21 @@ export default function TerminalPage() {
               autoCapitalize="none"
               autoComplete="off"
               spellCheck={false}
-              style={{ position: "fixed", top: 0, left: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: 20,
+                height: 20,
+                opacity: 0.01,
+                fontSize: 16,
+                border: "none",
+                padding: 0,
+                background: "transparent",
+                color: "transparent",
+                caretColor: "transparent",
+                zIndex: -1,
+              }}
             />
             <div
               className={styles.directModeLabel}
