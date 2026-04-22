@@ -215,9 +215,36 @@ except Exception:
   cli_permission_mode_map "$raw"
 }
 
+rotate_state_file() {
+  local file=$1
+  local max_lines=${2:-200}
+  local keep_lines=${3:-100}
+
+  [ -f "$file" ] || return 0
+
+  local total
+  total=$(wc -l < "$file")
+  [ "$total" -le "$max_lines" ] && return 0
+
+  local dir basename_no_ext archive_file
+  dir=$(dirname "$file")
+  basename_no_ext=$(basename "$file" .md)
+  archive_file="$dir/${basename_no_ext}_$(date +%Y-%m).md"
+
+  local archive_lines=$((total - keep_lines))
+  head -n "$archive_lines" "$file" >> "$archive_file"
+  local tmp="$file.tmp.$$"
+  tail -n "$keep_lines" "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 build_agent_system_prompt() {
   local agent=$1 config=${2:-}
   local content=""
+
+  local agent_dir="$BRAION/agents/$agent"
+  rotate_state_file "$agent_dir/state/decisions.md" 200 100
+  rotate_state_file "$agent_dir/state/completed_tasks.md" 200 100
 
   local identity="$BRAION/agents/$agent/IDENTITY.md"
   [ -f "$identity" ] && content=$(cat "$identity")
@@ -227,8 +254,6 @@ build_agent_system_prompt() {
 
   local agents_md="$BRAION/AGENTS.md"
   [ -f "$agents_md" ] && content="${content}"$'\n\n'"$(cat "$agents_md")"
-
-  local agent_dir="$BRAION/agents/$agent"
 
   # Estado persistente
   local state_block=""
