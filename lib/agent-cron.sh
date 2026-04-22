@@ -239,7 +239,7 @@ state_cleanup() {
         [ -f "$f" ] || continue
         local basename
         basename=$(basename "$f" .md)
-        [[ "$basename" < "$cutoff_date" ]] && rm "$f"
+        if [[ "$basename" < "$cutoff_date" ]]; then rm "$f"; fi
       done
     done
   done
