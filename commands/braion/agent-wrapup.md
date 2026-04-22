@@ -28,31 +28,35 @@ Guarde o modo (`review` ou `full`) para os passos seguintes.
 
 ### Objetivo da Sessão
 
-Atualize `agents/<nome>/state/current_objective.md` refletindo o que foi ou não concluído:
+Escreva (overwrite) `agents/<nome>/state/current_objective/YYYY-MM-DD.md` (data UTC de hoje) refletindo o que foi ou não concluído:
 - O foco continua válido para a próxima sessão? Mantenha.
 - Foi concluído? Substitua pelo próximo foco ou indique "aguardando próximo ciclo".
 
 ### Decisões
 
-Appende em `agents/<nome>/state/decisions.md` qualquer decisão relevante tomada nesta sessão:
+Escreva (overwrite) `agents/<nome>/state/decisions/YYYY-MM-DD.md` (data UTC de hoje) com as decisões desta sessão.
+Se o arquivo do dia já existir, appende ao final (outra sessão já escreveu hoje).
 
+Formato:
 ```
-## YYYY-MM-DD HH:MM UTC
+## HH:MM UTC
 - <decisão tomada e contexto resumido>
 ```
 
-Mantenha apenas as últimas ~20 entradas — remova as mais antigas se necessário.
+Não se preocupe com limpeza de arquivos antigos — a rotação é automática.
 
 ### Tarefas Concluídas
 
-Appende em `agents/<nome>/state/completed_tasks.md` as tarefas finalizadas nesta sessão:
+Escreva (overwrite) `agents/<nome>/state/completed_tasks/YYYY-MM-DD.md` (data UTC de hoje).
+Se o arquivo do dia já existir, appende ao final.
 
+Formato:
 ```
-## YYYY-MM-DD
+## HH:MM UTC
 - <tarefa concluída>
 ```
 
-Mantenha apenas as últimas ~30 entradas.
+Não se preocupe com limpeza de arquivos antigos — a rotação é automática.
 
 ## 2. Atualizar Memória Semântica
 

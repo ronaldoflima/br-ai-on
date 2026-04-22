@@ -181,14 +181,22 @@ integrations:
     identity: "$display_name"
 EOF
 
-cat > "$base/state/current_objective.md" << EOF
+today=$(date -u +%Y-%m-%d)
+mkdir -p "$base/state/current_objective" "$base/state/decisions" "$base/state/completed_tasks"
+
+cat > "$base/state/current_objective/${today}.md" << EOF
 # Objetivo Atual
 
 Nenhum objetivo definido. Aguardando primeira sessao.
 EOF
 
-cat > "$base/state/decisions.md" << EOF
+cat > "$base/state/decisions/${today}.md" << EOF
 # Decisoes
+
+EOF
+
+cat > "$base/state/completed_tasks/${today}.md" << EOF
+# Tarefas Concluidas
 
 EOF
 
@@ -200,8 +208,9 @@ EOF
 success "Diretorio: $base/"
 success "IDENTITY.md"
 success "config.yaml"
-success "state/current_objective.md"
-success "state/decisions.md"
+success "state/current_objective/"
+success "state/decisions/"
+success "state/completed_tasks/"
 success "memory/semantic.md"
 success "handoffs/inbox/"
 success "handoffs/archive/"
