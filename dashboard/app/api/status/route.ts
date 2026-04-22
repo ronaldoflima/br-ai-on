@@ -95,13 +95,19 @@ export async function GET() {
     }
 
     let objective: string | null = null;
-    const objPath = join(stateDir, "current_objective.md");
-    if (existsSync(objPath)) {
-      try {
-        objective = readFileSync(objPath, "utf-8").trim().slice(0, 200);
-      } catch {
-        // ignore read errors
+    const objDir = join(stateDir, "current_objective");
+    const objLegacy = join(stateDir, "current_objective.md");
+    try {
+      if (existsSync(objDir)) {
+        const files = readdirSync(objDir).filter((f: string) => f.endsWith(".md")).sort();
+        if (files.length > 0) {
+          objective = readFileSync(join(objDir, files[files.length - 1]), "utf-8").trim().slice(0, 200);
+        }
+      } else if (existsSync(objLegacy)) {
+        objective = readFileSync(objLegacy, "utf-8").trim().slice(0, 200);
       }
+    } catch {
+      // ignore read errors
     }
 
     const maintFile = `/tmp/agent-${name}-maintenance`;
