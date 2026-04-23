@@ -60,12 +60,18 @@ function collectAgentMeta(): Omit<AgentMeta, "collections"> {
 export async function GET() {
   try {
     const meta = collectAgentMeta()
-    let collections: string[]
+    let qdrantCollections: string[]
     try {
-      collections = await listCollections()
+      qdrantCollections = await listCollections()
     } catch {
-      collections = [meta.default_collection]
+      qdrantCollections = []
     }
+    const allCollections = new Set([
+      meta.default_collection,
+      ...qdrantCollections,
+      ...Object.values(meta.agent_collections),
+    ])
+    const collections = [...allCollections].filter(Boolean).sort()
     return NextResponse.json({ ...meta, collections })
   } catch (err) {
     return NextResponse.json(
