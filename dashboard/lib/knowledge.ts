@@ -111,13 +111,13 @@ function pointToEntry(point: Record<string, unknown>): KnowledgeEntry {
   const p = point.payload as Record<string, unknown>
   return {
     id: String(point.id),
-    text: p.text as string,
-    agent: p.agent as string,
-    domain: p.domain as string[],
-    type: p.type as KnowledgeEntry["type"],
-    source: p.source as KnowledgeEntry["source"],
-    created_at: p.created_at as string,
-    updated_at: p.updated_at as string,
+    text: (p.text as string) || "",
+    agent: (p.agent as string) || "",
+    domain: Array.isArray(p.domain) ? p.domain as string[] : [],
+    type: (p.type as KnowledgeEntry["type"]) || "fact",
+    source: (p.source as KnowledgeEntry["source"]) || "manual",
+    created_at: (p.created_at as string) || "",
+    updated_at: (p.updated_at as string) || "",
     metadata: (p.metadata as Record<string, unknown>) || {},
   }
 }
