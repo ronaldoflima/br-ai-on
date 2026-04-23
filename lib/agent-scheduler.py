@@ -10,9 +10,14 @@ Uso:
       → Atualiza schedule_state.json e incrementa contadores de budget
 
 Modos de schedule (config.yaml → schedule.mode):
-  alive        — cron inicia o agente quando intervalo expira
+  alive        — cron inicia o agente quando intervalo ou expressão cron expira
   handoff-only — agente só acorda via handoff ou inbox (default)
   disabled     — agente nunca é iniciado automaticamente
+
+Schedule config suporta:
+  interval: "2h"                  — intervalo fixo (legado, default)
+  cron: "*/15 * * * *"            — expressão cron (5 campos: min hour dom mon dow)
+  Quando 'cron' está definido, 'interval' é ignorado.
 """
 
 import json
@@ -27,6 +32,12 @@ try:
 except ImportError:
     print(json.dumps({"error": "pyyaml não instalado — pip install pyyaml"}))
     sys.exit(1)
+
+try:
+    from croniter import croniter
+    HAS_CRONITER = True
+except ImportError:
+    HAS_CRONITER = False
 
 BRAION_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEDULE_STATE_FILE = os.path.join(BRAION_BASE, "agents", "shared", "schedule_state.json")
@@ -174,8 +185,15 @@ def compute_schedule(configs, schedule_state, now):
             })
             continue
 
+        cron_expr = sched.get("cron")
         interval_str = sched.get("interval", "1h")
-        interval_s = parse_interval(interval_str)
+        use_cron = bool(cron_expr and HAS_CRONITER)
+
+        if use_cron:
+            interval_s = 0
+        else:
+            interval_s = parse_interval(interval_str)
+
         priority = sched.get("priority", 99)
         run_alone = sched.get("run_alone", False)
         directory = cfg.get("directory") or cfg.get("working_directory") or BRAION_BASE
@@ -188,8 +206,18 @@ def compute_schedule(configs, schedule_state, now):
             last_run = EPOCH
 
         elapsed_s = int((now - last_run).total_seconds())
-        next_run = last_run + timedelta(seconds=interval_s)
-        remaining_s = max(0, interval_s - elapsed_s)
+
+        if use_cron:
+            cron = croniter(cron_expr, now)
+            prev_match = cron.get_prev(datetime).replace(tzinfo=timezone.utc)
+            next_match = cron.get_next(datetime).replace(tzinfo=timezone.utc)
+            is_due = last_run < prev_match
+            next_run = next_match if not is_due else prev_match
+            remaining_s = max(0, int((next_match - now).total_seconds())) if not is_due else 0
+        else:
+            next_run = last_run + timedelta(seconds=interval_s)
+            remaining_s = max(0, interval_s - elapsed_s)
+            is_due = elapsed_s >= interval_s
 
         budget_cfg = cfg.get("budget", {})
         max_sessions = budget_cfg.get("max_sessions_per_day", 999)
@@ -214,12 +242,16 @@ def compute_schedule(configs, schedule_state, now):
 
         permission_mode = read_permission_mode(cfg)
 
+        schedule_display = cron_expr if use_cron else interval_str
+
         base_entry = {
             "name": name,
             "domain": cfg.get("domain", ""),
             "mode": "alive",
             "priority": priority,
             "run_alone": run_alone,
+            "schedule_type": "cron" if use_cron else "interval",
+            "schedule": schedule_display,
             "interval": interval_str,
             "interval_s": interval_s,
             "last_run": last_run_str,
@@ -231,10 +263,10 @@ def compute_schedule(configs, schedule_state, now):
             "permission_mode": permission_mode,
             "budget": budget_info,
         }
+        if cron_expr:
+            base_entry["cron"] = cron_expr
         if obsidian_info:
             base_entry["obsidian"] = obsidian_info
-
-        is_due = elapsed_s >= interval_s
 
         if is_due:
             if used_today >= max_sessions:

@@ -4,6 +4,7 @@ import { join } from "path";
 import { parse } from "yaml";
 import { parseDomainTags } from "../../lib/domain";
 import { defaultModel } from "../../lib/cli-backend";
+import { nextCronMatch } from "../../lib/utils";
 
 const PROJECT_ROOT = join(process.cwd(), "..");
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
@@ -51,6 +52,7 @@ export async function GET() {
     let version = "0.0.0";
     let intervalMs = 3600000;
     let scheduleMode = "handoff-only";
+    let cronExpr: string | null = null;
     let model = defaultModel();
     const configPath = join(agentDir, "config.yaml");
     if (existsSync(configPath)) {
@@ -62,6 +64,9 @@ export async function GET() {
         model = config.model || defaultModel();
         const sched = config?.schedule || {};
         scheduleMode = sched.mode || (sched.enabled === true ? "alive" : "handoff-only");
+        if (sched.cron) {
+          cronExpr = sched.cron;
+        }
         if (sched.interval) {
           intervalMs = parseInterval(sched.interval);
         }
@@ -95,19 +100,13 @@ export async function GET() {
     }
 
     let objective: string | null = null;
-    const objDir = join(stateDir, "current_objective");
-    const objLegacy = join(stateDir, "current_objective.md");
-    try {
-      if (existsSync(objDir)) {
-        const files = readdirSync(objDir).filter((f: string) => f.endsWith(".md")).sort();
-        if (files.length > 0) {
-          objective = readFileSync(join(objDir, files[files.length - 1]), "utf-8").trim().slice(0, 200);
-        }
-      } else if (existsSync(objLegacy)) {
-        objective = readFileSync(objLegacy, "utf-8").trim().slice(0, 200);
+    const objPath = join(stateDir, "current_objective.md");
+    if (existsSync(objPath)) {
+      try {
+        objective = readFileSync(objPath, "utf-8").trim().slice(0, 200);
+      } catch {
+        // ignore read errors
       }
-    } catch {
-      // ignore read errors
     }
 
     const maintFile = `/tmp/agent-${name}-maintenance`;
@@ -124,9 +123,13 @@ export async function GET() {
     }
 
     let nextRun: string | null = null;
-    if (scheduleMode === "alive" && lastRun) {
-      const next = new Date(new Date(lastRun).getTime() + intervalMs);
-      nextRun = next.toISOString();
+    if (scheduleMode === "alive") {
+      if (cronExpr) {
+        nextRun = nextCronMatch(cronExpr).toISOString();
+      } else if (lastRun) {
+        const next = new Date(new Date(lastRun).getTime() + intervalMs);
+        nextRun = next.getTime() > Date.now() ? next.toISOString() : new Date().toISOString();
+      }
     }
 
     return { name, displayName, domain, state, heartbeat, lastRun, nextRun, objective, version, scheduleMode, model };
