@@ -118,9 +118,9 @@ bash "$BRAION/lib/handoff.sh" send "$AGENT" user info "<ho_id>" "<resumo>" "<res
 
 Salve o estado imediatamente após o processamento. Este é o primeiro checkpoint — o wrapup fará o segundo.
 
-- Escreva/appende em `<BR.AI.ON base>/agents/<nome>/state/decisions/YYYY-MM-DD.md` (data UTC de hoje) as decisões tomadas
+- Atualize `<BR.AI.ON base>/agents/<nome>/state/decisions.md` com decisões tomadas
 - Se aprendeu algo novo, atualize `<BR.AI.ON base>/agents/<nome>/memory/semantic.md`
-- Se houve mudança de foco, escreva `<BR.AI.ON base>/agents/<nome>/state/current_objective/YYYY-MM-DD.md` (data UTC de hoje)
+- Se houve mudança de foco, atualize `<BR.AI.ON base>/agents/<nome>/state/current_objective.md`
 
 ```bash
 bash "$BRAION/lib/memory.sh" log_episodic "<ação>" "<contexto>" "<resultado>" <importancia>

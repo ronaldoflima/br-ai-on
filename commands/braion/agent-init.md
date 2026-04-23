@@ -32,7 +32,7 @@ Leia `agents/<nome>/config.yaml` para limites e integrações (max_sessions_per_
 
 Com base nos handoffs pendentes e no objetivo anterior (ambos no system prompt):
 1. Determine o foco desta sessão
-2. Escreva `agents/<nome>/state/current_objective/YYYY-MM-DD.md` (data UTC de hoje) com:
+2. Atualize `agents/<nome>/state/current_objective.md` com:
    - Foco da sessão
    - Contexto (por que esse foco)
    - Data/hora de início

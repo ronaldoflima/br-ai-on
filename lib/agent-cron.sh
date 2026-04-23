@@ -215,36 +215,6 @@ except Exception:
   cli_permission_mode_map "$raw"
 }
 
-read_rotated_state() {
-  local dir="$1" n="${2:-5}" legacy_file="${3:-}"
-  if [ -d "$dir" ]; then
-    ls "$dir"/*.md 2>/dev/null | sort | tail -n "$n" | while read f; do
-      cat "$f"
-      echo ""
-    done
-  elif [ -n "$legacy_file" ] && [ -f "$legacy_file" ]; then
-    cat "$legacy_file"
-  fi
-}
-
-state_cleanup() {
-  local cutoff_date
-  cutoff_date=$(date -u -d "30 days ago" +%Y-%m-%d)
-  for agent_dir in "$BRAION"/agents/*/state; do
-    [ -d "$agent_dir" ] || continue
-    for subdir in current_objective decisions completed_tasks; do
-      local dir="$agent_dir/$subdir"
-      [ -d "$dir" ] || continue
-      for f in "$dir"/*.md; do
-        [ -f "$f" ] || continue
-        local basename
-        basename=$(basename "$f" .md)
-        if [[ "$basename" < "$cutoff_date" ]]; then rm "$f"; fi
-      done
-    done
-  done
-}
-
 build_agent_system_prompt() {
   local agent=$1 config=${2:-}
   local content=""
@@ -260,15 +230,14 @@ build_agent_system_prompt() {
 
   local agent_dir="$BRAION/agents/$agent"
 
-  # Estado persistente (rotativo com fallback legado)
+  # Estado persistente
   local state_block=""
-  local obj_content dec_content tasks_content
-  obj_content=$(read_rotated_state "$agent_dir/state/current_objective" 1 "$agent_dir/state/current_objective.md")
-  dec_content=$(read_rotated_state "$agent_dir/state/decisions" 5 "$agent_dir/state/decisions.md")
-  tasks_content=$(read_rotated_state "$agent_dir/state/completed_tasks" 5 "$agent_dir/state/completed_tasks.md")
-  [ -n "$obj_content" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"${obj_content}"
-  [ -n "$dec_content" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"${dec_content}"
-  [ -n "$tasks_content" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"${tasks_content}"
+  local obj_file="$agent_dir/state/current_objective.md"
+  local dec_file="$agent_dir/state/decisions.md"
+  local tasks_file="$agent_dir/state/completed_tasks.md"
+  [ -f "$obj_file" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$(cat "$obj_file")"
+  [ -f "$dec_file" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(tail -n 80 "$dec_file")"
+  [ -f "$tasks_file" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(tail -n 60 "$tasks_file")"
   [ -n "$state_block" ] && content="${content}"$'\n\n## Estado da Sessão Anterior'"${state_block}"
 
   # Memória
@@ -479,14 +448,6 @@ while IFS= read -r stale_session; do
   [ -n "$stale_session" ] || continue
   kill_stale_session "$stale_session" || true
 done < <(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^braion-' | grep -v '^braion-telegram$' || true)
-
-# ── -0.5. Limpeza diária de state rotativos ──────────────────────────────────
-local_cleanup_guard="/tmp/braion-state-cleanup-$(date -u +%Y-%m-%d)"
-if [ ! -f "$local_cleanup_guard" ]; then
-  state_cleanup
-  touch "$local_cleanup_guard"
-  log "State cleanup executado (cutoff: 30 dias)"
-fi
 
 # ── 0. Sincronizar Obsidian vault ─────────────────────────────────────────────
 git_pull_vault() {

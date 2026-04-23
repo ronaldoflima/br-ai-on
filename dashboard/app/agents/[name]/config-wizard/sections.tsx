@@ -373,21 +373,24 @@ export function CapabilitiesSection({ form, update }: SectionProps) {
 // ─── Schedule ─────────────────────────────────────────────────────────────────
 
 export function ScheduleSection({ form, update, errors }: SectionProps) {
-  const hasError = ["schedule.mode", "schedule.interval"].some((f) =>
+  const hasError = ["schedule.mode", "schedule.interval", "schedule.cron"].some((f) =>
     fieldError(errors, f),
   );
   const scheduleIntervalError = fieldError(errors, "schedule.interval");
+  const scheduleCronError = fieldError(errors, "schedule.cron");
 
   return (
     <AccordionSection title="Schedule" hasError={hasError}>
       <div className={styles.legend}>
-        <strong>mode</strong>: <em>alive</em> = roda automaticamente em
-        intervalos; <em>handoff-only</em> = só executa quando recebe um handoff;{" "}
-        <em>disabled</em> = inativo. <strong>interval</strong>: obrigatório se
-        mode=alive. Exemplos: <code>15m</code>, <code>1h</code>,{" "}
-        <code>7d</code>. <strong>priority</strong>: prioridade de execução (0 =
-        normal). <strong>run_alone</strong>: se true, não executa em paralelo
-        com outros agentes.
+        <strong>mode</strong>: <em>alive</em> = roda automaticamente;{" "}
+        <em>handoff-only</em> = só executa quando recebe um handoff;{" "}
+        <em>disabled</em> = inativo. <strong>interval</strong> ou{" "}
+        <strong>cron</strong>: obrigatório se mode=alive. Interval:{" "}
+        <code>15m</code>, <code>1h</code>, <code>7d</code>. Cron:{" "}
+        <code>*/15 * * * *</code>, <code>0 8 * * 1-5</code>.{" "}
+        <strong>priority</strong>: prioridade de execução (0 = normal).{" "}
+        <strong>run_alone</strong>: se true, não executa em paralelo com outros
+        agentes.
       </div>
 
       <div className="form-group">
@@ -409,18 +412,34 @@ export function ScheduleSection({ form, update, errors }: SectionProps) {
       </div>
 
       {form.schedule_mode === "alive" && (
-        <div className="form-group">
-          <label className="form-label">interval</label>
-          <input
-            className="input"
-            value={form.schedule_interval}
-            onChange={(e) => update({ schedule_interval: e.target.value })}
-            placeholder="15m"
-          />
-          {scheduleIntervalError && (
-            <span className={styles.fieldError}>{scheduleIntervalError}</span>
-          )}
-        </div>
+        <>
+          <div className="form-group">
+            <label className="form-label">interval</label>
+            <input
+              className="input"
+              value={form.schedule_interval}
+              onChange={(e) => update({ schedule_interval: e.target.value, schedule_cron: "" })}
+              placeholder="15m"
+              disabled={!!form.schedule_cron}
+            />
+            {scheduleIntervalError && (
+              <span className={styles.fieldError}>{scheduleIntervalError}</span>
+            )}
+          </div>
+          <div className="form-group">
+            <label className="form-label">cron</label>
+            <input
+              className="input"
+              value={form.schedule_cron}
+              onChange={(e) => update({ schedule_cron: e.target.value, schedule_interval: "" })}
+              placeholder="*/15 * * * *"
+              disabled={!!form.schedule_interval}
+            />
+            {scheduleCronError && (
+              <span className={styles.fieldError}>{scheduleCronError}</span>
+            )}
+          </div>
+        </>
       )}
 
       <div className="form-group">
