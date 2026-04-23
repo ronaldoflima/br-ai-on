@@ -115,10 +115,11 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
 
   if (form.layer) config.layer = form.layer;
   if (form.working_directory) {
-    if (form.additional_dirs.length > 0) {
+    const filtered = form.additional_dirs.filter((d) => d.trim());
+    if (filtered.length > 0) {
       config.working_directory = {
         primary: form.working_directory,
-        additional: form.additional_dirs,
+        additional: filtered,
       };
     } else {
       config.working_directory = form.working_directory;

@@ -35,9 +35,9 @@ DEFAULT_MODEL=${DEFAULT_MODEL:-$(cli_default_model)}
 
 parse_working_directory() {
   local config="$1"
-  python3 -c "
+  python3 - "$config" <<'PYEOF' 2>/dev/null || echo '{"primary":"","additional":[]}'
 import yaml, os, json, sys
-with open('$config') as f:
+with open(sys.argv[1]) as f:
     cfg = yaml.safe_load(f) or {}
 wd = cfg.get('working_directory') or cfg.get('directory') or ''
 if isinstance(wd, dict):
@@ -47,7 +47,7 @@ else:
     primary = os.path.expanduser(str(wd)) if wd else ''
     additional = []
 json.dump({'primary': primary, 'additional': additional}, sys.stdout)
-" 2>/dev/null || echo '{"primary":"","additional":[]}'
+PYEOF
 }
 
 log() {
