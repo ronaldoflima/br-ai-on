@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       type: body.type || undefined,
     }
     const limit = body.limit || 10
-    const results = await searchEntries(body.query, filters, limit)
+    const collection = body.collection || undefined
+    const results = await searchEntries(body.query, filters, limit, collection)
     return NextResponse.json({ results })
   } catch (err) {
     return NextResponse.json(

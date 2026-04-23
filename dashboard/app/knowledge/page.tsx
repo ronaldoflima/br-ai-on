@@ -5,7 +5,6 @@ import type {
   KnowledgeSearchResult,
   KnowledgeType,
   KnowledgeSource,
-  CreateKnowledgeInput,
 } from "../lib/types"
 import styles from "./knowledge.module.css"
 
@@ -22,6 +21,7 @@ interface EntryFormData {
   domain: string
   type: KnowledgeType
   source: KnowledgeSource
+  collection: string
 }
 
 const EMPTY_FORM: EntryFormData = {
@@ -30,6 +30,7 @@ const EMPTY_FORM: EntryFormData = {
   domain: "",
   type: "fact",
   source: "manual",
+  collection: "",
 }
 
 export default function KnowledgePage() {
@@ -43,9 +44,13 @@ export default function KnowledgePage() {
   const [agentFilter, setAgentFilter] = useState("")
   const [domainFilter, setDomainFilter] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
+  const [collectionFilter, setCollectionFilter] = useState("")
 
   const [agents, setAgents] = useState<string[]>([])
   const [domains, setDomains] = useState<string[]>([])
+  const [collections, setCollections] = useState<string[]>([])
+  const [defaultCollection, setDefaultCollection] = useState("")
+  const [agentCollections, setAgentCollections] = useState<Record<string, string>>({})
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -59,6 +64,9 @@ export default function KnowledgePage() {
       .then((data) => {
         setAgents(data.agents || [])
         setDomains(data.domains || [])
+        setCollections(data.collections || [])
+        setDefaultCollection(data.default_collection || "")
+        setAgentCollections(data.agent_collections || {})
       })
       .catch(() => {})
   }, [])
@@ -70,6 +78,7 @@ export default function KnowledgePage() {
       if (agentFilter) params.set("agent", agentFilter)
       if (domainFilter) params.set("domain", domainFilter)
       if (typeFilter) params.set("type", typeFilter)
+      if (collectionFilter) params.set("collection", collectionFilter)
       params.set("limit", "20")
       if (append && nextOffsetRef.current) params.set("offset", nextOffsetRef.current)
 
@@ -85,12 +94,12 @@ export default function KnowledgePage() {
         .catch(() => {})
         .finally(() => setLoading(false))
     },
-    [agentFilter, domainFilter, typeFilter]
+    [agentFilter, domainFilter, typeFilter, collectionFilter]
   )
 
   useEffect(() => {
     fetchEntries()
-  }, [agentFilter, domainFilter, typeFilter])
+  }, [agentFilter, domainFilter, typeFilter, collectionFilter])
 
   const doSearch = () => {
     if (!searchQuery.trim()) {
@@ -106,6 +115,7 @@ export default function KnowledgePage() {
         agent: agentFilter || undefined,
         domain: domainFilter || undefined,
         type: typeFilter || undefined,
+        collection: collectionFilter || undefined,
         limit: 20,
       }),
     })
@@ -125,7 +135,7 @@ export default function KnowledgePage() {
   }
 
   const openCreate = () => {
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, collection: collectionFilter || defaultCollection })
     setEditingId(null)
     setError("")
     setShowModal(true)
@@ -138,6 +148,7 @@ export default function KnowledgePage() {
       domain: entry.domain.join(", "),
       type: entry.type,
       source: entry.source,
+      collection: collectionFilter || defaultCollection,
     })
     setEditingId(entry.id)
     setError("")
@@ -153,6 +164,8 @@ export default function KnowledgePage() {
         .map((d) => d.trim())
         .filter(Boolean)
 
+      const col = form.collection || undefined
+
       if (editingId) {
         const res = await fetch(`/api/knowledge/entries/${editingId}`, {
           method: "PUT",
@@ -162,6 +175,7 @@ export default function KnowledgePage() {
             agent: form.agent,
             domain: domainArr,
             type: form.type,
+            collection: col,
           }),
         })
         if (!res.ok) {
@@ -169,12 +183,13 @@ export default function KnowledgePage() {
           throw new Error(data.error || "Erro ao atualizar")
         }
       } else {
-        const input: CreateKnowledgeInput = {
+        const input = {
           text: form.text,
           agent: form.agent,
           domain: domainArr,
           type: form.type,
           source: form.source,
+          collection: col,
         }
         const res = await fetch("/api/knowledge/entries", {
           method: "POST",
@@ -196,7 +211,8 @@ export default function KnowledgePage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Deletar este entry?")) return
-    await fetch(`/api/knowledge/entries/${id}`, { method: "DELETE" })
+    const params = collectionFilter ? `?collection=${collectionFilter}` : ""
+    await fetch(`/api/knowledge/entries/${id}${params}`, { method: "DELETE" })
     fetchEntries()
   }
 
@@ -267,6 +283,18 @@ export default function KnowledgePage() {
           <option value="decision">Decision</option>
           <option value="fact">Fact</option>
           <option value="procedure">Procedure</option>
+        </select>
+        <select
+          className={styles.filterSelect}
+          value={collectionFilter}
+          onChange={(e) => setCollectionFilter(e.target.value)}
+        >
+          <option value="">Todas collections</option>
+          {collections.map((c) => (
+            <option key={c} value={c}>
+              {c}{c === defaultCollection ? " (default)" : ""}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -405,6 +433,21 @@ export default function KnowledgePage() {
                 </select>
               </div>
             )}
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Collection</label>
+              <input
+                className="input"
+                value={form.collection}
+                onChange={(e) => setForm({ ...form, collection: e.target.value })}
+                placeholder={defaultCollection}
+                list="collection-options"
+              />
+              <datalist id="collection-options">
+                {collections.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
             {error && (
               <div style={{ color: "var(--error)", fontSize: 13, marginBottom: 8 }}>
                 {error}

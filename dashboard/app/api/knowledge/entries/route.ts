@@ -9,7 +9,7 @@ const VALID_SOURCES = ["agent-session", "manual", "handoff"]
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as CreateKnowledgeInput
+    const body = await request.json()
     if (!body.text || !body.agent || !body.type) {
       return NextResponse.json(
         { error: "text, agent, and type are required" },
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       source: body.source || "manual",
       metadata: body.metadata || {},
     }
-    const id = await createEntry(input)
+    const collection = body.collection || undefined
+    const id = await createEntry(input, collection)
     return NextResponse.json({ ok: true, id }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
@@ -56,8 +57,9 @@ export async function GET(request: NextRequest) {
     }
     const limit = parseInt(params.get("limit") || "20", 10)
     const offset = params.get("offset") || undefined
+    const collection = params.get("collection") || undefined
 
-    const result = await listEntries(filters, limit, offset)
+    const result = await listEntries(filters, limit, offset, collection)
     return NextResponse.json(result)
   } catch (err) {
     return NextResponse.json(

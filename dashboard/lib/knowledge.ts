@@ -15,7 +15,7 @@ interface KnowledgeConfig {
   ollama_url: string
   embedding_model: string
   embedding_dimensions: number
-  collection_name: string
+  default_collection: string
   dashboard_url: string
 }
 
@@ -31,17 +31,23 @@ export function loadConfig(): KnowledgeConfig {
   return _config
 }
 
-let _collectionReady = false
+export function defaultCollection(): string {
+  return loadConfig().default_collection
+}
 
-export async function ensureCollection(): Promise<void> {
-  if (_collectionReady) return
+const _readyCollections = new Set<string>()
+
+export async function ensureCollection(collection?: string): Promise<string> {
   const cfg = loadConfig()
-  const url = `${cfg.qdrant_url}/collections/${cfg.collection_name}`
+  const col = collection || cfg.default_collection
+  if (_readyCollections.has(col)) return col
+
+  const url = `${cfg.qdrant_url}/collections/${col}`
 
   const check = await fetch(url)
   if (check.ok) {
-    _collectionReady = true
-    return
+    _readyCollections.add(col)
+    return col
   }
 
   const createRes = await fetch(url, {
@@ -69,7 +75,8 @@ export async function ensureCollection(): Promise<void> {
     if (!idxRes.ok) throw new Error(`Failed to create index ${field}: ` + await idxRes.text())
   }
 
-  _collectionReady = true
+  _readyCollections.add(col)
+  return col
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -115,14 +122,14 @@ function pointToEntry(point: Record<string, unknown>): KnowledgeEntry {
   }
 }
 
-export async function createEntry(input: CreateKnowledgeInput): Promise<string> {
-  await ensureCollection()
+export async function createEntry(input: CreateKnowledgeInput, collection?: string): Promise<string> {
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
   const vector = await generateEmbedding(input.text)
 
-  const res = await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
+  const res = await fetch(`${cfg.qdrant_url}/collections/${col}/points`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -149,21 +156,21 @@ export async function createEntry(input: CreateKnowledgeInput): Promise<string> 
   return id
 }
 
-export async function getEntry(id: string): Promise<KnowledgeEntry | null> {
-  await ensureCollection()
+export async function getEntry(id: string, collection?: string): Promise<KnowledgeEntry | null> {
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
   const res = await fetch(
-    `${cfg.qdrant_url}/collections/${cfg.collection_name}/points/${id}`
+    `${cfg.qdrant_url}/collections/${col}/points/${id}`
   )
   if (!res.ok) return null
   const data = await res.json()
   return pointToEntry(data.result)
 }
 
-export async function updateEntry(id: string, input: UpdateKnowledgeInput): Promise<void> {
-  await ensureCollection()
+export async function updateEntry(id: string, input: UpdateKnowledgeInput, collection?: string): Promise<void> {
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
-  const existing = await getEntry(id)
+  const existing = await getEntry(id, collection)
   if (!existing) throw new Error(`Entry ${id} not found`)
 
   const updated = {
@@ -179,7 +186,7 @@ export async function updateEntry(id: string, input: UpdateKnowledgeInput): Prom
 
   const vector = input.text ? await generateEmbedding(updated.text) : await generateEmbedding(existing.text)
 
-  const res = await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
+  const res = await fetch(`${cfg.qdrant_url}/collections/${col}/points`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -189,11 +196,11 @@ export async function updateEntry(id: string, input: UpdateKnowledgeInput): Prom
   if (!res.ok) throw new Error("Failed to upsert entry: " + await res.text())
 }
 
-export async function deleteEntry(id: string): Promise<void> {
-  await ensureCollection()
+export async function deleteEntry(id: string, collection?: string): Promise<void> {
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
   const res = await fetch(
-    `${cfg.qdrant_url}/collections/${cfg.collection_name}/points/delete`,
+    `${cfg.qdrant_url}/collections/${col}/points/delete`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -206,9 +213,10 @@ export async function deleteEntry(id: string): Promise<void> {
 export async function searchEntries(
   query: string,
   filters?: KnowledgeSearchFilters,
-  limit = 10
+  limit = 10,
+  collection?: string
 ): Promise<KnowledgeSearchResult[]> {
-  await ensureCollection()
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
   const vector = await generateEmbedding(query)
 
@@ -221,7 +229,7 @@ export async function searchEntries(
   if (filter) body.filter = filter
 
   const res = await fetch(
-    `${cfg.qdrant_url}/collections/${cfg.collection_name}/points/search`,
+    `${cfg.qdrant_url}/collections/${col}/points/search`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -239,9 +247,10 @@ export async function searchEntries(
 export async function listEntries(
   filters?: KnowledgeListFilters,
   limit = 20,
-  offset?: string
+  offset?: string,
+  collection?: string
 ): Promise<{ entries: KnowledgeEntry[]; next_offset: string | null }> {
-  await ensureCollection()
+  const col = await ensureCollection(collection)
   const cfg = loadConfig()
 
   const body: Record<string, unknown> = {
@@ -254,7 +263,7 @@ export async function listEntries(
   if (filter) body.filter = filter
 
   const res = await fetch(
-    `${cfg.qdrant_url}/collections/${cfg.collection_name}/points/scroll`,
+    `${cfg.qdrant_url}/collections/${col}/points/scroll`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -265,4 +274,13 @@ export async function listEntries(
   const data = await res.json()
   const entries = (data.result?.points || []).map(pointToEntry)
   return { entries, next_offset: data.result?.next_page_offset ?? null }
+}
+
+export async function listCollections(): Promise<string[]> {
+  const cfg = loadConfig()
+  const res = await fetch(`${cfg.qdrant_url}/collections`)
+  if (!res.ok) return [cfg.default_collection]
+  const data = await res.json()
+  const names = (data.result?.collections || []).map((c: Record<string, unknown>) => c.name as string)
+  return names.sort()
 }

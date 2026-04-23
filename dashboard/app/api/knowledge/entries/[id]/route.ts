@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic"
 const VALID_TYPES = ["insight", "decision", "fact", "procedure"]
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const entry = await getEntry(id)
+    const collection = request.nextUrl.searchParams.get("collection") || undefined
+    const entry = await getEntry(id, collection)
     if (!entry) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 })
     }
@@ -37,7 +38,8 @@ export async function PUT(
         { status: 400 }
       )
     }
-    await updateEntry(id, body)
+    const collection = body.collection || undefined
+    await updateEntry(id, body, collection)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const msg = String(err)
@@ -52,12 +54,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    await deleteEntry(id)
+    const collection = request.nextUrl.searchParams.get("collection") || undefined
+    await deleteEntry(id, collection)
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json(

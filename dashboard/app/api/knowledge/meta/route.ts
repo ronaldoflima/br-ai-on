@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { readdirSync, readFileSync, existsSync, lstatSync } from "fs"
 import { join } from "path"
 import { parse } from "yaml"
+import { listCollections, defaultCollection } from "@/lib/knowledge"
 
 export const dynamic = "force-dynamic"
 
@@ -12,9 +13,18 @@ const USER_AGENTS = process.env.BRAION_AGENTS_DIR || join(
   ".config", "br-ai-on", "agents"
 )
 
-function collectAgentMeta(): { agents: string[]; domains: string[] } {
+interface AgentMeta {
+  agents: string[]
+  domains: string[]
+  collections: string[]
+  default_collection: string
+  agent_collections: Record<string, string>
+}
+
+function collectAgentMeta(): Omit<AgentMeta, "collections"> {
   const agentSet = new Set<string>()
   const domainSet = new Set<string>()
+  const agentCollections: Record<string, string> = {}
 
   const dirs = [AGENTS_DIR, USER_AGENTS].filter(existsSync)
   for (const dir of dirs) {
@@ -30,6 +40,9 @@ function collectAgentMeta(): { agents: string[]; domains: string[] } {
         agentSet.add(name)
         const domains = cfg.domain as string[] | undefined
         if (domains) domains.forEach((d) => domainSet.add(d))
+        if (cfg.knowledge_collection) {
+          agentCollections[name] = cfg.knowledge_collection as string
+        }
       } catch {
         agentSet.add(entry)
       }
@@ -39,13 +52,21 @@ function collectAgentMeta(): { agents: string[]; domains: string[] } {
   return {
     agents: [...agentSet].sort(),
     domains: [...domainSet].sort(),
+    default_collection: defaultCollection(),
+    agent_collections: agentCollections,
   }
 }
 
 export async function GET() {
   try {
     const meta = collectAgentMeta()
-    return NextResponse.json(meta)
+    let collections: string[]
+    try {
+      collections = await listCollections()
+    } catch {
+      collections = [meta.default_collection]
+    }
+    return NextResponse.json({ ...meta, collections })
   } catch (err) {
     return NextResponse.json(
       { error: "Failed to collect meta: " + String(err) },
