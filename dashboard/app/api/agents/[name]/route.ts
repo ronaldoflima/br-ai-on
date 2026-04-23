@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, rmSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, rmSync, readdirSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
 import { validateAgentConfig } from "../../../lib/config-validator";
@@ -50,17 +50,28 @@ export async function GET(
     soul = readFileSync(soulPath, "utf-8");
   }
 
-  let objective = "";
-  const objPath = join(agentDir, "state", "current_objective.md");
-  if (existsSync(objPath)) {
-    objective = readFileSync(objPath, "utf-8");
+  function readLatestRotated(dir: string, n = 1, legacyFile?: string): string {
+    if (existsSync(dir)) {
+      const files = readdirSync(dir)
+        .filter((f: string) => f.endsWith(".md"))
+        .sort()
+        .slice(-n);
+      return files.map((f: string) => readFileSync(join(dir, f), "utf-8")).join("\n\n");
+    }
+    if (legacyFile && existsSync(legacyFile)) {
+      return readFileSync(legacyFile, "utf-8");
+    }
+    return "";
   }
 
-  let decisions = "";
-  const decPath = join(agentDir, "state", "decisions.md");
-  if (existsSync(decPath)) {
-    decisions = readFileSync(decPath, "utf-8");
-  }
+  const objective = readLatestRotated(
+    join(agentDir, "state", "current_objective"), 1,
+    join(agentDir, "state", "current_objective.md")
+  );
+  const decisions = readLatestRotated(
+    join(agentDir, "state", "decisions"), 5,
+    join(agentDir, "state", "decisions.md")
+  );
 
   let semantic = "";
   const semPath = join(agentDir, "memory", "semantic.md");

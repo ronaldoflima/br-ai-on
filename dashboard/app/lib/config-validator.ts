@@ -28,8 +28,10 @@ const KNOWN_TOP_LEVEL_FIELDS = new Set([
 ]);
 
 const KNOWN_SCHEDULE_FIELDS = new Set([
-  "mode", "interval", "priority", "run_alone",
+  "mode", "interval", "cron", "priority", "run_alone",
 ]);
+
+const CRON_RE = /^(\S+\s+){4}\S+$/;
 
 const KNOWN_BUDGET_FIELDS = new Set([
   "max_sessions_per_day",
@@ -104,10 +106,15 @@ export function validateAgentConfig(raw: string): ValidationResult {
     }
     if (mode === "alive") {
       const interval = sched.interval as string | undefined;
-      if (!interval) {
-        errors.push({ field: "schedule.interval", message: "schedule.interval obrigatório quando mode=alive" });
-      } else if (!INTERVAL_RE.test(String(interval))) {
+      const cronExpr = sched.cron as string | undefined;
+      if (!interval && !cronExpr) {
+        errors.push({ field: "schedule.interval", message: "schedule.interval ou schedule.cron obrigatório quando mode=alive" });
+      }
+      if (interval && !INTERVAL_RE.test(String(interval))) {
         errors.push({ field: "schedule.interval", message: `Intervalo inválido "${interval}". Formato: 15m, 1h, 2h, 7d` });
+      }
+      if (cronExpr && !CRON_RE.test(String(cronExpr))) {
+        errors.push({ field: "schedule.cron", message: `Expressão cron inválida "${cronExpr}". Formato: 5 campos (min hour dom mon dow)` });
       }
     }
     const priority = sched.priority;

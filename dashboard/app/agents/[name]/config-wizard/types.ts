@@ -62,6 +62,7 @@ export interface WizardFormState {
   capabilities: string[];
   schedule_mode: ScheduleMode;
   schedule_interval: string;
+  schedule_cron: string;
   schedule_priority: number;
   schedule_run_alone: boolean;
   max_sessions_per_day: number;

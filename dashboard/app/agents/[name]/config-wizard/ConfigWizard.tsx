@@ -79,6 +79,7 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
       : [],
     schedule_mode: (schedule.mode as ScheduleMode) ?? "handoff-only",
     schedule_interval: String(schedule.interval ?? ""),
+    schedule_cron: String(schedule.cron ?? ""),
     schedule_priority: Number(schedule.priority ?? 0),
     schedule_run_alone: Boolean(schedule.run_alone ?? false),
     max_sessions_per_day: Number(budget.max_sessions_per_day ?? 5),
@@ -100,9 +101,11 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
     fallback_model: form.fallback_model,
     schedule: {
       mode: form.schedule_mode,
-      ...(form.schedule_mode === "alive"
-        ? { interval: form.schedule_interval }
-        : {}),
+      ...(form.schedule_mode === "alive" && form.schedule_cron
+        ? { cron: form.schedule_cron }
+        : form.schedule_mode === "alive" && form.schedule_interval
+          ? { interval: form.schedule_interval }
+          : {}),
       ...(form.schedule_priority !== 0
         ? { priority: form.schedule_priority }
         : {}),

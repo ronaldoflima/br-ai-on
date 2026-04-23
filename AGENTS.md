@@ -49,7 +49,7 @@ Campos: `timestamp`, `agent`, `action`, `message`, `metadata`, `prompt_version`,
 `lib/agent-scheduler.py` determina quais agentes devem rodar:
 
 - Lê todos os `agents/*/config.yaml` dinamicamente
-- Compara `last_run` (de `agents/shared/schedule_state.json`) com `interval` de cada agente
+- Compara `last_run` (de `agents/shared/schedule_state.json`) com `interval` ou `cron` de cada agente
 - Classifica em `due`, `waiting`, `inactive`, `budget_blocked`
 - Retorna JSON ordenado por `priority`
 - `--mark-ran agent1 agent2` atualiza timestamps e incrementa contadores de budget
@@ -81,7 +81,7 @@ python3 lib/agent-scheduler.py --mark-ran <nome>  # registra execução
 
 | Modo | Comportamento |
 |------|--------------|
-| `alive` | Cron inicia o agente automaticamente quando o intervalo expira |
+| `alive` | Cron inicia o agente automaticamente quando o intervalo ou expressão cron expira |
 | `handoff-only` | Agente só acorda quando recebe handoff ou nota no inbox |
 | `disabled` | Agente nunca é iniciado automaticamente |
 
