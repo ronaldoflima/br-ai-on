@@ -62,8 +62,8 @@ export async function ensureCollection(collection?: string): Promise<string> {
   })
   if (!createRes.ok) throw new Error("Failed to create collection: " + await createRes.text())
 
-  const indexes = ["agent", "domain", "type", "source"]
-  for (const field of indexes) {
+  const keywordIndexes = ["agent", "domain", "type", "source"]
+  for (const field of keywordIndexes) {
     const idxRes = await fetch(`${url}/index`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -74,6 +74,21 @@ export async function ensureCollection(collection?: string): Promise<string> {
     })
     if (!idxRes.ok) throw new Error(`Failed to create index ${field}: ` + await idxRes.text())
   }
+
+  const textIdxRes = await fetch(`${url}/index`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      field_name: "text",
+      field_schema: {
+        type: "text",
+        tokenizer: "multilingual",
+        min_token_len: 2,
+        max_token_len: 20,
+      },
+    }),
+  })
+  if (!textIdxRes.ok) throw new Error("Failed to create text index: " + await textIdxRes.text())
 
   _readyCollections.add(col)
   return col
@@ -210,6 +225,45 @@ export async function deleteEntry(id: string, collection?: string): Promise<void
   if (!res.ok) throw new Error("Failed to delete entry: " + await res.text())
 }
 
+const SEMANTIC_THRESHOLD = 0.6
+
+async function fulltextSearch(
+  query: string,
+  col: string,
+  filters?: KnowledgeSearchFilters,
+  limit = 10
+): Promise<KnowledgeSearchResult[]> {
+  const cfg = loadConfig()
+  const must: Record<string, unknown>[] = [
+    { key: "text", match: { text: query } },
+  ]
+  const filterConditions = filters ? buildQdrantFilter(filters) : undefined
+  if (filterConditions) must.push(...filterConditions.must)
+
+  const body: Record<string, unknown> = {
+    filter: { must },
+    limit,
+    with_payload: true,
+    with_vector: false,
+  }
+
+  const res = await fetch(
+    `${cfg.qdrant_url}/collections/${col}/points/scroll`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.result?.points || []).map((pt: Record<string, unknown>) => ({
+    ...pointToEntry(pt),
+    score: 0,
+    match: "fulltext" as const,
+  }))
+}
+
 export async function searchEntries(
   query: string,
   filters?: KnowledgeSearchFilters,
@@ -238,10 +292,23 @@ export async function searchEntries(
   )
   if (!res.ok) throw new Error("Failed to search entries: " + await res.text())
   const data = await res.json()
-  return (data.result || []).map((pt: Record<string, unknown>) => ({
+  const results: KnowledgeSearchResult[] = (data.result || []).map((pt: Record<string, unknown>) => ({
     ...pointToEntry(pt),
     score: pt.score as number,
   }))
+
+  const bestScore = results.length > 0 ? results[0].score : 0
+  if (bestScore < SEMANTIC_THRESHOLD) {
+    const textResults = await fulltextSearch(query, col, filters, limit)
+    const seenIds = new Set(results.map((r) => r.id))
+    for (const tr of textResults) {
+      if (!seenIds.has(tr.id)) {
+        results.push(tr)
+      }
+    }
+  }
+
+  return results
 }
 
 export async function listEntries(
