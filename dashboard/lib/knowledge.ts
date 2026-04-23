@@ -44,7 +44,7 @@ export async function ensureCollection(): Promise<void> {
     return
   }
 
-  await fetch(url, {
+  const createRes = await fetch(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -54,10 +54,11 @@ export async function ensureCollection(): Promise<void> {
       },
     }),
   })
+  if (!createRes.ok) throw new Error("Failed to create collection: " + await createRes.text())
 
   const indexes = ["agent", "domain", "type", "source"]
   for (const field of indexes) {
-    await fetch(`${url}/index`, {
+    const idxRes = await fetch(`${url}/index`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -65,6 +66,7 @@ export async function ensureCollection(): Promise<void> {
         field_schema: "Keyword",
       }),
     })
+    if (!idxRes.ok) throw new Error(`Failed to create index ${field}: ` + await idxRes.text())
   }
 
   _collectionReady = true
@@ -120,7 +122,7 @@ export async function createEntry(input: CreateKnowledgeInput): Promise<string> 
   const now = new Date().toISOString()
   const vector = await generateEmbedding(input.text)
 
-  await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
+  const res = await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -142,6 +144,7 @@ export async function createEntry(input: CreateKnowledgeInput): Promise<string> 
       ],
     }),
   })
+  if (!res.ok) throw new Error("Failed to upsert entry: " + await res.text())
 
   return id
 }
@@ -176,19 +179,20 @@ export async function updateEntry(id: string, input: UpdateKnowledgeInput): Prom
 
   const vector = input.text ? await generateEmbedding(updated.text) : await generateEmbedding(existing.text)
 
-  await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
+  const res = await fetch(`${cfg.qdrant_url}/collections/${cfg.collection_name}/points`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       points: [{ id, vector, payload: updated }],
     }),
   })
+  if (!res.ok) throw new Error("Failed to upsert entry: " + await res.text())
 }
 
 export async function deleteEntry(id: string): Promise<void> {
   await ensureCollection()
   const cfg = loadConfig()
-  await fetch(
+  const res = await fetch(
     `${cfg.qdrant_url}/collections/${cfg.collection_name}/points/delete`,
     {
       method: "POST",
@@ -196,6 +200,7 @@ export async function deleteEntry(id: string): Promise<void> {
       body: JSON.stringify({ points: [id] }),
     }
   )
+  if (!res.ok) throw new Error("Failed to delete entry: " + await res.text())
 }
 
 export async function searchEntries(
@@ -223,6 +228,7 @@ export async function searchEntries(
       body: JSON.stringify(body),
     }
   )
+  if (!res.ok) throw new Error("Failed to search entries: " + await res.text())
   const data = await res.json()
   return (data.result || []).map((pt: Record<string, unknown>) => ({
     ...pointToEntry(pt),
@@ -255,6 +261,7 @@ export async function listEntries(
       body: JSON.stringify(body),
     }
   )
+  if (!res.ok) throw new Error("Failed to list entries: " + await res.text())
   const data = await res.json()
   const entries = (data.result?.points || []).map(pointToEntry)
   return { entries, next_offset: data.result?.next_page_offset ?? null }
