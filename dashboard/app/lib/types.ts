@@ -91,3 +91,50 @@ export interface EpisodicEntry {
   outcome: string;
   importance: number;
 }
+
+export type KnowledgeType = 'insight' | 'decision' | 'fact' | 'procedure'
+export type KnowledgeSource = 'agent-session' | 'manual' | 'handoff'
+
+export interface KnowledgeEntry {
+  id: string
+  text: string
+  agent: string
+  domain: string[]
+  type: KnowledgeType
+  source: KnowledgeSource
+  created_at: string
+  updated_at: string
+  metadata: Record<string, unknown>
+}
+
+export interface KnowledgeSearchResult extends KnowledgeEntry {
+  score: number
+}
+
+export interface KnowledgeSearchFilters {
+  agent?: string
+  domain?: string
+  type?: KnowledgeType
+}
+
+export interface KnowledgeListFilters extends KnowledgeSearchFilters {
+  limit?: number
+  offset?: string
+}
+
+export interface CreateKnowledgeInput {
+  text: string
+  agent: string
+  domain: string[]
+  type: KnowledgeType
+  source: KnowledgeSource
+  metadata?: Record<string, unknown>
+}
+
+export interface UpdateKnowledgeInput {
+  text?: string
+  agent?: string
+  domain?: string[]
+  type?: KnowledgeType
+  metadata?: Record<string, unknown>
+}
