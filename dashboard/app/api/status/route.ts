@@ -128,7 +128,7 @@ export async function GET() {
         nextRun = nextCronMatch(cronExpr).toISOString();
       } else if (lastRun) {
         const next = new Date(new Date(lastRun).getTime() + intervalMs);
-        nextRun = next.toISOString();
+        nextRun = next.getTime() > Date.now() ? next.toISOString() : new Date().toISOString();
       }
     }
 
