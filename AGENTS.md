@@ -125,6 +125,29 @@ lib/handoff.sh archive <agent> <caminho_arquivo>
 lib/handoff.sh next_id
 ```
 
+## Working Directory
+
+O campo `working_directory` no `config.yaml` define o diretório de trabalho da sessão do agente.
+
+Formato simples (string):
+```yaml
+working_directory: /caminho/absoluto
+```
+
+Formato com diretórios adicionais (objeto):
+```yaml
+working_directory:
+  primary: /caminho/principal
+  additional:
+    - /caminho/extra1
+    - /caminho/extra2
+```
+
+- `primary` é usado como PWD da sessão tmux (diretório de trabalho do Claude Code)
+- `additional` são passados como `--add-dir` ao Claude Code, dando acesso de leitura/escrita a esses diretórios
+- Se omitido, o padrão é o diretório base do br-ai-on (`$BRAION`)
+- Retrocompatível: `directory` (campo legado) continua funcionando como alias
+
 ## Comando Customizado (Opcional)
 
 O campo `command` no `config.yaml` permite usar um CLI diferente do Claude Code padrão:

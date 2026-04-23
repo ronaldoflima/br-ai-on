@@ -71,7 +71,9 @@ export async function GET() {
         sched.mode || "",
         sched.interval || "",
         ...(Array.isArray(config.capabilities) ? config.capabilities : []),
-        config.working_directory || "",
+        typeof config.working_directory === "object" && config.working_directory
+          ? [(config.working_directory as Record<string, unknown>).primary || "", ...((config.working_directory as Record<string, unknown>).additional as string[] || [])].join(" ")
+          : config.working_directory || "",
         config.fallback_model || "",
       ].filter(Boolean).join(" ").toLowerCase();
 

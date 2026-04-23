@@ -159,8 +159,41 @@ export function validateAgentConfig(raw: string): ValidationResult {
   if (cfg.directory !== undefined) {
     if (typeof cfg.directory !== "string") {
       errors.push({ field: "directory", message: "directory deve ser uma string" });
-    } else if (!cfg.directory.startsWith("/")) {
+    } else if (!(cfg.directory as string).startsWith("/") && !(cfg.directory as string).startsWith("~")) {
       errors.push({ field: "directory", message: "directory deve ser um caminho absoluto" });
+    }
+  }
+
+  if (cfg.working_directory !== undefined) {
+    const wd = cfg.working_directory;
+    if (typeof wd === "string") {
+      if (wd && !wd.startsWith("/") && !wd.startsWith("~")) {
+        errors.push({ field: "working_directory", message: "working_directory deve ser um caminho absoluto" });
+      }
+    } else if (typeof wd === "object" && wd !== null && !Array.isArray(wd)) {
+      const wdObj = wd as Record<string, unknown>;
+      const primary = wdObj.primary;
+      if (primary !== undefined && typeof primary !== "string") {
+        errors.push({ field: "working_directory.primary", message: "working_directory.primary deve ser uma string" });
+      } else if (typeof primary === "string" && primary && !primary.startsWith("/") && !primary.startsWith("~")) {
+        errors.push({ field: "working_directory.primary", message: "working_directory.primary deve ser um caminho absoluto" });
+      }
+      const additional = wdObj.additional;
+      if (additional !== undefined) {
+        if (!Array.isArray(additional)) {
+          errors.push({ field: "working_directory.additional", message: "working_directory.additional deve ser um array de strings" });
+        } else {
+          additional.forEach((d: unknown, i: number) => {
+            if (typeof d !== "string") {
+              errors.push({ field: `working_directory.additional[${i}]`, message: "Cada diretório adicional deve ser uma string" });
+            } else if (d && !(d as string).startsWith("/") && !(d as string).startsWith("~")) {
+              errors.push({ field: `working_directory.additional[${i}]`, message: `"${d}" deve ser um caminho absoluto` });
+            }
+          });
+        }
+      }
+    } else {
+      errors.push({ field: "working_directory", message: "working_directory deve ser uma string ou objeto {primary, additional}" });
     }
   }
 
