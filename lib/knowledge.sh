@@ -29,10 +29,10 @@ _kb_agent_domains() {
   [ ! -f "$config_file" ] && config_file="$HOME/.config/br-ai-on/agents/$agent/config.yaml"
   [ ! -f "$config_file" ] && echo "[]" && return
   local domains
-  domains=$(python3 -c "
-import yaml, json, sys
+  domains=$(KB_CONFIG_FILE="$config_file" python3 -c "
+import yaml, json, os
 try:
-    with open('$config_file') as f:
+    with open(os.environ['KB_CONFIG_FILE']) as f:
         cfg = yaml.safe_load(f)
     print(json.dumps(cfg.get('domain', [])))
 except:
@@ -64,13 +64,13 @@ knowledge_publish() {
   base_url=$(_kb_dashboard_url)
 
   local payload
-  payload=$(python3 -c "
-import json, sys
+  payload=$(KB_TEXT="$text" KB_AGENT="$agent" KB_DOMAINS="$domains" KB_TYPE="$type" python3 -c "
+import json, os
 print(json.dumps({
-    'text': '''$text''',
-    'agent': '$agent',
-    'domain': json.loads('$domains'),
-    'type': '$type',
+    'text': os.environ['KB_TEXT'],
+    'agent': os.environ['KB_AGENT'],
+    'domain': json.loads(os.environ['KB_DOMAINS']),
+    'type': os.environ['KB_TYPE'],
     'source': 'agent-session'
 }))
 ")
@@ -102,12 +102,12 @@ knowledge_search() {
   base_url=$(_kb_dashboard_url)
 
   local payload
-  payload=$(python3 -c "
-import json
-d = {'query': '''$query''', 'limit': $limit}
-if '$agent': d['agent'] = '$agent'
-if '$domain': d['domain'] = '$domain'
-if '$type': d['type'] = '$type'
+  payload=$(KB_QUERY="$query" KB_LIMIT="$limit" KB_AGENT="$agent" KB_DOMAIN="$domain" KB_TYPE="$type" python3 -c "
+import json, os
+d = {'query': os.environ['KB_QUERY'], 'limit': int(os.environ['KB_LIMIT'])}
+if os.environ.get('KB_AGENT'): d['agent'] = os.environ['KB_AGENT']
+if os.environ.get('KB_DOMAIN'): d['domain'] = os.environ['KB_DOMAIN']
+if os.environ.get('KB_TYPE'): d['type'] = os.environ['KB_TYPE']
 print(json.dumps(d))
 ")
 
