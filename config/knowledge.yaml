@@ -1,0 +1,6 @@
+qdrant_url: http://localhost:6333
+ollama_url: http://localhost:11434
+embedding_model: nomic-embed-text
+embedding_dimensions: 768
+collection_name: braion_knowledge
+dashboard_url: http://localhost:3040
