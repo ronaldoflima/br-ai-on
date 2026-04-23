@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import type {
   KnowledgeEntry,
   KnowledgeSearchResult,
@@ -38,6 +38,7 @@ export default function KnowledgePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [nextOffset, setNextOffset] = useState<string | null>(null)
+  const nextOffsetRef = useRef<string | null>(null)
 
   const [agentFilter, setAgentFilter] = useState("")
   const [domainFilter, setDomainFilter] = useState("")
@@ -70,7 +71,7 @@ export default function KnowledgePage() {
       if (domainFilter) params.set("domain", domainFilter)
       if (typeFilter) params.set("type", typeFilter)
       params.set("limit", "20")
-      if (append && nextOffset) params.set("offset", nextOffset)
+      if (append && nextOffsetRef.current) params.set("offset", nextOffsetRef.current)
 
       fetch(`/api/knowledge/entries?${params}`)
         .then((r) => r.json())
@@ -78,12 +79,13 @@ export default function KnowledgePage() {
           const list = data.entries || []
           setEntries((prev) => (append ? [...prev, ...list] : list))
           setNextOffset(data.next_offset)
+          nextOffsetRef.current = data.next_offset
           setIsSearchMode(false)
         })
         .catch(() => {})
         .finally(() => setLoading(false))
     },
-    [agentFilter, domainFilter, typeFilter, nextOffset]
+    [agentFilter, domainFilter, typeFilter]
   )
 
   useEffect(() => {
@@ -112,6 +114,7 @@ export default function KnowledgePage() {
         setEntries(data.results || [])
         setIsSearchMode(true)
         setNextOffset(null)
+        nextOffsetRef.current = null
       })
       .catch(() => {})
       .finally(() => setLoading(false))
