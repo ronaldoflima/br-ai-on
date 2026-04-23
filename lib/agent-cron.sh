@@ -263,6 +263,41 @@ build_agent_system_prompt() {
     fi
   fi
 
+  # Knowledge Base (Qdrant) — injeta instrução se disponível
+  local kb_config="$BRAION/config/knowledge.yaml"
+  if [ -f "$kb_config" ]; then
+    local qdrant_url
+    qdrant_url=$(grep '^qdrant_url:' "$kb_config" | sed 's/^qdrant_url: *//' | tr -d '"' | tr -d "'")
+    local default_col
+    default_col=$(grep '^default_collection:' "$kb_config" | sed 's/^default_collection: *//' | tr -d '"' | tr -d "'")
+    local agent_col=""
+    if [ -n "$config" ] && [ -f "$config" ]; then
+      agent_col=$(grep '^knowledge_collection:' "$config" | sed 's/^knowledge_collection: *//' | tr -d '"' | tr -d "'")
+    fi
+    local kb_col="${agent_col:-$default_col}"
+    if [ -n "$qdrant_url" ] && curl -sf "${qdrant_url}/healthz" > /dev/null 2>&1; then
+      local dashboard_url
+      dashboard_url=$(grep '^dashboard_url:' "$kb_config" | sed 's/^dashboard_url: *//' | tr -d '"' | tr -d "'")
+      dashboard_url="${dashboard_url:-http://localhost:3040}"
+      content="${content}"$'\n\n'"## Knowledge Base
+
+Voce tem acesso a uma base de knowledge compartilhada entre agentes (Qdrant). Collection: \`${kb_col}\`.
+
+**Buscar knowledge** (antes de agir em algo que outros agentes podem ter contexto):
+\`\`\`bash
+bash lib/knowledge.sh search \"sua query\" --collection \"${kb_col}\"
+\`\`\`
+
+**Publicar knowledge** (quando descobrir algo util para outros agentes):
+\`\`\`bash
+bash lib/knowledge.sh publish \"${agent}\" \"<tipo>\" \"<texto>\" --collection \"${kb_col}\"
+\`\`\`
+Tipos: insight, decision, fact, procedure.
+
+Dashboard: ${dashboard_url}/knowledge"
+    fi
+  fi
+
   if [ -n "$config" ] && [ -f "$config" ]; then
     local custom
     custom=$(python3 -c "
