@@ -277,13 +277,49 @@ export function RuntimeSection({ form, update, errors }: SectionProps) {
       </div>
 
       <div className="form-group">
-        <label className="form-label">working_directory</label>
+        <label className="form-label">working_directory (primário)</label>
         <input
           className="input"
           value={form.working_directory}
           onChange={(e) => update({ working_directory: e.target.value })}
           placeholder="/caminho/absoluto/opcional"
         />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Diretórios adicionais (--add-dir)</label>
+        {form.additional_dirs.map((dir, i) => (
+          <div key={i} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+            <input
+              className="input"
+              value={dir}
+              onChange={(e) => {
+                const updated = [...form.additional_dirs];
+                updated[i] = e.target.value;
+                update({ additional_dirs: updated });
+              }}
+              placeholder="/caminho/absoluto"
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => {
+                const updated = form.additional_dirs.filter((_, idx) => idx !== i);
+                update({ additional_dirs: updated });
+              }}
+            >
+              X
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => update({ additional_dirs: [...form.additional_dirs, ""] })}
+        >
+          + Adicionar diretório
+        </button>
       </div>
 
       <div className="form-group">
