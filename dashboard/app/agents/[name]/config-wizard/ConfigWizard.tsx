@@ -58,7 +58,21 @@ function configToForm(raw: Record<string, unknown>): WizardFormState {
     model: (raw.model as ModelId) ?? defaultModel(),
     fallback_model: (raw.fallback_model as ModelId) ?? fallbackModel(),
     permission_mode: readPermissionMode() as PermissionMode | "",
-    working_directory: String(raw.working_directory ?? raw.directory ?? ""),
+    working_directory: (() => {
+      const wd = raw.working_directory ?? raw.directory ?? "";
+      if (typeof wd === "object" && wd !== null && !Array.isArray(wd)) {
+        return String((wd as Record<string, unknown>).primary ?? "");
+      }
+      return String(wd);
+    })(),
+    additional_dirs: (() => {
+      const wd = raw.working_directory ?? raw.directory;
+      if (typeof wd === "object" && wd !== null && !Array.isArray(wd)) {
+        const additional = (wd as Record<string, unknown>).additional;
+        if (Array.isArray(additional)) return additional.map(String);
+      }
+      return [];
+    })(),
     command: String(raw.command ?? ""),
     capabilities: Array.isArray(raw.capabilities)
       ? raw.capabilities.map(String)
@@ -103,7 +117,17 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
   };
 
   if (form.layer) config.layer = form.layer;
-  if (form.working_directory) config.working_directory = form.working_directory;
+  if (form.working_directory) {
+    const filtered = form.additional_dirs.filter((d) => d.trim());
+    if (filtered.length > 0) {
+      config.working_directory = {
+        primary: form.working_directory,
+        additional: filtered,
+      };
+    } else {
+      config.working_directory = form.working_directory;
+    }
+  }
   if (form.command) config.command = form.command;
   if (form.capabilities.length > 0) config.capabilities = form.capabilities;
   // Formato novo (canônico): runtime.permission_mode. Saves antigos em
