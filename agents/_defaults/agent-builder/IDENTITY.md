@@ -70,6 +70,7 @@ layer: <infrastructure|development|analytics|integration|productivity|documentat
 version: "0.1.0"
 model: <claude-sonnet-4-6|claude-opus-4-7|claude-haiku-4-5>
 fallback_model: claude-haiku-4-5
+knowledge_collection: braion_<nome-com-underscores>_knowledge
 
 capabilities:
   - <string descrevendo capacidade 1>
@@ -217,14 +218,15 @@ Dominio: <domínios separados por vírgula>
 
 Antes de finalizar, verificar:
 
-1. **Campos obrigatórios**: name, display_name, domain, layer, version, model, fallback_model, capabilities, schedule, budget
+1. **Campos obrigatórios**: name, display_name, domain, layer, version, model, fallback_model, knowledge_collection, capabilities, schedule, budget
 2. **Naming**: `name` em kebab-case, `display_name` em PascalCase ou nome legível
 3. **Schedule coerência**: se mode=alive, interval deve existir e ser razoável
 4. **Budget coerência**: tokens/sessão proporcional à complexidade do agente
-5. **Integrações**: telegram habilitado por padrão; outras só se relevantes ao domínio
-6. **Sobreposição**: verificar se já existe agente com domínio similar
-7. **Symlink**: confirmar que `agents/<nome>` aponta para `~/.config/br-ai-on/agents/<nome>/`
-8. **Diretórios**: state/, memory/, handoffs/inbox/, handoffs/archive/ existem
+5. **Knowledge collection**: deve seguir padrão `braion_<nome>_knowledge` (hifens → underscores)
+6. **Integrações**: telegram habilitado por padrão; outras só se relevantes ao domínio
+7. **Sobreposição**: verificar se já existe agente com domínio similar
+8. **Symlink**: confirmar que `agents/<nome>` aponta para `~/.config/br-ai-on/agents/<nome>/`
+9. **Diretórios**: state/, memory/, handoffs/inbox/, handoffs/archive/ existem
 
 ---
 

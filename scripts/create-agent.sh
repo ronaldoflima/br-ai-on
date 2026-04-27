@@ -167,6 +167,7 @@ else
 fi
 
 _fallback_model=$(cli_fallback_model)
+_knowledge_collection="braion_${agent_name//-/_}_knowledge"
 cat > "$base/config.yaml" << EOF
 name: $agent_name
 display_name: $display_name
@@ -174,6 +175,7 @@ domain: $domain
 version: "0.1.0"
 model: $model
 fallback_model: $_fallback_model
+knowledge_collection: $_knowledge_collection
 
 schedule:
   mode: $schedule_mode
