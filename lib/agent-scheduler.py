@@ -27,6 +27,9 @@ import sys
 import glob
 from datetime import datetime, timezone, timedelta
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import state  # camada de abstração: file/pg via BRAION_STATE_BACKEND
+
 try:
     import yaml
 except ImportError:
@@ -100,16 +103,12 @@ def parse_interval(interval_str):
 
 
 def read_schedule_state():
-    if not os.path.exists(SCHEDULE_STATE_FILE):
-        return {}
-    with open(SCHEDULE_STATE_FILE) as f:
-        return json.load(f)
+    val = state.shared_kv_get("schedule_state")
+    return val if isinstance(val, dict) else {}
 
 
-def write_schedule_state(state):
-    with open(SCHEDULE_STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
-        f.write("\n")
+def write_schedule_state(state_dict):
+    state.shared_kv_set("schedule_state", state_dict)
 
 
 def read_budget_count(agent_name, today_str):
@@ -312,7 +311,7 @@ def cmd_mark_ran(agent_names):
     today_str = now.strftime("%Y-%m-%d")
     now_str = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    state = read_schedule_state()
+    sched_state = read_schedule_state()
     updated = []
     errors = []
 
@@ -321,11 +320,11 @@ def cmd_mark_ran(agent_names):
         if not os.path.exists(config_path):
             errors.append(f"config não encontrado para: {name}")
             continue
-        state[name] = now_str
+        sched_state[name] = now_str
         increment_budget_count(name, today_str)
         updated.append(name)
 
-    write_schedule_state(state)
+    write_schedule_state(sched_state)
     print(json.dumps({"updated": updated, "errors": errors, "timestamp": now_str}, indent=2))
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# lib/handoff.sh — Helper para handoffs entre agentes
+# lib/handoff.sh — Helper para handoffs entre agentes (wrapper sobre state.sh)
 # Uso:
 #   handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id] [job_id]
 #   handoff.sh list <agent>
@@ -10,35 +10,27 @@ set -euo pipefail
 #   handoff.sh next_id
 #   handoff.sh thread-history <thread_id>
 #   handoff.sh job-agent <handoff_file>
+#   handoff.sh artifacts-dir <agent> <ho_id>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-AGENTS_DIR="$PROJECT_ROOT/agents"
+# shellcheck source=./state.sh
+source "$SCRIPT_DIR/state.sh"
 
-handoff_next_id() {
-  local date_str
-  date_str=$(date -u +%Y%m%d)
-  local seq=1
-  for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/archive "$AGENTS_DIR"/*/handoffs/in_progress; do
-    [ -d "$dir" ] || continue
-    for f in "$dir"/HO-"${date_str}"-*.md; do
-      [ -f "$f" ] || continue
-      local fname
-      fname=$(basename "$f")
-      local num
-      num=$(echo "$fname" | sed -n "s/HO-${date_str}-\([0-9]*\)_.*/\1/p")
-      if [ -n "$num" ] && [ "$((10#$num))" -ge "$seq" ]; then
-        seq=$((10#$num + 1))
-      fi
-    done
-  done
-  printf "HO-%s-%03d" "$date_str" "$seq"
+_handoff_id_from_path() {
+  # Aceita tanto path de arquivo (HO-...-NNN_from-X.md) quanto pseudo-path pg:// e id puro.
+  case "$1" in
+    pg://*) echo "${1#pg://}" ;;
+    HO-*-*) echo "$1" ;;
+    *) basename "$1" | sed -n 's/\(HO-[0-9]*-[0-9]*\).*/\1/p' ;;
+  esac
 }
 
+handoff_next_id() { state_handoff_next_id; }
+
 handoff_send() {
-  local from="${1:?Uso: handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id]}"
-  local to="${2:?Uso: handoff.sh send <from> <to> <expects> [reply_to]}"
-  local expects="${3:?Uso: handoff.sh send <from> <to> <expects> [reply_to]}"
+  local from="${1:?Uso: handoff.sh send <from> <to> <expects> [reply_to] [descricao] [contexto] [esperado] [thread_id] [job_id]}"
+  local to="${2:?}"
+  local expects="${3:?}"
   local reply_to="${4:-null}"
   local description="${5:-}"
   local context="${6:-}"
@@ -46,56 +38,17 @@ handoff_send() {
   local thread_id="${8:-}"
   local job_id="${9:-}"
 
-  if [ -z "$thread_id" ] && [ "$reply_to" != "null" ]; then
-    for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/in_progress "$AGENTS_DIR"/*/handoffs/archive; do
-      [ -d "$dir" ] || continue
-      for f in "$dir"/HO-*.md; do
-        [ -f "$f" ] || continue
-        if grep -q "^id: $reply_to" "$f" 2>/dev/null; then
-          local found_thread
-          found_thread=$(grep '^thread_id:' "$f" | sed 's/thread_id: //') || true
-          if [ -n "$found_thread" ]; then
-            thread_id="$found_thread"
-          fi
-          break 2
-        fi
-      done
-    done
+  if [[ -z "$thread_id" && "$reply_to" != "null" ]]; then
+    thread_id=$(state_handoff_find_thread "$reply_to" || true)
   fi
 
-  local inbox_dir="$AGENTS_DIR/$to/handoffs/inbox"
-  mkdir -p "$inbox_dir"
+  local body
+  body=$(printf '## Descricao\n%s\n\n## Contexto\n%s\n\n## Esperado\n%s' "$description" "$context" "$expected")
 
   local ho_id
-  ho_id=$(handoff_next_id)
-  local timestamp
-  timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  local filename="${ho_id}_from-${from}.md"
-  local filepath="$inbox_dir/$filename"
-
-  cat > "$filepath" <<HANDOFF_EOF
----
-id: $ho_id
-from: $from
-to: $to
-created: $timestamp
-status: pending
-expects: $expects
-reply_to: $reply_to
-$([ -n "$thread_id" ] && echo "thread_id: $thread_id")
-$([ -n "$job_id" ] && echo "job_id: $job_id")
----
-
-## Descricao
-$description
-
-## Contexto
-$context
-
-## Esperado
-$expected
-HANDOFF_EOF
-
+  ho_id=$(state_handoff_next_id)
+  local filepath
+  filepath=$(state_handoff_create "$ho_id" "$from" "$to" "$expects" "$reply_to" "$thread_id" "$job_id" "$body")
   echo "$filepath"
 
   AGENT_NAME="$from" bash "$SCRIPT_DIR/logger.sh" handoff_sent "Handoff $ho_id enviado para $to" \
@@ -104,105 +57,61 @@ HANDOFF_EOF
 
 handoff_list() {
   local agent="${1:?Uso: handoff.sh list <agent>}"
-  local inbox_dir="$AGENTS_DIR/$agent/handoffs/inbox"
-  if [ ! -d "$inbox_dir" ]; then
-    return 0
-  fi
-  for f in "$inbox_dir"/HO-*.md; do
-    [ -f "$f" ] || continue
-    echo "$f"
-  done
+  state_handoff_list "$agent" pending
 }
 
 handoff_claim() {
   local agent="${1:?Uso: handoff.sh claim <agent> <handoff_file>}"
-  local handoff_file="${2:?Uso: handoff.sh claim <agent> <handoff_file>}"
-  local in_progress_dir="$AGENTS_DIR/$agent/handoffs/in_progress"
-  mkdir -p "$in_progress_dir"
-
-  local filename
-  filename=$(basename "$handoff_file")
-
+  local handoff_file="${2:?}"
   local ho_id
-  ho_id=$(echo "$filename" | sed -n 's/\(HO-[0-9]*-[0-9]*\)_.*/\1/p')
-
-  sed -i 's/^status: pending/status: in_progress/' "$handoff_file"
-
-  mv "$handoff_file" "$in_progress_dir/$filename"
-
+  ho_id=$(_handoff_id_from_path "$handoff_file")
+  local new_path
+  new_path=$(state_handoff_set_status "$ho_id" in_progress)
   AGENT_NAME="$agent" bash "$SCRIPT_DIR/logger.sh" handoff_claimed "Handoff $ho_id em processamento" \
     "{\"handoff_id\":\"$ho_id\"}" 2>/dev/null || true
-
-  echo "$in_progress_dir/$filename"
-}
-
-handoff_artifacts_dir() {
-  local agent="${1:?Uso: handoff.sh artifacts-dir <agent> <ho_id>}"
-  local ho_id="${2:?Uso: handoff.sh artifacts-dir <agent> <ho_id>}"
-  local dir="$AGENTS_DIR/$agent/handoffs/artifacts/$ho_id"
-  mkdir -p "$dir"
-  echo "$dir"
+  echo "$new_path"
 }
 
 handoff_archive() {
   local agent="${1:?Uso: handoff.sh archive <agent> <handoff_file>}"
-  local handoff_file="${2:?Uso: handoff.sh archive <agent> <handoff_file>}"
-  local archive_dir="$AGENTS_DIR/$agent/handoffs/archive"
-  mkdir -p "$archive_dir"
-
-  local filename
-  filename=$(basename "$handoff_file")
-
+  local handoff_file="${2:?}"
   local ho_id
-  ho_id=$(echo "$filename" | sed -n 's/\(HO-[0-9]*-[0-9]*\)_.*/\1/p')
-
-  sed -i 's/^status: \(pending\|in_progress\)/status: archived/' "$handoff_file"
-
-  mv "$handoff_file" "$archive_dir/$filename"
-
+  ho_id=$(_handoff_id_from_path "$handoff_file")
+  state_handoff_set_status "$ho_id" archived >/dev/null
   AGENT_NAME="$agent" bash "$SCRIPT_DIR/logger.sh" handoff_processed "Handoff $ho_id arquivado" \
     "{\"handoff_id\":\"$ho_id\"}" 2>/dev/null || true
 }
 
+handoff_artifacts_dir() {
+  local agent="${1:?Uso: handoff.sh artifacts-dir <agent> <ho_id>}"
+  local ho_id="${2:?}"
+  state_handoff_artifact_dir "$agent" "$ho_id"
+}
+
 handoff_thread_history() {
   local thread_id="${1:?Uso: handoff.sh thread-history <thread_id>}"
-  local results=()
-  for dir in "$AGENTS_DIR"/*/handoffs/inbox "$AGENTS_DIR"/*/handoffs/in_progress "$AGENTS_DIR"/*/handoffs/archive; do
-    [ -d "$dir" ] || continue
-    for f in "$dir"/HO-*.md; do
-      [ -f "$f" ] || continue
-      if grep -q "^thread_id: $thread_id" "$f" 2>/dev/null; then
-        local from to status created
-        from=$(grep '^from:' "$f" | sed 's/from: //')
-        to=$(grep '^to:' "$f" | sed 's/to: //')
-        status=$(grep '^status:' "$f" | sed 's/status: //')
-        created=$(grep '^created:' "$f" | sed 's/created: //')
-        results+=("$created|$from|$to|$status")
-      fi
-    done
-  done
-  if [ ${#results[@]} -eq 0 ]; then
+  local out
+  out=$(state_handoff_thread_history "$thread_id")
+  if [[ -z "$out" ]]; then
     echo "No handoffs found for thread $thread_id"
-    return 0
+  else
+    echo "$out"
   fi
-  printf '%s\n' "${results[@]}" | sort | while IFS='|' read -r created from to status; do
-    printf '%s  %s -> %s  [%s]\n' "$created" "$from" "$to" "$status"
-  done
 }
 
 handoff_job_agent() {
   local handoff_file="${1:?Uso: handoff.sh job-agent <handoff_file>}"
-  [ -f "$handoff_file" ] || return 0
-  grep '^job_id:' "$handoff_file" 2>/dev/null | sed 's/job_id: //' | xargs
+  [[ -f "$handoff_file" ]] || return 0
+  grep '^job_id:' "$handoff_file" 2>/dev/null | sed 's/job_id: //' | xargs || true
 }
 
 command="${1:?Uso: handoff.sh <send|list|claim|archive|artifacts-dir|next_id|thread-history|job-agent> [args...]}"
 shift
 case "$command" in
-  send)          handoff_send "$@" ;;
-  list)          handoff_list "$@" ;;
-  claim)         handoff_claim "$@" ;;
-  archive)       handoff_archive "$@" ;;
+  send)            handoff_send "$@" ;;
+  list)            handoff_list "$@" ;;
+  claim)           handoff_claim "$@" ;;
+  archive)         handoff_archive "$@" ;;
   artifacts-dir)   handoff_artifacts_dir "$@" ;;
   next_id)         handoff_next_id ;;
   thread-history)  handoff_thread_history "$@" ;;

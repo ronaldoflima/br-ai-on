@@ -9,11 +9,23 @@ Ecossistema de agentes AI pessoais orquestrado pelo Claude Code. Cada agente tem
 ```
 agents/<nome>/         — Agente com IDENTITY.md, config.yaml e state/
 commands/braion/       — Commands do Claude Code (init, wrapup, etc.)
-lib/                   — Scripts utilitários (logger.sh)
+lib/                   — Scripts utilitários (state.{sh,py}, logger, memory, handoff, job)
 logs/                  — Logs estruturados JSONL por agente/dia
+db/                    — Schema Postgres (schema.sql, migrations/)
+scripts/               — Migração FS→PG, setup SSH tunnel, smoke test
 USER.md                — Perfil do usuário (compartilhado entre agentes)
 AGENTS.md              — Regras operacionais de todos os agentes
 ```
+
+## Backend de Estado (multi-cluster)
+
+Default: arquivos (`BRAION_STATE_BACKEND=file`). Para Postgres: `=pg`.
+- `lib/state.sh` / `lib/state.py` são a fronteira; nunca abra arquivos de estado
+  diretamente em código novo — sempre via `state_*` helpers.
+- Schema: `db/schema.sql`. Conexão: PGSERVICE em `~/.pg_service.conf` (Mac usa
+  túnel SSH via `scripts/setup_pg_tunnel.sh`).
+- Cutover: `scripts/migrate_fs_to_pg.py` (idempotente, não apaga arquivos).
+- Validação: `scripts/state_smoke_test.sh both`.
 
 ## Ciclo de Sessão
 

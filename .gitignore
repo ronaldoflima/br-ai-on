@@ -36,3 +36,6 @@ nohup.out
 .mcp.json
 nohup.out
 log.txt
+
+db/data/
+lib/__pycache__/

@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
+# lib/memory.sh — Wrapper sobre state.sh para episodic memory e cache.
+# Mantém a CLI pública anterior:
+#   memory.sh log_episodic <action> <context> <outcome> [importance]
+#   memory.sh search_episodic <keyword> [max_results]
+#   memory.sh cache_get <key>
+#   memory.sh cache_set <key> <result_json> [ttl_seconds]
+#   memory.sh cache_clear
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT_NAME="${AGENT_NAME:-task-manager}"
-BASE_DIR="${BASE_DIR:-agents/${AGENT_NAME}}"
-MEMORY_DIR="${BASE_DIR}/memory"
-CACHE_DIR="${BASE_DIR}/state/cache"
+
+# Compat retro: BASE_DIR continua respeitado e é traduzido para BRAION_AGENTS_DIR.
+# BASE_DIR aponta para agents/<nome>; BRAION_AGENTS_DIR aponta para agents/. Derivar.
+if [[ -n "${BASE_DIR:-}" && -z "${BRAION_AGENTS_DIR:-}" ]]; then
+  export BRAION_AGENTS_DIR="$(cd "$BASE_DIR/.." && pwd)"
+fi
+
+# shellcheck source=./state.sh
+source "$SCRIPT_DIR/state.sh"
 
 log_episodic() {
   local action="${1:?Uso: log_episodic <action> <context> <outcome> [importance]}"
@@ -12,69 +26,43 @@ log_episodic() {
   local outcome="${3:?}"
   local importance="${4:-1}"
 
-  local timestamp
+  local timestamp date_str
   timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  local date_str
   date_str=$(date -u +"%Y-%m-%d")
 
-  jq -nc \
+  local json
+  json=$(jq -nc \
     --arg date "$date_str" \
     --arg ts "$timestamp" \
     --arg action "$action" \
     --arg ctx "$context" \
     --arg out "$outcome" \
     --argjson imp "$importance" \
-    '{date:$date,timestamp:$ts,action:$action,context:$ctx,outcome:$out,importance:$imp}' \
-    >> "${MEMORY_DIR}/episodic.jsonl"
+    '{date:$date,timestamp:$ts,action:$action,context:$ctx,outcome:$out,importance:$imp}')
+
+  state_episodic_append "$AGENT_NAME" "$json"
 }
 
 search_episodic() {
   local keyword="${1:?Uso: search_episodic <keyword> [max_results]}"
   local max="${2:-10}"
-
-  grep -i "$keyword" "${MEMORY_DIR}/episodic.jsonl" 2>/dev/null | tail -n "$max"
+  state_episodic_search "$AGENT_NAME" "$keyword" "$max"
 }
 
 cache_get() {
   local key="${1:?Uso: cache_get <key>}"
-  local cache_file="${CACHE_DIR}/${key}.json"
-  local default_ttl=300
-
-  if [[ ! -f "$cache_file" ]]; then
-    return 1
-  fi
-
-  local cached_at ttl now
-  cached_at=$(jq -r '.cached_at' "$cache_file")
-  ttl=$(jq -r '.ttl_seconds // 300' "$cache_file")
-  now=$(date +%s)
-
-  if (( now - cached_at > ttl )); then
-    rm -f "$cache_file"
-    return 1
-  fi
-
-  jq -r '.result' "$cache_file"
+  state_cache_get "$AGENT_NAME" "$key"
 }
 
 cache_set() {
   local key="${1:?Uso: cache_set <key> <result_json> [ttl_seconds]}"
   local result="${2:?}"
   local ttl="${3:-300}"
-
-  local now
-  now=$(date +%s)
-
-  jq -nc \
-    --argjson result "$result" \
-    --argjson cached_at "$now" \
-    --argjson ttl "$ttl" \
-    '{result:$result,cached_at:$cached_at,ttl_seconds:$ttl}' \
-    > "${CACHE_DIR}/${key}.json"
+  state_cache_set "$AGENT_NAME" "$key" "$result" "$ttl"
 }
 
 cache_clear() {
-  rm -f "${CACHE_DIR}"/*.json 2>/dev/null || true
+  state_cache_clear "$AGENT_NAME"
 }
 
 "$@"

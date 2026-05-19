@@ -31,6 +31,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 source "$BRAION/lib/telegram.sh"
 source "$BRAION/lib/cli.sh"
+source "$BRAION/lib/state.sh"
 DEFAULT_MODEL=${DEFAULT_MODEL:-$(cli_default_model)}
 
 log() {
@@ -230,21 +231,21 @@ build_agent_system_prompt() {
 
   local agent_dir="$BRAION/agents/$agent"
 
-  # Estado persistente
-  local state_block=""
-  local obj_file="$agent_dir/state/current_objective.md"
-  local dec_file="$agent_dir/state/decisions.md"
-  local tasks_file="$agent_dir/state/completed_tasks.md"
-  [ -f "$obj_file" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$(cat "$obj_file")"
-  [ -f "$dec_file" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(tail -n 80 "$dec_file")"
-  [ -f "$tasks_file" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(tail -n 60 "$tasks_file")"
+  # Estado persistente (via state.sh — backend-agnóstico)
+  local state_block="" obj_txt dec_txt tasks_txt
+  obj_txt=$(state_doc_get "$agent" current_objective || true)
+  dec_txt=$(state_doc_get "$agent" decisions       || true)
+  tasks_txt=$(state_doc_get "$agent" completed_tasks || true)
+  [ -n "$obj_txt" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$obj_txt"
+  [ -n "$dec_txt" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(echo "$dec_txt" | tail -n 80)"
+  [ -n "$tasks_txt" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(echo "$tasks_txt" | tail -n 60)"
   [ -n "$state_block" ] && content="${content}"$'\n\n## Estado da Sessão Anterior'"${state_block}"
 
   # Memória
-  local mem_block=""
-  local sem_file="$agent_dir/memory/semantic.md"
+  local mem_block="" sem_txt
+  sem_txt=$(state_doc_get "$agent" semantic_memory || true)
+  [ -n "$sem_txt" ] && mem_block="${mem_block}"$'\n\n### Memória Semântica\n'"$sem_txt"
   local epi_file="$agent_dir/memory/episodic.jsonl"
-  [ -f "$sem_file" ] && mem_block="${mem_block}"$'\n\n### Memória Semântica\n'"$(cat "$sem_file")"
   [ -f "$epi_file" ] && mem_block="${mem_block}"$'\n\n### Episódios Recentes\n'"$(tail -n 10 "$epi_file")"
   [ -n "$mem_block" ] && content="${content}"$'\n\n## Memória'"${mem_block}"
 

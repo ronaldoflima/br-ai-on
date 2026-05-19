@@ -1,5 +1,22 @@
 # Regras Operacionais dos Agentes
 
+## Backend de Estado
+
+Todo I/O de estado é mediado por `lib/state.sh` (shell) e `lib/state.py` (Python).
+Backend selecionado por `BRAION_STATE_BACKEND`:
+
+| Valor | Significado |
+|-------|-------------|
+| `file` (default) | Arquivos sob `agents/<nome>/` (comportamento histórico, compatível com VPS pré-migração) |
+| `pg` | Postgres no schema `braion` (multi-cluster Mac↔VPS via SSH tunnel) |
+
+Backend `pg` requer conexão libpq configurada (PGSERVICE em `~/.pg_service.conf` ou
+PGHOST/PGUSER/PGPASSWORD/PGDATABASE). No Mac, o tunnel é gerenciado por
+`scripts/setup_pg_tunnel.sh` (LaunchAgent + autossh). Schema em `db/schema.sql`.
+
+**Os libs `logger.sh`, `memory.sh`, `handoff.sh`, `job.sh` e `agent-scheduler.py` são
+wrappers sobre essa camada — nunca abra arquivos de estado diretamente em código novo.**
+
 ## Ciclo de Vida
 
 1. **Inicialização**: Ler IDENTITY.md + estado persistente + USER.md
