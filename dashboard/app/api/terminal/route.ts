@@ -154,8 +154,12 @@ export async function PUT(req: NextRequest) {
   const name = safeSession(body.name);
   if (!name) return NextResponse.json({ error: "Nome de sessão inválido" }, { status: 400 });
 
+  const cols = process.env.TMUX_COLS ?? "220";
+  const rows = process.env.TMUX_ROWS ?? "50";
+
   try {
-    await spawnTmux(["new-session", "-d", "-s", name]);
+    await spawnTmux(["new-session", "-d", "-s", name, "-x", cols, "-y", rows]);
+    await spawnTmux(["set-option", "-t", name, "window-size", "manual"]).catch(() => {});
     return NextResponse.json({ ok: true, name });
   } catch {
     return NextResponse.json({ error: "Falha ao criar sessão" }, { status: 500 });

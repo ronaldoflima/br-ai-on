@@ -26,6 +26,8 @@ LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
 WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 REVIEW_TIMEOUT=${REVIEW_TIMEOUT:-259200}
+TMUX_COLS=${TMUX_COLS:-220}
+TMUX_ROWS=${TMUX_ROWS:-50}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -359,7 +361,8 @@ start_session() {
   fi
 
   session_clear_idle "$session"
-  tmux new-session -d -s "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+  tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+  tmux set-option -t "$session" window-size manual 2>/dev/null || true
   sleep 1  # aguarda shell inicializar antes de enviar comandos
 
   if [ -n "$custom_cmd" ]; then
@@ -626,7 +629,8 @@ notify_user_handoff() {
 
   if ! session_running "$session"; then
     log "Telegram session $session não ativa — iniciando"
-    tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+    tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+    tmux set-option -t "$session" window-size manual 2>/dev/null || true
     tmux set-environment -t "$session" TELEGRAM_CHAT_ID "${TELEGRAM_ALLOWED_CHAT_ID:-}" 2>/dev/null || true
     tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN" 2>/dev/null || true
     local tg_sp_file="/tmp/braion-sp-${session}.txt"
