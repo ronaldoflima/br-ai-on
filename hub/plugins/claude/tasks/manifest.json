@@ -11,7 +11,8 @@
     "sync-notion",
     "sync-obsidian",
     "save-notion",
-    "save-obsidian"
+    "save-obsidian",
+    "check-stale"
   ],
   "config": {
     "file": "tasks-config.json",
@@ -19,7 +20,7 @@
   },
   "requires": {
     "mcp": ["Microsoft_365"],
-    "optional_mcp": ["Notion", "obsidian"]
+    "optional_mcp": ["Notion", "obsidian", "conversation_history_search", "work_artifacts_search", "gateway"]
   },
   "install_dir": "tasks",
   "post_install": "Execute /tasks:config init para configurar suas variáveis pessoais"
