@@ -17,6 +17,7 @@ interface KnowledgeConfig {
   embedding_dimensions: number
   default_collection: string
   dashboard_url: string
+  embedding_models_by_dim?: Record<string, string>
 }
 
 const PROJECT_ROOT = process.env.BRAION_ROOT || join(process.cwd(), "..")
@@ -36,6 +37,25 @@ export function defaultCollection(): string {
 }
 
 const _readyCollections = new Set<string>()
+const _collectionDims = new Map<string, number>()
+
+function modelForDim(dim: number): string {
+  const cfg = loadConfig()
+  const map = cfg.embedding_models_by_dim || {}
+  const explicit = map[String(dim)]
+  if (explicit) return explicit
+  if (dim === cfg.embedding_dimensions) return cfg.embedding_model
+  throw new Error(
+    `No embedding model configured for ${dim}d vectors. ` +
+    `Add 'embedding_models_by_dim.${dim}: <model>' to config/knowledge.yaml.`
+  )
+}
+
+export async function resolveCollectionModel(collection?: string): Promise<{ collection: string; model: string; dimensions: number }> {
+  const col = await ensureCollection(collection)
+  const dim = _collectionDims.get(col) ?? loadConfig().embedding_dimensions
+  return { collection: col, model: modelForDim(dim), dimensions: dim }
+}
 
 export async function ensureCollection(collection?: string): Promise<string> {
   const cfg = loadConfig()
@@ -46,6 +66,11 @@ export async function ensureCollection(collection?: string): Promise<string> {
 
   const check = await fetch(url)
   if (check.ok) {
+    try {
+      const info = await check.json()
+      const size = info?.result?.config?.params?.vectors?.size
+      if (typeof size === "number") _collectionDims.set(col, size)
+    } catch {}
     _readyCollections.add(col)
     return col
   }
@@ -91,15 +116,16 @@ export async function ensureCollection(collection?: string): Promise<string> {
   if (!textIdxRes.ok) throw new Error("Failed to create text index: " + await textIdxRes.text())
 
   _readyCollections.add(col)
+  _collectionDims.set(col, cfg.embedding_dimensions)
   return col
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, model?: string): Promise<number[]> {
   const cfg = loadConfig()
   const res = await fetch(`${cfg.ollama_url}/api/embed`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: cfg.embedding_model, input: text }),
+    body: JSON.stringify({ model: model || cfg.embedding_model, input: text }),
   })
   if (!res.ok) {
     throw new Error(`Ollama embedding failed: ${res.status} ${await res.text()}`)
@@ -138,11 +164,11 @@ function pointToEntry(point: Record<string, unknown>): KnowledgeEntry {
 }
 
 export async function createEntry(input: CreateKnowledgeInput, collection?: string): Promise<string> {
-  const col = await ensureCollection(collection)
+  const { collection: col, model } = await resolveCollectionModel(collection)
   const cfg = loadConfig()
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
-  const vector = await generateEmbedding(input.text)
+  const vector = await generateEmbedding(input.text, model)
 
   const res = await fetch(`${cfg.qdrant_url}/collections/${col}/points`, {
     method: "PUT",
@@ -183,7 +209,7 @@ export async function getEntry(id: string, collection?: string): Promise<Knowled
 }
 
 export async function updateEntry(id: string, input: UpdateKnowledgeInput, collection?: string): Promise<void> {
-  const col = await ensureCollection(collection)
+  const { collection: col, model } = await resolveCollectionModel(collection)
   const cfg = loadConfig()
   const existing = await getEntry(id, collection)
   if (!existing) throw new Error(`Entry ${id} not found`)
@@ -199,7 +225,7 @@ export async function updateEntry(id: string, input: UpdateKnowledgeInput, colle
     metadata: input.metadata ?? existing.metadata,
   }
 
-  const vector = input.text ? await generateEmbedding(updated.text) : await generateEmbedding(existing.text)
+  const vector = input.text ? await generateEmbedding(updated.text, model) : await generateEmbedding(existing.text, model)
 
   const res = await fetch(`${cfg.qdrant_url}/collections/${col}/points`, {
     method: "PUT",
@@ -270,9 +296,9 @@ export async function searchEntries(
   limit = 10,
   collection?: string
 ): Promise<KnowledgeSearchResult[]> {
-  const col = await ensureCollection(collection)
+  const { collection: col, model } = await resolveCollectionModel(collection)
   const cfg = loadConfig()
-  const vector = await generateEmbedding(query)
+  const vector = await generateEmbedding(query, model)
 
   const body: Record<string, unknown> = {
     vector,

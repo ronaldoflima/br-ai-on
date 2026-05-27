@@ -4,3 +4,7 @@ embedding_model: nomic-embed-text
 embedding_dimensions: 768
 default_collection: braion_knowledge
 dashboard_url: http://localhost:3040
+
+embedding_models_by_dim:
+  768: nomic-embed-text
+  1024: bge-m3
