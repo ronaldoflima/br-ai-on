@@ -111,7 +111,7 @@ cli_build_start_cmd() {
       [ "$verbose" = "true" ] && cmd="$cmd --verbose"
       cmd="$cmd --model $model --permission-mode $perm_mode"
       for d in "$@"; do
-        [ -n "$d" ] && cmd="$cmd --add-dir $d"
+        [ -n "$d" ] && cmd="$cmd --add-dir \"$d\""
       done
       if [ -n "$sp_file" ] && [ -f "$sp_file" ]; then
         cmd="$cmd --append-system-prompt \"\$(cat $sp_file)\""

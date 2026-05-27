@@ -198,7 +198,7 @@ def compute_schedule(configs, schedule_state, now):
         wd = cfg.get("working_directory") or cfg.get("directory") or BRAION_BASE
         additional_dirs = []
         if isinstance(wd, dict):
-            directory = wd.get("primary", BRAION_BASE)
+            directory = wd.get("primary") or BRAION_BASE
             additional_dirs = wd.get("additional", [])
             if not isinstance(additional_dirs, list):
                 additional_dirs = [additional_dirs] if additional_dirs else []

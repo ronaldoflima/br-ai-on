@@ -117,13 +117,14 @@ function formToConfig(form: WizardFormState): Record<string, unknown> {
   };
 
   if (form.layer) config.layer = form.layer;
-  if (form.working_directory) {
-    if (form.additional_dirs.length > 0) {
+  if (form.working_directory || form.additional_dirs.length > 0) {
+    const additional = form.additional_dirs.filter((d) => d.trim() !== "");
+    if (additional.length > 0) {
       config.working_directory = {
         primary: form.working_directory,
-        additional: form.additional_dirs,
+        additional,
       };
-    } else {
+    } else if (form.working_directory) {
       config.working_directory = form.working_directory;
     }
   }

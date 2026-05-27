@@ -44,7 +44,7 @@ with open('$config') as f:
     cfg = yaml.safe_load(f) or {}
 wd = cfg.get('working_directory') or cfg.get('directory') or ''
 if isinstance(wd, dict):
-    primary = os.path.expanduser(str(wd.get('primary', '')))
+    primary = os.path.expanduser(str(wd.get('primary') or ''))
     additional = [os.path.expanduser(str(d)) for d in (wd.get('additional') or [])]
 else:
     primary = os.path.expanduser(str(wd)) if wd else ''
