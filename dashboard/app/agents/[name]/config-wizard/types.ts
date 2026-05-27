@@ -57,6 +57,7 @@ export interface WizardFormState {
   fallback_model: ModelId;
   permission_mode: PermissionMode | "";
   working_directory: string;
+  additional_dirs: string[];
   command: string;
   capabilities: string[];
   schedule_mode: ScheduleMode;
