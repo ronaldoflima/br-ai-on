@@ -54,7 +54,7 @@ export function MetricsPanel({ metrics, agents }: { metrics: DayMetrics; agents:
       <h2 className="section-title">Visão geral</h2>
       <div className="grid grid-5">
         <MetricBox
-          label="Requests"
+          label="Eventos"
           value={metrics.total_requests}
           sparkData={history.map((h) => h.requests)}
           sparkColor="var(--accent)"
