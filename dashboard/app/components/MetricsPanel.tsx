@@ -1,20 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { DayMetrics } from "../lib/types";
+import type { DayMetrics, AgentStatus } from "../lib/types";
 import { Sparkline } from "./Sparkline";
 
 interface HistoryEntry {
   date: string;
   requests: number;
-  success: number;
-  errors: number;
-  avg_latency_ms: number;
+  sessions: number;
+  handoffs: number;
+  blocked: number;
 }
 
-function MetricBox({ label, value, unit, color, sparkData, sparkColor }: {
+function MetricBox({ label, value, sublabel, color, sparkData, sparkColor }: {
   label: string;
   value: string | number;
-  unit?: string;
+  sublabel?: string;
   color?: string;
   sparkData?: number[];
   sparkColor?: string;
@@ -24,18 +24,19 @@ function MetricBox({ label, value, unit, color, sparkData, sparkColor }: {
       <div className="text-muted-xs mb-sm">{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: color || "var(--text-primary)" }}>
         {value}
-        {unit && <span className="text-muted-xs" style={{ marginLeft: 2 }}>{unit}</span>}
       </div>
-      {sparkData && sparkData.length > 1 && (
+      {sparkData && sparkData.length > 1 ? (
         <div style={{ marginTop: 6, display: "flex", justifyContent: "center" }}>
           <Sparkline data={sparkData} width={100} height={24} color={sparkColor || color || "var(--accent)"} />
         </div>
-      )}
+      ) : sublabel ? (
+        <div className="text-muted-xs" style={{ marginTop: 6 }}>{sublabel}</div>
+      ) : null}
     </div>
   );
 }
 
-export function MetricsPanel({ metrics }: { metrics: DayMetrics }) {
+export function MetricsPanel({ metrics, agents }: { metrics: DayMetrics; agents: AgentStatus[] }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
@@ -45,13 +46,12 @@ export function MetricsPanel({ metrics }: { metrics: DayMetrics }) {
       .catch(() => {});
   }, []);
 
-  const successRate = metrics.total_requests > 0
-    ? ((metrics.success / metrics.total_requests) * 100).toFixed(1)
-    : "0";
+  const healthy = agents.filter((a) => a.state === "running" || a.state === "idle").length;
+  const unhealthy = agents.length - healthy;
 
   return (
     <div>
-      <h2 className="section-title">Hoje</h2>
+      <h2 className="section-title">Visão geral</h2>
       <div className="grid grid-5">
         <MetricBox
           label="Requests"
@@ -60,25 +60,29 @@ export function MetricsPanel({ metrics }: { metrics: DayMetrics }) {
           sparkColor="var(--accent)"
         />
         <MetricBox
-          label="Taxa Sucesso"
-          value={`${successRate}%`}
-          color={Number(successRate) >= 90 ? "var(--success)" : "var(--warning)"}
-          sparkData={history.map((h) => h.requests > 0 ? (h.success / h.requests) * 100 : 0)}
-          sparkColor="var(--success)"
-        />
-        <MetricBox
-          label="Erros"
-          value={metrics.errors}
-          color={metrics.errors > 0 ? "var(--error)" : "var(--success)"}
-          sparkData={history.map((h) => h.errors)}
-          sparkColor="var(--error)"
-        />
-        <MetricBox
-          label="Latência Avg"
-          value={Math.round(metrics.avg_latency_ms || 0)}
-          unit="ms"
-          sparkData={history.map((h) => h.avg_latency_ms)}
+          label="Sessões"
+          value={metrics.sessions}
+          sparkData={history.map((h) => h.sessions)}
           sparkColor="var(--accent)"
+        />
+        <MetricBox
+          label="Handoffs"
+          value={metrics.handoffs}
+          sparkData={history.map((h) => h.handoffs)}
+          sparkColor="var(--accent)"
+        />
+        <MetricBox
+          label="Agentes ativos"
+          value={`${healthy} / ${agents.length}`}
+          sublabel="agora"
+          color={unhealthy > 0 ? "var(--warning)" : "var(--success)"}
+        />
+        <MetricBox
+          label="Bloqueios"
+          value={metrics.blocked}
+          color={metrics.blocked > 0 ? "var(--error)" : "var(--success)"}
+          sparkData={history.map((h) => h.blocked)}
+          sparkColor="var(--error)"
         />
       </div>
     </div>
