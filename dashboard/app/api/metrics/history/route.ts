@@ -17,6 +17,9 @@ export async function GET(request: Request) {
     success: number;
     errors: number;
     avg_latency_ms: number;
+    sessions: number;
+    handoffs: number;
+    blocked: number;
   }> = [];
 
   for (let i = days - 1; i >= 0; i--) {
@@ -26,7 +29,7 @@ export async function GET(request: Request) {
     const filePath = join(METRICS_DIR, `${dateStr}.jsonl`);
 
     if (!existsSync(filePath)) {
-      result.push({ date: dateStr, requests: 0, success: 0, errors: 0, avg_latency_ms: 0 });
+      result.push({ date: dateStr, requests: 0, success: 0, errors: 0, avg_latency_ms: 0, sessions: 0, handoffs: 0, blocked: 0 });
       continue;
     }
 
@@ -35,10 +38,19 @@ export async function GET(request: Request) {
       const success = lines.filter((l) => l.status === "success").length;
       const errors = lines.filter((l) => l.status === "error").length;
       const avgLat = lines.length > 0 ? lines.reduce((s, l) => s + (l.latency_ms || 0), 0) / lines.length : 0;
+      const sessions = lines.filter((l) => l.action === "session").length;
+      const handoffs = lines.filter((l) =>
+        l.action === "handoff_sent" ||
+        l.action === "handoff_claimed" ||
+        l.action === "handoff_processed"
+      ).length;
+      const blocked = lines.filter((l) =>
+        l.status === "blocked" || l.status === "budget_blocked"
+      ).length;
 
-      result.push({ date: dateStr, requests: lines.length, success, errors, avg_latency_ms: avgLat });
+      result.push({ date: dateStr, requests: lines.length, success, errors, avg_latency_ms: avgLat, sessions, handoffs, blocked });
     } catch {
-      result.push({ date: dateStr, requests: 0, success: 0, errors: 0, avg_latency_ms: 0 });
+      result.push({ date: dateStr, requests: 0, success: 0, errors: 0, avg_latency_ms: 0, sessions: 0, handoffs: 0, blocked: 0 });
     }
   }
 

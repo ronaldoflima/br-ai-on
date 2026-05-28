@@ -23,6 +23,9 @@ export interface DayMetrics {
   success: number;
   errors: number;
   avg_latency_ms: number;
+  sessions: number;
+  handoffs: number;
+  blocked: number;
   by_agent: AgentMetrics[];
 }
 
