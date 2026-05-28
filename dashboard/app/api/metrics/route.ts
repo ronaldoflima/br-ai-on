@@ -22,11 +22,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       date: today,
       total_requests: 0,
-      success: 0,
-      errors: 0,
-      total_tokens_in: 0,
-      total_tokens_out: 0,
-      avg_latency_ms: 0,
       sessions: 0,
       handoffs: 0,
       blocked: 0,
@@ -41,11 +36,6 @@ export async function GET(request: Request) {
       .filter(Boolean)
       .map((line) => JSON.parse(line));
 
-    const success = lines.filter((l) => l.status === "success").length;
-    const errors = lines.filter((l) => l.status === "error").length;
-    const avgLatency = lines.length > 0
-      ? lines.reduce((sum, l) => sum + (l.latency_ms || 0), 0) / lines.length
-      : 0;
     const sessions = lines.filter((l) => l.action === "session").length;
     const handoffs = lines.filter((l) =>
       l.action === "handoff_sent" ||
@@ -74,9 +64,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       date: today,
       total_requests: lines.length,
-      success,
-      errors,
-      avg_latency_ms: avgLatency,
       sessions,
       handoffs,
       blocked,
