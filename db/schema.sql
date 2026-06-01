@@ -25,7 +25,11 @@ CREATE TABLE IF NOT EXISTS agent_documents (
   doc_date          DATE,
   content           TEXT NOT NULL,
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (agent_name, doc_type, doc_date)
+  -- doc_date é NULL para docs flat (notebooklm_sources, last_commit e o
+  -- fallback flat de docs diários). NULLS NOT DISTINCT trata os NULLs como
+  -- iguais, garantindo uma linha por (agent_name, doc_type) flat e mantendo
+  -- ON CONFLICT (agent_name, doc_type, doc_date) funcional para upsert.
+  CONSTRAINT agent_documents_uq UNIQUE NULLS NOT DISTINCT (agent_name, doc_type, doc_date)
 );
 
 CREATE TABLE IF NOT EXISTS episodic_memory (
@@ -57,7 +61,7 @@ CREATE TABLE IF NOT EXISTS handoffs (
   created_at        TIMESTAMPTZ NOT NULL,
   status            TEXT NOT NULL,
   expects           TEXT,
-  reply_to          TEXT REFERENCES handoffs(id),
+  reply_to          TEXT,  -- ponteiro soft de threading; sem FK (pais podem ser arquivados/limpos)
   thread_id         TEXT,
   job_id            TEXT,
   frontmatter       JSONB NOT NULL DEFAULT '{}'::jsonb,
