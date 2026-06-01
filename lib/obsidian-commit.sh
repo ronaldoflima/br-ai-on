@@ -24,3 +24,5 @@ cd "$VAULT_DIR" 2>/dev/null || exit 0
 git add -A
 git diff --cached --quiet && exit 0
 git commit -m "auto: obsidian sync $(date '+%Y-%m-%dT%H:%M:%S')"
+git pull --rebase origin main
+git push

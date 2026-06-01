@@ -65,6 +65,12 @@
     "default_tags": ["tarefa"],
     "template": "# {Name}\n\n## Contexto\n{Contexto}\n\n## Links\n- Notion: {notion_url}\n- GitHub: {GitHub_Ref}\n\n## Ações\n- [ ] TODO\n"
   },
+  "proactive": {
+    "enabled": false,
+    "stale_threshold_hours": 3,
+    "m365_lookback_hours": 24,
+    "max_tasks_per_notification": 10
+  },
   "logs": {
     "base_path": "logs/extract-tasks",
     "latest_file": "latest.json",

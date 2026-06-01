@@ -26,12 +26,32 @@ LOG_FILE="$BRAION/logs/agent-cron.log"
 STALE_THRESHOLD=${STALE_THRESHOLD:-900}
 WAITING_TIMEOUT=${WAITING_TIMEOUT:-1800}
 REVIEW_TIMEOUT=${REVIEW_TIMEOUT:-259200}
+TMUX_COLS=${TMUX_COLS:-220}
+TMUX_ROWS=${TMUX_ROWS:-50}
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
 source "$BRAION/lib/telegram.sh"
 source "$BRAION/lib/cli.sh"
+source "$BRAION/lib/state.sh"
 DEFAULT_MODEL=${DEFAULT_MODEL:-$(cli_default_model)}
+
+parse_working_directory() {
+  local config="$1"
+  python3 -c "
+import yaml, os, json, sys
+with open('$config') as f:
+    cfg = yaml.safe_load(f) or {}
+wd = cfg.get('working_directory') or cfg.get('directory') or ''
+if isinstance(wd, dict):
+    primary = os.path.expanduser(str(wd.get('primary') or ''))
+    additional = [os.path.expanduser(str(d)) for d in (wd.get('additional') or [])]
+else:
+    primary = os.path.expanduser(str(wd)) if wd else ''
+    additional = []
+json.dump({'primary': primary, 'additional': additional}, sys.stdout)
+" 2>/dev/null || echo '{"primary":"","additional":[]}'
+}
 
 log() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
@@ -230,21 +250,21 @@ build_agent_system_prompt() {
 
   local agent_dir="$BRAION/agents/$agent"
 
-  # Estado persistente
-  local state_block=""
-  local obj_file="$agent_dir/state/current_objective.md"
-  local dec_file="$agent_dir/state/decisions.md"
-  local tasks_file="$agent_dir/state/completed_tasks.md"
-  [ -f "$obj_file" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$(cat "$obj_file")"
-  [ -f "$dec_file" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(tail -n 80 "$dec_file")"
-  [ -f "$tasks_file" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(tail -n 60 "$tasks_file")"
+  # Estado persistente (via state.sh — backend-agnóstico)
+  local state_block="" obj_txt dec_txt tasks_txt
+  obj_txt=$(state_doc_get "$agent" current_objective || true)
+  dec_txt=$(state_doc_get "$agent" decisions       || true)
+  tasks_txt=$(state_doc_get "$agent" completed_tasks || true)
+  [ -n "$obj_txt" ]   && state_block="${state_block}"$'\n\n### Objetivo Atual\n'"$obj_txt"
+  [ -n "$dec_txt" ]   && state_block="${state_block}"$'\n\n### Decisões Recentes\n'"$(echo "$dec_txt" | tail -n 80)"
+  [ -n "$tasks_txt" ] && state_block="${state_block}"$'\n\n### Tarefas Concluídas Recentes\n'"$(echo "$tasks_txt" | tail -n 60)"
   [ -n "$state_block" ] && content="${content}"$'\n\n## Estado da Sessão Anterior'"${state_block}"
 
   # Memória
-  local mem_block=""
-  local sem_file="$agent_dir/memory/semantic.md"
+  local mem_block="" sem_txt
+  sem_txt=$(state_doc_get "$agent" semantic_memory || true)
+  [ -n "$sem_txt" ] && mem_block="${mem_block}"$'\n\n### Memória Semântica\n'"$sem_txt"
   local epi_file="$agent_dir/memory/episodic.jsonl"
-  [ -f "$sem_file" ] && mem_block="${mem_block}"$'\n\n### Memória Semântica\n'"$(cat "$sem_file")"
   [ -f "$epi_file" ] && mem_block="${mem_block}"$'\n\n### Episódios Recentes\n'"$(tail -n 10 "$epi_file")"
   [ -n "$mem_block" ] && content="${content}"$'\n\n## Memória'"${mem_block}"
 
@@ -348,7 +368,7 @@ except Exception: pass
 }
 
 start_session() {
-  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} perm_mode=${5:-$(cli_permission_mode_default)} custom_cmd=${6:-} sp_content=${7:-}
+  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} perm_mode=${5:-$(cli_permission_mode_default)} custom_cmd=${6:-} sp_content=${7:-} extra_dirs_json=${8:-"[]"}
   [ -z "$working_dir" ] && working_dir="$BRAION"
   [ -d "$working_dir" ] || { log "WARN $session — diretório '$working_dir' não existe, usando $BRAION"; working_dir="$BRAION"; }
 
@@ -358,23 +378,27 @@ start_session() {
   fi
 
   session_clear_idle "$session"
-  tmux new-session -d -s "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+  tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+  tmux set-option -t "$session" window-size manual 2>/dev/null || true
   sleep 1  # aguarda shell inicializar antes de enviar comandos
 
   if [ -n "$custom_cmd" ]; then
-    tmux send-keys -t "$session" "$custom_cmd" Enter
+    cli_send_start_command "$session" "$custom_cmd"
     log "START $session em $working_dir (command=$custom_cmd)"
   else
     local sp_file=""
     if [ -n "$sp_content" ]; then
-      # mktemp evita colisão de permissão com arquivos criados por outros usuários
       sp_file=$(mktemp "/tmp/braion-sp-${session}-XXXXXX.txt" 2>/dev/null) || sp_file="/tmp/braion-sp-${session}-$$.txt"
       printf '%s' "$sp_content" > "$sp_file"
     fi
+    local extra_dirs=()
+    while IFS= read -r d; do
+      [ -n "$d" ] && [ -d "$d" ] && extra_dirs+=("$d")
+    done < <(echo "$extra_dirs_json" | jq -r '.[]?' 2>/dev/null)
     local cmd
-    cmd=$(cli_build_start_cmd "$model" "$perm_mode" "$sp_file" "false" "$BRAION" "$HOME/.config/br-ai-on")
+    cmd=$(cli_build_start_cmd "$model" "$perm_mode" "$sp_file" "false" "$BRAION" "$HOME/.config/br-ai-on" ${extra_dirs[@]+"${extra_dirs[@]}"})
     log "START $session: \"$cmd\""
-    tmux send-keys -t "$session" "$cmd" Enter
+    cli_send_start_command "$session" "$cmd"
   fi
 
   # Aguarda backend estar pronto — hook flag ou fallback, máximo 120s
@@ -625,14 +649,15 @@ notify_user_handoff() {
 
   if ! session_running "$session"; then
     log "Telegram session $session não ativa — iniciando"
-    tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+    tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+    tmux set-option -t "$session" window-size manual 2>/dev/null || true
     tmux set-environment -t "$session" TELEGRAM_CHAT_ID "${TELEGRAM_ALLOWED_CHAT_ID:-}" 2>/dev/null || true
     tmux set-environment -t "$session" TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN" 2>/dev/null || true
     local tg_sp_file="/tmp/braion-sp-${session}.txt"
     printf '%s' 'Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.' > "$tg_sp_file"
     local tg_cmd
     tg_cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "$(cli_permission_mode_map bypass)" "$tg_sp_file" "true")
-    tmux send-keys -t "$session" "$tg_cmd" Enter
+    cli_send_start_command "$session" "$tg_cmd"
     cli_wait_ready "$session" 30 || true
   fi
 
@@ -658,8 +683,9 @@ for config in "$BRAION/agents"/*/config.yaml; do
   inbox_dir="$agent_dir/handoffs/inbox"
   [ -d "$inbox_dir" ] || continue
 
-  working_dir=$(awk '/^working_directory:/{print $2}' "$config" 2>/dev/null || echo "")
-  working_dir="${working_dir/#\~/$HOME}"
+  wd_json=$(parse_working_directory "$config")
+  working_dir=$(echo "$wd_json" | jq -r '.primary // ""')
+  additional_dirs_json=$(echo "$wd_json" | jq -r '.additional // []')
   [ -z "$working_dir" ] && working_dir="$BRAION"
 
   for handoff_file in "$inbox_dir"/HO-*.md; do
@@ -755,7 +781,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
     agent_perm=$(get_agent_permission_mode "$config")
     agent_sp=$(build_agent_system_prompt "$agent" "$config")
 
-    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "${agent_perm:-$(cli_permission_mode_default)}" "$agent_cmd" "$agent_sp"
+    start_session "$session" "$working_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "${agent_perm:-$(cli_permission_mode_default)}" "$agent_cmd" "$agent_sp" "$additional_dirs_json"
   done
 done
 
@@ -772,8 +798,8 @@ if [ "$due_count" -gt 0 ]; then
   _default_model=$(cli_default_model)
   _default_perm=$(cli_permission_mode_default)
   echo "$scheduler_output" | jq -r --arg dm "$_default_model" --arg dp "$_default_perm" '
-    .due[]? | [.name, (.directory // ""), (.model // $dm), (.run_alone // false | tostring), (.command // ""), (.permission_mode // $dp)] | join("\u001f")
-  ' 2>/dev/null | while IFS=$'\x1f' read -r agent_name agent_dir agent_model run_alone agent_cmd agent_perm; do
+    .due[]? | [.name, (.directory // ""), (.model // $dm), (.run_alone // false | tostring), (.command // ""), (.permission_mode // $dp), (.additional_dirs // [] | tojson)] | join("\u001f")
+  ' 2>/dev/null | while IFS=$'\x1f' read -r agent_name agent_dir agent_model run_alone agent_cmd agent_perm alive_additional_dirs; do
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
@@ -798,13 +824,14 @@ if [ "$due_count" -gt 0 ]; then
     fi
 
     [ -z "$agent_dir" ] && agent_dir="$BRAION"
+    [ -z "$alive_additional_dirs" ] && alive_additional_dirs="[]"
 
     alive_sp=$(build_agent_system_prompt "$agent_name" "$BRAION/agents/${agent_name}/config.yaml")
 
     prompt="Read $BRAION/commands/braion/agent-init.md and follow the instructions exactly. Agent: $agent_name. BR.AI.ON base: $BRAION. Working directory: $agent_dir."
 
     _mapped_perm=$(cli_permission_mode_map "${agent_perm:-$_default_perm}")
-    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$_mapped_perm" "$agent_cmd" "$alive_sp"
+    start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$_mapped_perm" "$agent_cmd" "$alive_sp" "$alive_additional_dirs"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"

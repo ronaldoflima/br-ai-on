@@ -27,6 +27,9 @@ import sys
 import glob
 from datetime import datetime, timezone, timedelta
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import state  # camada de abstração: file/pg via BRAION_STATE_BACKEND
+
 try:
     import yaml
 except ImportError:
@@ -100,16 +103,12 @@ def parse_interval(interval_str):
 
 
 def read_schedule_state():
-    if not os.path.exists(SCHEDULE_STATE_FILE):
-        return {}
-    with open(SCHEDULE_STATE_FILE) as f:
-        return json.load(f)
+    val = state.shared_kv_get("schedule_state")
+    return val if isinstance(val, dict) else {}
 
 
-def write_schedule_state(state):
-    with open(SCHEDULE_STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
-        f.write("\n")
+def write_schedule_state(state_dict):
+    state.shared_kv_set("schedule_state", state_dict)
 
 
 def read_budget_count(agent_name, today_str):
@@ -196,8 +195,17 @@ def compute_schedule(configs, schedule_state, now):
 
         priority = sched.get("priority", 99)
         run_alone = sched.get("run_alone", False)
-        directory = cfg.get("directory") or cfg.get("working_directory") or BRAION_BASE
-        directory = os.path.expanduser(directory)
+        wd = cfg.get("working_directory") or cfg.get("directory") or BRAION_BASE
+        additional_dirs = []
+        if isinstance(wd, dict):
+            directory = wd.get("primary") or BRAION_BASE
+            additional_dirs = wd.get("additional", [])
+            if not isinstance(additional_dirs, list):
+                additional_dirs = [additional_dirs] if additional_dirs else []
+        else:
+            directory = wd or BRAION_BASE
+        directory = os.path.expanduser(str(directory))
+        additional_dirs = [os.path.expanduser(str(d)) for d in additional_dirs]
 
         last_run_str = schedule_state.get(name, "1970-01-01T00:00:00Z")
         try:
@@ -257,6 +265,7 @@ def compute_schedule(configs, schedule_state, now):
             "last_run": last_run_str,
             "next_run": next_run.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "directory": directory,
+            "additional_dirs": additional_dirs,
             "model": model,
             "fallback_model": fallback_model,
             "command": cfg.get("command", ""),
@@ -312,7 +321,7 @@ def cmd_mark_ran(agent_names):
     today_str = now.strftime("%Y-%m-%d")
     now_str = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    state = read_schedule_state()
+    sched_state = read_schedule_state()
     updated = []
     errors = []
 
@@ -321,11 +330,11 @@ def cmd_mark_ran(agent_names):
         if not os.path.exists(config_path):
             errors.append(f"config não encontrado para: {name}")
             continue
-        state[name] = now_str
+        sched_state[name] = now_str
         increment_budget_count(name, today_str)
         updated.append(name)
 
-    write_schedule_state(state)
+    write_schedule_state(sched_state)
     print(json.dumps({"updated": updated, "errors": errors, "timestamp": now_str}, indent=2))
 
 

@@ -1,4 +1,5 @@
 "use client";
+import { useId } from "react";
 
 interface SparklineProps {
   data: number[];
@@ -39,7 +40,7 @@ export function Sparkline({
   });
 
   const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
-  const gradientId = `sparkGrad-${Math.random().toString(36).slice(2, 8)}`;
+  const gradientId = useId();
 
   const fillPoints = [
     `${points[0].x},${height}`,

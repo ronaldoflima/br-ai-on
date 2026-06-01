@@ -97,7 +97,7 @@ export default function OverviewPage() {
         </>
       ) : (
         <>
-          {metrics && <MetricsPanel metrics={metrics} />}
+          {metrics && <MetricsPanel metrics={metrics} agents={agents} />}
 
           <div className="flex-between mt-lg">
             <h2 className="section-title" style={{ margin: 0 }}>Agentes</h2>

@@ -117,10 +117,10 @@ cli_build_start_cmd() {
       [ "$verbose" = "true" ] && cmd="$cmd --verbose"
       cmd="$cmd$model_flag --permission-mode $perm_mode"
       for d in "$@"; do
-        [ -n "$d" ] && cmd="$cmd --add-dir $d"
+        [ -n "$d" ] && cmd="$cmd --add-dir \"$d\""
       done
       if [ -n "$sp_file" ] && [ -f "$sp_file" ]; then
-        cmd="$cmd --append-system-prompt \"\$(cat $sp_file)\""
+        cmd="$cmd --append-system-prompt-file \"$sp_file\""
       fi
       echo "$cmd"
       ;;
@@ -143,6 +143,27 @@ cli_build_start_cmd() {
 cli_send_command() {
   local session="$1" text="$2"
   tmux send-keys -t "$session" -l "$text"
+  tmux send-keys -t "$session" Enter
+}
+
+# cli_send_start_command <session> <cmd>
+# Envia o comando de inicialização para o SHELL de uma pane recém-criada.
+# Resiliente à perda do primeiro keystroke (race entre send-keys e a pty nova):
+# limpa a linha (C-u), digita literal (-l), confirma o eco do comando e reenvia
+# antes de submeter com Enter. Verifica apenas o prefixo do comando para não
+# falhar quando a linha sofre wrap na largura da pane.
+cli_send_start_command() {
+  local session="$1" cmd="$2"
+  local chk="${cmd:0:40}"
+  local attempt=0
+  while [ "$attempt" -lt 4 ]; do
+    attempt=$((attempt + 1))
+    tmux send-keys -t "$session" C-u
+    sleep 0.1
+    tmux send-keys -t "$session" -l "$cmd"
+    sleep 0.4
+    tmux capture-pane -t "$session" -p 2>/dev/null | grep -qF "$chk" && break
+  done
   tmux send-keys -t "$session" Enter
 }
 

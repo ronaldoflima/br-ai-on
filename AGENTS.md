@@ -1,5 +1,22 @@
 # Regras Operacionais dos Agentes
 
+## Backend de Estado
+
+Todo I/O de estado é mediado por `lib/state.sh` (shell) e `lib/state.py` (Python).
+Backend selecionado por `BRAION_STATE_BACKEND`:
+
+| Valor | Significado |
+|-------|-------------|
+| `file` (default) | Arquivos sob `agents/<nome>/` (comportamento histórico, compatível com VPS pré-migração) |
+| `pg` | Postgres no schema `braion` (multi-cluster Mac↔VPS via SSH tunnel) |
+
+Backend `pg` requer conexão libpq configurada (PGSERVICE em `~/.pg_service.conf` ou
+PGHOST/PGUSER/PGPASSWORD/PGDATABASE). No Mac, o tunnel é gerenciado por
+`scripts/setup_pg_tunnel.sh` (LaunchAgent + autossh). Schema em `db/schema.sql`.
+
+**Os libs `logger.sh`, `memory.sh`, `handoff.sh`, `job.sh` e `agent-scheduler.py` são
+wrappers sobre essa camada — nunca abra arquivos de estado diretamente em código novo.**
+
 ## Ciclo de Vida
 
 1. **Inicialização**: Ler IDENTITY.md + estado persistente + USER.md
@@ -124,6 +141,29 @@ lib/handoff.sh list <agent>
 lib/handoff.sh archive <agent> <caminho_arquivo>
 lib/handoff.sh next_id
 ```
+
+## Working Directory
+
+O campo `working_directory` no `config.yaml` define o diretório de trabalho da sessão do agente.
+
+Formato simples (string):
+```yaml
+working_directory: /caminho/absoluto
+```
+
+Formato com diretórios adicionais (objeto):
+```yaml
+working_directory:
+  primary: /caminho/principal
+  additional:
+    - /caminho/extra1
+    - /caminho/extra2
+```
+
+- `primary` é usado como PWD da sessão tmux (diretório de trabalho do Claude Code)
+- `additional` são passados como `--add-dir` ao Claude Code, dando acesso de leitura/escrita a esses diretórios
+- Se omitido, o padrão é o diretório base do br-ai-on (`$BRAION`)
+- Retrocompatível: `directory` (campo legado) continua funcionando como alias
 
 ## Comando Customizado (Opcional)
 

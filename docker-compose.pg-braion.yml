@@ -1,0 +1,29 @@
+# docker-compose.pg-braion.yml — Postgres como fonte da verdade do br-ai-on.
+#
+# Bind em 127.0.0.1 apenas; acesso externo só via SSH tunnel.
+# Subir na VPS:
+#   docker compose -f docker-compose.pg-braion.yml up -d
+# Aplicar schema:
+#   docker compose -f docker-compose.pg-braion.yml exec -T pg-braion psql -U braion -d braion < db/schema.sql
+
+services:
+  pg-braion:
+    image: postgres:16-alpine
+    container_name: pg-braion
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: braion
+      POSTGRES_DB: braion
+      # POSTGRES_PASSWORD vem do arquivo .env (não versionado):
+      #   echo "BRAION_PG_PASSWORD=<senha-forte>" >> .env
+      POSTGRES_PASSWORD: ${BRAION_PG_PASSWORD:?defina BRAION_PG_PASSWORD no .env}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U braion -d braion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

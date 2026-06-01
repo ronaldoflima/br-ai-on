@@ -30,6 +30,7 @@ O agente opera através dos comandos `/tasks:*` instalados via `scripts/hub.sh`.
 1. /tasks:extract [período]    — Extrai tarefas de Teams, Email, Calendário
 2. /tasks:update               — Salva tarefas nos destinos configurados
 3. /tasks:sync [atualizações]  — Sincroniza status entre destinos
+4. /tasks:check-stale          — Verifica tarefas abertas >Xh e notifica com contexto
 ```
 
 ### Comandos Disponíveis
@@ -45,6 +46,7 @@ O agente opera através dos comandos `/tasks:*` instalados via `scripts/hub.sh`.
 | `/tasks:sync` | Orquestra sincronização de status |
 | `/tasks:sync-notion` | Sincroniza status no Notion |
 | `/tasks:sync-obsidian` | Sincroniza status no Obsidian |
+| `/tasks:check-stale` | Verifica tarefas abertas >Xh, busca contexto e notifica |
 
 ### Configuração
 
@@ -80,7 +82,10 @@ scripts/hub.sh init tasks
 
 - **Microsoft 365** — Teams (chats/channels) + Email (Outlook) + Calendário
 - **Notion** (opcional) — Persistência de tarefas em database
-- **Obsidian** (opcional) — Persistência de tarefas no vault
+- **Obsidian** — Persistência de tarefas no vault + leitura para check proativo
+- **Conversation History Search** — Contexto de sessões anteriores (check proativo)
+- **Work Artifacts Search** — PRs, commits, cards (check proativo)
+- **Gateway Notifications** — Notificação Telegram (check proativo)
 
 ## Escopo de Atuacao
 
@@ -90,3 +95,4 @@ scripts/hub.sh init tasks
 - Sincronizar status entre destinos
 - Deduplicar tarefas via source_id tracking
 - Notificar sobre itens que precisam de atenção
+- Verificar proativamente tarefas abertas há mais de Xh, buscar contexto e notificar o usuário

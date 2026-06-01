@@ -22,11 +22,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       date: today,
       total_requests: 0,
-      success: 0,
-      errors: 0,
-      total_tokens_in: 0,
-      total_tokens_out: 0,
-      avg_latency_ms: 0,
+      sessions: 0,
+      handoffs: 0,
+      blocked: 0,
       by_agent: [],
     });
   }
@@ -38,11 +36,15 @@ export async function GET(request: Request) {
       .filter(Boolean)
       .map((line) => JSON.parse(line));
 
-    const success = lines.filter((l) => l.status === "success").length;
-    const errors = lines.filter((l) => l.status === "error").length;
-    const avgLatency = lines.length > 0
-      ? lines.reduce((sum, l) => sum + (l.latency_ms || 0), 0) / lines.length
-      : 0;
+    const sessions = lines.filter((l) => l.action === "session").length;
+    const handoffs = lines.filter((l) =>
+      l.action === "handoff_sent" ||
+      l.action === "handoff_claimed" ||
+      l.action === "handoff_processed"
+    ).length;
+    const blocked = lines.filter((l) =>
+      l.status === "blocked" || l.status === "budget_blocked"
+    ).length;
 
     const agentMap = new Map<string, typeof lines>();
     for (const line of lines) {
@@ -62,9 +64,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       date: today,
       total_requests: lines.length,
-      success,
-      errors,
-      avg_latency_ms: avgLatency,
+      sessions,
+      handoffs,
+      blocked,
       by_agent: byAgent,
     });
   } catch {

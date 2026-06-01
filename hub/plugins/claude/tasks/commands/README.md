@@ -15,6 +15,7 @@ Extração e persistência de tarefas a partir de canais de comunicação.
 - [update](./update.md) — Orquestra persistência e gera relatório
 - [save-notion](./save-notion.md) — Salva tarefas no Notion
 - [save-obsidian](./save-obsidian.md) — Salva tarefas no Obsidian
+- [check-stale](./check-stale.md) — Verifica tarefas abertas >Xh, busca contexto e notifica
 
 ## Config
 

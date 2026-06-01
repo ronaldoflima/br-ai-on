@@ -25,6 +25,8 @@ SESSION_PREFIX="braion-telegram"
 OFFSET_FILE="/tmp/tgbridge-offset-$(whoami).txt"
 LOG_FILE="$BRAION/logs/telegram-bridge.log"
 IDLE_TIMEOUT=180   # segundos aguardando resposta do backend AI
+TMUX_COLS="${TMUX_COLS:-220}"
+TMUX_ROWS="${TMUX_ROWS:-50}"
 RESPONSE_LINES=300 # máximo de linhas a capturar
 
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -73,7 +75,8 @@ ensure_session() {
   fi
 
   log "START $session"
-  tmux new-session -d -s "$session" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+  tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$BRAION" "/bin/zsh || /bin/bash || sh"
+  tmux set-option -t "$session" window-size manual 2>/dev/null || true
 
   # Exporta variáveis de ambiente para o hook telegram
   tmux set-environment -t "$session" TELEGRAM_CHAT_ID "$chat_id" 2>/dev/null || true
@@ -83,7 +86,7 @@ ensure_session() {
   local cmd
   cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "$(cli_permission_mode_map bypass)" "$prompt_file" "true")
   log "START $CLI_BACKEND via cli_build_start_cmd em $session"
-  tmux send-keys -t "$session" "$cmd" Enter
+  cli_send_start_command "$session" "$cmd"
 
   # Aguarda backend estar pronto (máx 5s)
   if cli_wait_ready "$session" 5; then
