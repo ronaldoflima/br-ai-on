@@ -20,9 +20,9 @@ export interface AgentStatus {
 export interface DayMetrics {
   date?: string;
   total_requests: number;
-  success: number;
-  errors: number;
-  avg_latency_ms: number;
+  sessions: number;
+  handoffs: number;
+  blocked: number;
   by_agent: AgentMetrics[];
 }
 
