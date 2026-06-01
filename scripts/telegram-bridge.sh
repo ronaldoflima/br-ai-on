@@ -86,7 +86,7 @@ ensure_session() {
   local cmd
   cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "$(cli_permission_mode_map bypass)" "$prompt_file" "true")
   log "START $CLI_BACKEND via cli_build_start_cmd em $session"
-  tmux send-keys -t "$session" "$cmd" Enter
+  cli_send_start_command "$session" "$cmd"
 
   # Aguarda backend estar pronto (máx 5s)
   if cli_wait_ready "$session" 5; then

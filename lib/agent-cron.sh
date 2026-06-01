@@ -383,7 +383,7 @@ start_session() {
   sleep 1  # aguarda shell inicializar antes de enviar comandos
 
   if [ -n "$custom_cmd" ]; then
-    tmux send-keys -t "$session" "$custom_cmd" Enter
+    cli_send_start_command "$session" "$custom_cmd"
     log "START $session em $working_dir (command=$custom_cmd)"
   else
     local sp_file=""
@@ -398,7 +398,7 @@ start_session() {
     local cmd
     cmd=$(cli_build_start_cmd "$model" "$perm_mode" "$sp_file" "false" "$BRAION" "$HOME/.config/br-ai-on" ${extra_dirs[@]+"${extra_dirs[@]}"})
     log "START $session: \"$cmd\""
-    tmux send-keys -t "$session" "$cmd" Enter
+    cli_send_start_command "$session" "$cmd"
   fi
 
   # Aguarda backend estar pronto — hook flag ou fallback, máximo 120s
@@ -657,7 +657,7 @@ notify_user_handoff() {
     printf '%s' 'Output: for Telegram, format for mobile. No tables/ASCII art. Use bullets and short paragraphs. Be concise.' > "$tg_sp_file"
     local tg_cmd
     tg_cmd=$(cli_build_start_cmd "$DEFAULT_MODEL" "$(cli_permission_mode_map bypass)" "$tg_sp_file" "true")
-    tmux send-keys -t "$session" "$tg_cmd" Enter
+    cli_send_start_command "$session" "$tg_cmd"
     cli_wait_ready "$session" 30 || true
   fi
 
