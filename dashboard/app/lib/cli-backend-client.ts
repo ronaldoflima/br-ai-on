@@ -28,7 +28,7 @@ export function backendLabel(backend: CliBackend = CLI_BACKEND): string {
 // ── Models ────────────────────────────────────────────────────────────────────
 
 const DEFAULT_MODELS: Record<CliBackend, string> = {
-  claude: "claude-sonnet-4-6",
+  claude: "default",
   codex: "gpt-5-codex",
   gemini: "gemini-2.5-pro",
 };
@@ -41,6 +41,8 @@ const FALLBACK_MODELS: Record<CliBackend, string> = {
 
 const VALID_MODELS_BY_BACKEND: Record<CliBackend, readonly string[]> = {
   claude: [
+    "default",
+    "claude-opus-4-8",
     "claude-opus-4-7",
     "claude-sonnet-4-6",
     "claude-haiku-4-5",

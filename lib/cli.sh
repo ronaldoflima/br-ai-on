@@ -56,10 +56,10 @@ cli_check_available() {
 
 cli_default_model() {
   case "$CLI_BACKEND" in
-    claude) echo "claude-sonnet-4-6" ;;
+    claude) echo "default" ;;
     codex)  echo "gpt-5-codex" ;;
     gemini) echo "gemini-2.5-pro" ;;
-    *)      echo "claude-sonnet-4-6" ;;
+    *)      echo "default" ;;
   esac
 }
 
@@ -76,6 +76,8 @@ cli_valid_models() {
   case "$CLI_BACKEND" in
     claude)
       printf '%s\n' \
+        "default" \
+        "claude-opus-4-8" \
         "claude-opus-4-7" \
         "claude-sonnet-4-6" \
         "claude-haiku-4-5" \
@@ -105,11 +107,15 @@ cli_build_start_cmd() {
   local verbose="${4:-false}"
   shift 4 2>/dev/null || true
 
+  # "default" = usar o modelo configurado no backend (omite --model)
+  local model_flag=""
+  [ "$model" != "default" ] && model_flag=" --model $model"
+
   case "$CLI_BACKEND" in
     claude)
       local cmd="claude"
       [ "$verbose" = "true" ] && cmd="$cmd --verbose"
-      cmd="$cmd --model $model --permission-mode $perm_mode"
+      cmd="$cmd$model_flag --permission-mode $perm_mode"
       for d in "$@"; do
         [ -n "$d" ] && cmd="$cmd --add-dir \"$d\""
       done
@@ -119,15 +125,15 @@ cli_build_start_cmd() {
       echo "$cmd"
       ;;
     codex)
-      local cmd="codex --model $model"
+      local cmd="codex$model_flag"
       echo "$cmd"
       ;;
     gemini)
-      local cmd="gemini --model $model"
+      local cmd="gemini$model_flag"
       echo "$cmd"
       ;;
     *)
-      echo "$CLI_BACKEND --model $model"
+      echo "$CLI_BACKEND$model_flag"
       ;;
   esac
 }

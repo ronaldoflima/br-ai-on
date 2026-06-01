@@ -67,7 +67,7 @@ def _cli_query(fn_name, fallback):
 
 
 def cli_default_model():
-    return _cli_query("cli_default_model", "claude-sonnet-4-6")
+    return _cli_query("cli_default_model", "default")
 
 
 def cli_fallback_model():

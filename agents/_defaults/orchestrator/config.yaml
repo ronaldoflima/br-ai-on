@@ -10,8 +10,8 @@ domain:
 layer: infrastructure
 version: 1.0.0
 
-model: claude-sonnet-4-6
-fallback_model: claude-haiku-4-5
+model: default
+fallback_model: default
 
 runtime:
   permission_mode: acceptEdits  # generic: auto | confirm | bypass — ou valor nativo do backend

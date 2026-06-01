@@ -5,8 +5,8 @@ domain:
   - produtividade
 layer: productivity
 version: "1.0.0"
-model: claude-sonnet-4-6
-fallback_model: claude-haiku-4-5
+model: default
+fallback_model: default
 
 capabilities:
   - Sincronizar tarefas com Notion
