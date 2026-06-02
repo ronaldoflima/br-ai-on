@@ -11,7 +11,11 @@ echo ""
 
 # 1. Verificar dependencias
 if ! command -v tmux &>/dev/null; then
-  echo "[!] tmux nao encontrado — instale com: apt install tmux"
+  if [ "$(uname -s)" = "Darwin" ]; then
+    echo "[!] tmux nao encontrado — instale com: brew install tmux"
+  else
+    echo "[!] tmux nao encontrado — instale com: apt install tmux"
+  fi
   exit 1
 fi
 echo "[ok] tmux disponivel"
