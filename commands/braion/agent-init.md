@@ -21,7 +21,7 @@ Prossiga direto para o estado operacional.
 Registre o início da sessão no heartbeat:
 
 ```bash
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "started"}' > agents/<nome>/state/heartbeat.json
+bash lib/state.sh heartbeat_set "<nome>" "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "started"}')"
 ```
 
 ## 1. Carregar Configuração

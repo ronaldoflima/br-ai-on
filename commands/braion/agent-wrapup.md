@@ -12,7 +12,7 @@ Você está encerrando uma sessão como agente autônomo. O prompt contém `Agen
 Leia o heartbeat atual do agente para determinar o modo de execução:
 
 ```bash
-current_status=$(jq -r '.status // ""' agents/<nome>/state/heartbeat.json 2>/dev/null || echo "")
+current_status=$(bash lib/state.sh heartbeat_get "<nome>" | jq -r '.status // ""' 2>/dev/null || echo "")
 has_in_progress=$(ls agents/<nome>/handoffs/in_progress/HO-*.md 2>/dev/null | head -1)
 ```
 
@@ -125,7 +125,7 @@ Se não souber os valores exatos de tokens/latência, use 0.
 Marque o agente como `awaiting_review` — o cron respeitará este status e não matará a sessão:
 
 ```bash
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "awaiting_review", waiting_since: $ts}' > agents/<nome>/state/heartbeat.json
+bash lib/state.sh heartbeat_set "<nome>" "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "awaiting_review", waiting_since: $ts}')"
 ```
 
 ### Modo `full`:
@@ -133,7 +133,7 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome
 Marque o agente como idle:
 
 ```bash
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "idle"}' > agents/<nome>/state/heartbeat.json
+bash lib/state.sh heartbeat_set "<nome>" "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{last_ping: $ts, agent: "<nome>", status: "idle"}')"
 ```
 
 ## 7. Log de Encerramento

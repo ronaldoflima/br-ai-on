@@ -94,19 +94,24 @@ session_is_stale() {
   [ "$elapsed" -gt "$STALE_THRESHOLD" ]
 }
 
+# Lê o heartbeat do agente pela fronteira state.sh (respeita BRAION_STATE_BACKEND).
+# Retorna sempre um JSON válido ('{}' se ausente/erro), nunca aborta sob set -e.
+_hb_get() {
+  local agent=$1
+  state_heartbeat_get "$agent" 2>/dev/null || echo '{}'
+}
+
 heartbeat_is_awaiting_review() {
-  local heartbeat_file=$1
-  [ -f "$heartbeat_file" ] || return 1
+  local hb=$1
   local status
-  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  status=$(echo "$hb" | jq -r '.status // ""' 2>/dev/null || echo "")
   [ "$status" = "awaiting_review" ]
 }
 
 heartbeat_review_expired() {
-  local heartbeat_file=$1
-  [ -f "$heartbeat_file" ] || return 0
+  local hb=$1
   local waiting_since now elapsed
-  waiting_since=$(jq -r '.waiting_since // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  waiting_since=$(echo "$hb" | jq -r '.waiting_since // ""' 2>/dev/null || echo "")
   [ -z "$waiting_since" ] && return 0
   now=$(date -u +%s)
   elapsed=$(( now - $(date -u -d "$waiting_since" +%s 2>/dev/null || echo 0) ))
@@ -118,10 +123,11 @@ kill_stale_session() {
 
   local agent_name
   agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
-  local heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
+  local hb_json
+  hb_json=$(_hb_get "$agent_name")
 
-  if heartbeat_is_awaiting_review "$heartbeat"; then
-    if heartbeat_review_expired "$heartbeat"; then
+  if heartbeat_is_awaiting_review "$hb_json"; then
+    if heartbeat_review_expired "$hb_json"; then
       log "KILL $session — review timeout expirado (> ${REVIEW_TIMEOUT}s)"
       tmux kill-session -t "$session" 2>/dev/null
       return 0
@@ -136,11 +142,11 @@ kill_stale_session() {
     return 0
   fi
 
-  if heartbeat_is_waiting "$heartbeat"; then
-    if heartbeat_waiting_expired "$heartbeat"; then
+  if heartbeat_is_waiting "$hb_json"; then
+    if heartbeat_waiting_expired "$hb_json"; then
       log "KILL $session — waiting timeout expirado (> ${WAITING_TIMEOUT}s)"
       local waiting_for
-      waiting_for=$(jq -r '.waiting_for // ""' "$heartbeat" 2>/dev/null || echo "")
+      waiting_for=$(echo "$hb_json" | jq -r '.waiting_for // ""' 2>/dev/null || echo "")
       if [[ "$waiting_for" == JOB-* ]]; then
         bash "$BRAION/lib/job.sh" fail "$waiting_for" "$agent_name" "waiting_timeout" 2>/dev/null || true
         log "JOB $waiting_for — $agent_name marcado como falha (timeout)"
@@ -163,14 +169,12 @@ kill_stale_session() {
 }
 
 heartbeat_is_processing() {
-  local heartbeat_file=$1
-  [ -f "$heartbeat_file" ] || return 0
-
+  local hb=$1
   local status last_ping now elapsed
-  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  status=$(echo "$hb" | jq -r '.status // ""' 2>/dev/null || echo "")
   [ "$status" != "processing" ] && return 0
 
-  last_ping=$(jq -r '.last_ping // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  last_ping=$(echo "$hb" | jq -r '.last_ping // ""' 2>/dev/null || echo "")
   [ -z "$last_ping" ] && return 0
 
   now=$(date -u +%s)
@@ -183,18 +187,16 @@ heartbeat_is_processing() {
 }
 
 heartbeat_is_waiting() {
-  local heartbeat_file=$1
-  [ -f "$heartbeat_file" ] || return 1
+  local hb=$1
   local status
-  status=$(jq -r '.status // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  status=$(echo "$hb" | jq -r '.status // ""' 2>/dev/null || echo "")
   [ "$status" = "waiting" ]
 }
 
 heartbeat_waiting_expired() {
-  local heartbeat_file=$1
-  [ -f "$heartbeat_file" ] || return 0
+  local hb=$1
   local waiting_since now elapsed
-  waiting_since=$(jq -r '.waiting_since // ""' "$heartbeat_file" 2>/dev/null || echo "")
+  waiting_since=$(echo "$hb" | jq -r '.waiting_since // ""' 2>/dev/null || echo "")
   [ -z "$waiting_since" ] && return 0
   now=$(date -u +%s)
   elapsed=$(( now - $(date -u -d "$waiting_since" +%s 2>/dev/null || echo 0) ))
@@ -437,7 +439,6 @@ start_session() {
   local _idle_dir="$IDLE_DIR"
   local _agent_name
   _agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
-  local _heartbeat="$BRAION/agents/${_agent_name}/state/heartbeat.json"
   local _review_timeout="$REVIEW_TIMEOUT"
   (
     _idle() {
@@ -445,12 +446,12 @@ start_session() {
     }
 
     _heartbeat_status() {
-      jq -r '.status // ""' "$_heartbeat" 2>/dev/null || echo ""
+      _hb_get "$_agent_name" | jq -r '.status // ""' 2>/dev/null || echo ""
     }
 
     _review_expired() {
       local ws now elapsed
-      ws=$(jq -r '.waiting_since // ""' "$_heartbeat" 2>/dev/null || echo "")
+      ws=$(_hb_get "$_agent_name" | jq -r '.waiting_since // ""' 2>/dev/null || echo "")
       [ -z "$ws" ] && return 0
       now=$(date -u +%s)
       elapsed=$(( now - $(date -u -d "$ws" +%s 2>/dev/null || echo 0) ))
@@ -605,7 +606,6 @@ fi
 
 # ── 1b. Obsidian inbox → roteamento AI via inbox-router (notas sem regra direta) ──
 inbox_router_model=$(get_agent_model "$BRAION/agents/inbox-router/config.yaml")
-inbox_router_heartbeat="$BRAION/agents/inbox-router/state/heartbeat.json"
 
 for check_dir in "$OBSIDIAN_INBOX" $AI_ROUTE_FOLDERS; do
   [ -d "$check_dir" ] || continue
@@ -617,7 +617,7 @@ for check_dir in "$OBSIDIAN_INBOX" $AI_ROUTE_FOLDERS; do
     continue
   fi
 
-  if ! heartbeat_is_processing "$inbox_router_heartbeat"; then
+  if ! heartbeat_is_processing "$(_hb_get inbox-router)"; then
     log "SKIP braion-inbox-router — heartbeat processing recente"
     continue
   fi
@@ -709,8 +709,7 @@ for config in "$BRAION/agents"/*/config.yaml; do
 
     # Handoffs expects:info — checar se é reply para sessão waiting antes de arquivar
     if [ "$expects" = "info" ] && [ -z "$job_id" ]; then
-      heartbeat="$agent_dir/state/heartbeat.json"
-      if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
+      if session_running "braion-${agent}" && heartbeat_is_waiting "$(_hb_get "$agent")"; then
         log "Handoff $ho_id → injetando em sessão waiting braion-${agent}"
         claimed_path=$(bash "$BRAION/lib/handoff.sh" claim "$agent" "$handoff_file" 2>/dev/null || echo "")
         cli_send_slash_command "braion-${agent}" "/braion:agent-inbox-router ${claimed_path}"
@@ -730,10 +729,8 @@ for config in "$BRAION/agents"/*/config.yaml; do
       job_created_by=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.created_by' 2>/dev/null || echo "")
     fi
     if [ -n "$job_id" ] && [ "$from_agent" != "$job_created_by" ]; then
-      heartbeat="$agent_dir/state/heartbeat.json"
-
       # Se sessão ativa e waiting — injetar reply quando job completo
-      if session_running "braion-${agent}" && heartbeat_is_waiting "$heartbeat"; then
+      if session_running "braion-${agent}" && heartbeat_is_waiting "$(_hb_get "$agent")"; then
         job_status_val=$(bash "$BRAION/lib/job.sh" status "$job_id" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
         if [ "$job_status_val" = "completed" ] || [ "$job_status_val" = "partial_failure" ]; then
           log "JOB $job_id $job_status_val — injetando replies em braion-${agent}"
@@ -803,14 +800,13 @@ if [ "$due_count" -gt 0 ]; then
     [ -z "$agent_name" ] && continue
 
     session="braion-${agent_name}"
-    heartbeat="$BRAION/agents/${agent_name}/state/heartbeat.json"
 
     if session_running "$session"; then
       log "SKIP $session — sessão tmux ativa (alive)"
       continue
     fi
 
-    if ! heartbeat_is_processing "$heartbeat"; then
+    if ! heartbeat_is_processing "$(_hb_get "$agent_name")"; then
       log "SKIP $session — heartbeat processing recente (alive)"
       continue
     fi
