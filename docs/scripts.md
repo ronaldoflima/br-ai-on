@@ -8,7 +8,7 @@ Scripts de automação e setup em `scripts/`.
 Deploy completo em produção: clona repo, instala dependências, builda dashboard Next.js, cria serviço systemd. Usa `cli_commands_install_dir` para path de instalação de commands.
 
 ### uninstall.sh
-Remove o serviço systemd do braion.
+Reverte o que `install.sh` + `setup-cron.sh` criam: serviço (systemd no Linux / processo `next start` no Mac), entrada do crontab (`lib/agent-cron.sh`), symlink de commands (`cli_commands_install_dir/braion`) e hooks stop-like no settings do backend (via `cli_hook_unregister`). Não remove deps de sistema (node/git) nem o diretório do repo. Localiza o repo via `BASH_SOURCE` ou `REPO_DIR` (default `~/br-ai-on`) para funcionar também via `curl`.
 
 ### setup-cron.sh
 Configura crontab para `lib/agent-cron.sh` (a cada 5min) e registra hooks via `cli_hook_register` (antes manipulava JSON direto em `~/.claude/settings.json`).

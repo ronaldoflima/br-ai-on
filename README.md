@@ -125,7 +125,7 @@ br-ai-on/
 ├── dashboard/                   # Next.js 15 (porta 3040)
 ├── scripts/
 │   ├── install.sh               # instalação + auto-deploy de produção
-│   ├── uninstall.sh             # remove o serviço systemd
+│   ├── uninstall.sh             # reverte serviço, crontab, commands e hooks
 │   └── create-agent.sh          # scaffolding de novos agentes
 ├── AGENTS.md                    # regras operacionais
 ├── USER.md                      # perfil do usuário

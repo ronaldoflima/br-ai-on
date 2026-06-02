@@ -337,6 +337,51 @@ PYEOF
   esac
 }
 
+# cli_hook_unregister <generic_event> <hook_script>
+# Remove hook do settings do backend. Retorna 0 em sucesso/no-op,
+# 1 em falha (deps), 2 se backend não suporta hooks.
+cli_hook_unregister() {
+  local generic_event="$1" hook_script="$2"
+  local settings_file
+  settings_file=$(cli_hook_config_path)
+
+  [ -z "$settings_file" ] && return 2
+  [ -f "$settings_file" ] || return 0  # nada a remover
+  command -v jq &>/dev/null || return 1
+
+  local event_name needle
+  event_name=$(cli_hook_event_name "$generic_event")
+  needle=$(basename "$hook_script")
+
+  case "$CLI_BACKEND" in
+    claude)
+      python3 - "$settings_file" "$event_name" "$needle" <<'PYEOF'
+import sys, json
+path, event, needle = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    s = json.load(f)
+groups = s.get("hooks", {}).get(event, [])
+for g in groups:
+    g["hooks"] = [h for h in g.get("hooks", []) if needle not in h.get("command", "")]
+# remove grupos sem hooks e o evento se ficar vazio
+groups = [g for g in groups if g.get("hooks")]
+if groups:
+    s["hooks"][event] = groups
+else:
+    s.get("hooks", {}).pop(event, None)
+    if not s.get("hooks"):
+        s.pop("hooks", None)
+with open(path, "w") as f:
+    json.dump(s, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PYEOF
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+}
+
 # ── Permissions ───────────────────────────────────────────────────────────────
 
 # Modo padrão do backend.
