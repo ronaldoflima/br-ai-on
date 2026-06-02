@@ -25,9 +25,9 @@ BRAION="<BR.AI.ON base>"
 AGENT="<nome>"
 
 # Heartbeat de início
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
-  '{last_ping: $ts, agent: $a, status: "processing"}' \
-  > "$BRAION/agents/$AGENT/state/heartbeat.json"
+bash "$BRAION/lib/state.sh" heartbeat_set "$AGENT" \
+  "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
+    '{last_ping: $ts, agent: $a, status: "processing"}')"
 ```
 
 ## 2. Carregar Estado
@@ -100,9 +100,9 @@ bash "$BRAION/lib/handoff.sh" send "$AGENT" orchestrator orchestrate null \
 
 Após enviar o handoff, entre em modo waiting:
 ```bash
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" --arg ho "<HO_ID_enviado>" \
-  '{last_ping: $ts, agent: $a, status: "waiting", waiting_for: $ho, waiting_since: $ts}' \
-  > "$BRAION/agents/$AGENT/state/heartbeat.json"
+bash "$BRAION/lib/state.sh" heartbeat_set "$AGENT" \
+  "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" --arg ho "<HO_ID_enviado>" \
+    '{last_ping: $ts, agent: $a, status: "waiting", waiting_for: $ho, waiting_since: $ts}')"
 ```
 
 **NÃO faça wrapup nem mate a sessão.** Aguarde na sessão — o cron injetará o path do reply quando chegar. Ao receber o reply, leia o handoff e continue o processamento normalmente.
@@ -132,9 +132,9 @@ bash "$BRAION/lib/logger.sh" "$AGENT" "Handoffs processados" '{"count": N}'
 **NÃO archive o handoff e NÃO mate a sessão.** O handoff permanece em `in_progress/` e a sessão fica aberta para o usuário interagir.
 
 ```bash
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
-  '{last_ping: $ts, agent: $a, status: "awaiting_review", waiting_since: $ts}' \
-  > "$BRAION/agents/$AGENT/state/heartbeat.json"
+bash "$BRAION/lib/state.sh" heartbeat_set "$AGENT" \
+  "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg a "$AGENT" \
+    '{last_ping: $ts, agent: $a, status: "awaiting_review", waiting_since: $ts}')"
 ```
 
 Informe ao usuário:

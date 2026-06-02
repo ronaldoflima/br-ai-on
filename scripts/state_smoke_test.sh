@@ -23,6 +23,20 @@ setup_file_backend() {
 
 setup_pg_backend() {
   export BRAION_STATE_BACKEND=pg
+  # GUARD anti-produção: este setup faz TRUNCATE ... CASCADE, que apaga TODO o
+  # schema braion (todas as tabelas referenciam agents via FK ON DELETE CASCADE).
+  # Recusa rodar se houver qualquer agente real (não-smoke) — só prossegue contra
+  # um schema descartável, ou com BRAION_SMOKE_ALLOW_PROD=1 explícito.
+  if [[ "${BRAION_SMOKE_ALLOW_PROD:-}" != "1" ]]; then
+    local real_agents
+    real_agents=$(psql -qAtX -c "SELECT count(*) FROM braion.agents WHERE name NOT LIKE 'smoke-%';" 2>/dev/null || echo 0)
+    if [[ "${real_agents:-0}" -gt 0 ]]; then
+      echo "ABORT: schema braion tem ${real_agents} agente(s) de produção — o smoke pg faz" >&2
+      echo "       TRUNCATE CASCADE e apagaria tudo. Use um banco descartável ou, se tiver" >&2
+      echo "       absoluta certeza, rode com BRAION_SMOKE_ALLOW_PROD=1." >&2
+      exit 3
+    fi
+  fi
   # Limpa tabelas se possível (não falha se schema não existir)
   psql -qAtX -c "SET search_path TO braion; TRUNCATE braion.agents, braion.shared_kv, braion.logs, braion.jobs RESTART IDENTITY CASCADE;" >/dev/null 2>&1 || true
   echo "→ pg backend (PGHOST=${PGHOST:-?} db=${PGDATABASE:-?})"
