@@ -37,7 +37,7 @@ Default: arquivos (`BRAION_STATE_BACKEND=file`). Para Postgres: `=pg`.
 
 - `mcp__personal-mcp-gateway__notion_*` — CRUD Notion
 - `mcp__personal-mcp-gateway__notebooklm_*` — NotebookLM
-- `mcp__personal-mcp-gateway__gateway_send_notification` — Telegram
+- `bash lib/telegram.sh send "..."` — Telegram (bot BR.AI.ON, mesmo canal do hook/bridge). NÃO usar `gateway_send_notification`: entrega por outro bot (canal errado)
 
 ## Logging
 

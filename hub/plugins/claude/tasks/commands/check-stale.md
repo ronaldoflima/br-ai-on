@@ -71,7 +71,7 @@ Para cada tarefa, com base no contexto coletado, classifique em uma das categori
 
 ## Etapa 4 — Notificar o usuário
 
-Envie **uma única notificação** consolidada via `gateway_send_notification` com o resumo de todas as tarefas analisadas.
+Envie **uma única notificação** consolidada via `bash lib/telegram.sh send "..."` (bot BR.AI.ON, mesmo canal do hook/bridge) com o resumo de todas as tarefas analisadas.
 
 ### Formato da notificação
 
