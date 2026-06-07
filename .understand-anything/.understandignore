@@ -1,0 +1,36 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+#
+# === ACTIVE EXCLUSIONS (scope: agent framework only) ===
+
+# --- Scope: exclude the Next.js dashboard (analyzing framework core only) ---
+dashboard/
+
+# --- Runtime data (generated at execution, not source/architecture) ---
+logs/
+metrics/
+*.log
+nohup.out
+**/episodic.jsonl
+**/heartbeat.json
+agents/shared/schedule_state.json
+agents/shared/triggers.jsonl
+
+# --- .gitkeep placeholders (pure noise) ---
+**/.gitkeep
+
+# --- GSD planning docs (not architecture) ---
+.planning/
+
+# --- Agent runtime state & long-term memory (dynamic content, not structure) ---
+# IDENTITY.md and config.yaml are KEPT — they define agent architecture.
+agents/**/state/
+agents/**/memory/
+agents/**/handoffs/
+
+# --- Secrets / local config ---
+.env
+.mcp.json

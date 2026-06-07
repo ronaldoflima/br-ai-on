@@ -39,3 +39,6 @@ log.txt
 
 db/data/
 lib/__pycache__/
+
+# Understand Anything — saída de scan transitória (regenerada a cada análise)
+.understand-anything/intermediate/

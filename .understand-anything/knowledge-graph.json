@@ -1,0 +1,6000 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "braion",
+    "languages": [
+      "javascript",
+      "json",
+      "markdown",
+      "python",
+      "shell",
+      "sql",
+      "yaml"
+    ],
+    "frameworks": [
+      "Docker Compose"
+    ],
+    "description": "Ecossistema de agentes AI pessoais autônomos orquestrado pelo Claude Code, em que cada agente possui identidade persistente (IDENTITY), estado entre sessões, memória de longo prazo e integração opcional com serviços externos via MCP. O backend de estado é multi-cluster (arquivos por padrão, Postgres opcional) e o ciclo de sessão é coordenado por commands do Claude Code.",
+    "analyzedAt": "2026-06-03T10:52:02.753Z",
+    "gitCommitHash": "9c2c5238b305b4b354c42d6bfd74a2ae9604d9ca"
+  },
+  "nodes": [
+    {
+      "id": "table:db/migrations/0001_init.sql",
+      "type": "table",
+      "name": "0001_init.sql",
+      "filePath": "db/migrations/0001_init.sql",
+      "summary": "Migração inicial que cria o schema `braion` e todas as 10 tabelas do state-backend Postgres (agents, heartbeat, documentos, memória episódica, handoffs, jobs e logs), com foreign keys em cascata a partir de `agents`.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-definition",
+        "data-model"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Usa `CREATE TABLE IF NOT EXISTS` idempotente, colunas JSONB para payloads flexíveis e FK `ON DELETE CASCADE` ancoradas em `agents(name)`."
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:agents",
+      "type": "table",
+      "name": "agents",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        7,
+        11
+      ],
+      "summary": "Tabela raiz que registra cada agente por `name` (PK); referenciada em cascata por quase todas as demais tabelas de estado.",
+      "tags": [
+        "database",
+        "data-model",
+        "primary-key"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:heartbeat",
+      "type": "table",
+      "name": "heartbeat",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        13,
+        20
+      ],
+      "summary": "Registra o estado de liveness de cada agente (last_ping, status, proteções ativas); PK por agent_name com FK em cascata para `agents`.",
+      "tags": [
+        "database",
+        "data-model",
+        "monitoring"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:agent_documents",
+      "type": "table",
+      "name": "agent_documents",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        22,
+        29
+      ],
+      "summary": "Armazena documentos persistentes do agente (IDENTITY, estado, docs diários) chaveados por agent_name, doc_type e doc_date; FK em cascata para `agents`.",
+      "tags": [
+        "database",
+        "data-model",
+        "document-store"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:episodic_memory",
+      "type": "table",
+      "name": "episodic_memory",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        31,
+        41
+      ],
+      "summary": "Memória episódica do agente — registra ações, contexto e desfecho com nível de importância e payload JSONB; possui índice por agent_name e timestamp descendente.",
+      "tags": [
+        "database",
+        "data-model",
+        "memory"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:cache_kv",
+      "type": "table",
+      "name": "cache_kv",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        45,
+        51
+      ],
+      "summary": "Cache chave-valor por agente com expiração opcional (expires_at); PK composta (agent_name, key) e FK em cascata para `agents`.",
+      "tags": [
+        "database",
+        "data-model",
+        "cache"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:handoffs",
+      "type": "table",
+      "name": "handoffs",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        53,
+        66
+      ],
+      "summary": "Mensagens de handoff entre agentes com status, threading e referência soft reply_to; FK do destinatário para `agents` e índices por (to_agent, status) e thread_id.",
+      "tags": [
+        "database",
+        "data-model",
+        "messaging"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:handoff_artifacts",
+      "type": "table",
+      "name": "handoff_artifacts",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        70,
+        76
+      ],
+      "summary": "Artefatos anexados a um handoff (conteúdo nomeado), com PK composta (handoff_id, name) e FK em cascata para `handoffs`.",
+      "tags": [
+        "database",
+        "data-model",
+        "messaging"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:jobs",
+      "type": "table",
+      "name": "jobs",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        78,
+        90
+      ],
+      "summary": "Rastreia jobs/tarefas com listas JSONB de itens esperados, completados e falhos, status e resumo de resultado; chaveada por id sem FK rígida.",
+      "tags": [
+        "database",
+        "data-model",
+        "job-tracking"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:shared_kv",
+      "type": "table",
+      "name": "shared_kv",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        92,
+        96
+      ],
+      "summary": "Armazenamento chave-valor global compartilhado entre todos os agentes (value JSONB), sem vínculo a um agente específico.",
+      "tags": [
+        "database",
+        "data-model",
+        "shared-state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0001_init.sql:logs",
+      "type": "table",
+      "name": "logs",
+      "filePath": "db/migrations/0001_init.sql",
+      "lineRange": [
+        98,
+        107
+      ],
+      "summary": "Log estruturado de ações dos agentes (action, message, prompt_version, status, metadata JSONB); índice por agent_name e timestamp descendente.",
+      "tags": [
+        "database",
+        "data-model",
+        "logging"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/migrations/0002_agent_documents_nullable_doc_date.sql",
+      "type": "table",
+      "name": "0002_agent_documents_nullable_doc_date.sql",
+      "filePath": "db/migrations/0002_agent_documents_nullable_doc_date.sql",
+      "summary": "Migração que torna `doc_date` opcional em `agent_documents`, trocando a primary key por uma constraint UNIQUE NULLS NOT DISTINCT (Postgres 15+) para suportar docs flat com doc_date NULL.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-change",
+        "bugfix"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Usa UNIQUE NULLS NOT DISTINCT para preservar o upsert via ON CONFLICT mesmo com doc_date NULL."
+    },
+    {
+      "id": "table:db/migrations/0003_handoffs_drop_reply_to_fk.sql",
+      "type": "table",
+      "name": "0003_handoffs_drop_reply_to_fk.sql",
+      "filePath": "db/migrations/0003_handoffs_drop_reply_to_fk.sql",
+      "summary": "Migração que remove a foreign key auto-referencial de `handoffs.reply_to`, convertendo-a em ponteiro soft (TEXT sem FK) para tolerar handoffs arquivados e ordem de inserção da migração.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-change",
+        "bugfix"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.env.example",
+      "type": "config",
+      "name": ".env.example",
+      "filePath": ".env.example",
+      "summary": "Template de variáveis de ambiente do projeto, declarando segredos e flags como SESSION_SECRET, DISABLE_AUTH e TOTP_SECRET usados pela autenticação do dashboard e pelo runtime dos agentes.",
+      "tags": [
+        "configuration",
+        "security",
+        "environment",
+        "template"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Arquivo de exemplo (não versionado em produção) que serve de base para o .env real; contém apenas placeholders, sem valores sensíveis."
+    },
+    {
+      "id": "config:.mcp.example.json",
+      "type": "config",
+      "name": ".mcp.example.json",
+      "filePath": ".mcp.example.json",
+      "summary": "Template de configuração de servidores MCP (chave mcpServers) que declara as integrações de tools MCP disponíveis para os agentes Claude Code.",
+      "tags": [
+        "configuration",
+        "mcp",
+        "integration",
+        "template"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.project.yaml",
+      "type": "config",
+      "name": ".project.yaml",
+      "filePath": ".project.yaml",
+      "summary": "Metadados mínimos do projeto braion, definindo nome e descrição do ecossistema de agentes AI pessoais.",
+      "tags": [
+        "configuration",
+        "metadata",
+        "project"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:AGENTS.md",
+      "type": "document",
+      "name": "AGENTS.md",
+      "filePath": "AGENTS.md",
+      "summary": "Documento de regras operacionais que rege todos os agentes — cobre backend de estado, ciclo de vida, logging, scheduler, budget, concorrência, memória, handoffs peer-to-peer, jobs paralelos e colaboração via orquestrador.",
+      "tags": [
+        "documentation",
+        "operating-rules",
+        "agent-framework",
+        "orchestration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Especificação extensa (31 seções) que funciona como contrato operacional compartilhado entre todos os agentes do ecossistema."
+    },
+    {
+      "id": "document:CLAUDE.md",
+      "type": "document",
+      "name": "CLAUDE.md",
+      "filePath": "CLAUDE.md",
+      "summary": "Guia de orientação do Claude Code para o projeto, descrevendo propósito, estrutura de diretórios, backend de estado multi-cluster, ciclo de sessão, MCP tools e convenções.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "conventions",
+        "agent-framework"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:LICENSE.md",
+      "type": "document",
+      "name": "LICENSE.md",
+      "filePath": "LICENSE.md",
+      "summary": "Arquivo de licença do projeto.",
+      "tags": [
+        "documentation",
+        "license",
+        "legal"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Documentação principal do BR.AI.ON com quickstart de instalação, ambientes systemd, auto-deploy, descrição dos agentes, estrutura, ciclo de vida de sessão, integrações, scheduling, acesso remoto via Tailscale e fallback para Ollama.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "overview",
+        "setup"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "document:USER.example.md",
+      "type": "document",
+      "name": "USER.example.md",
+      "filePath": "USER.example.md",
+      "summary": "Template do perfil de usuário compartilhado entre agentes, com seções de dados pessoais, preferências e contexto.",
+      "tags": [
+        "documentation",
+        "template",
+        "user-profile"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:docker-compose.pg-braion.yml",
+      "type": "service",
+      "name": "docker-compose.pg-braion.yml",
+      "filePath": "docker-compose.pg-braion.yml",
+      "summary": "Compose que provisiona o Postgres 16 (serviço pg-braion) como fonte da verdade do estado do braion, com bind em 127.0.0.1, volume persistente e healthcheck via pg_isready.",
+      "tags": [
+        "infrastructure",
+        "orchestration",
+        "database",
+        "containerization"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Expõe a porta apenas em 127.0.0.1; acesso externo se dá somente via SSH tunnel, reforçando o isolamento do banco."
+    },
+    {
+      "id": "service:docker-compose.pg-braion.yml:pg-braion",
+      "type": "service",
+      "name": "pg-braion",
+      "filePath": "docker-compose.pg-braion.yml",
+      "summary": "Serviço Postgres 16-alpine que armazena o estado persistente dos agentes, com usuário/database braion, volume em ./db/data e healthcheck por pg_isready.",
+      "tags": [
+        "database",
+        "postgres",
+        "containerization",
+        "state-backend"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:release.sh",
+      "type": "file",
+      "name": "release.sh",
+      "filePath": "release.sh",
+      "summary": "Script de release que faz bump de versão (patch/minor/major) no dashboard/package.json e package-lock.json, cria commit e tag git, e imprime instruções de publicação.",
+      "tags": [
+        "script",
+        "build-system",
+        "release",
+        "versioning"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Usa set -e e valida working tree limpa antes de versionar; lê a versão atual via node -p sobre o package.json do dashboard."
+    },
+    {
+      "id": "document:commands/braion/agent-handoff.md",
+      "type": "document",
+      "name": "agent-handoff.md",
+      "filePath": "commands/braion/agent-handoff.md",
+      "summary": "Command do Claude Code que processa handoffs pendentes do agente: inicializa a sessão, carrega estado, executa as ações de cada handoff via lib/handoff.sh, salva checkpoints e mantém o heartbeat enquanto aguarda review.",
+      "tags": [
+        "command",
+        "handoff",
+        "session-cycle",
+        "entry-point",
+        "orchestration"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Arquivo de command em Markdown com frontmatter e blocos de instruções; orquestra helpers shell em lib/ ao invés de conter código próprio."
+    },
+    {
+      "id": "document:commands/braion/agent-inbox-router.md",
+      "type": "document",
+      "name": "agent-inbox-router.md",
+      "filePath": "commands/braion/agent-inbox-router.md",
+      "summary": "Command que lê notas do inbox do Obsidian, determina o agente responsável a partir do mapa de domínios derivado dos config.yaml, cria handoffs via lib/handoff.sh e atualiza/move as notas roteadas.",
+      "tags": [
+        "command",
+        "inbox",
+        "router",
+        "handoff",
+        "obsidian"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:commands/braion/agent-init.md",
+      "type": "document",
+      "name": "agent-init.md",
+      "filePath": "commands/braion/agent-init.md",
+      "summary": "Command de inicialização de sessão do agente: emite heartbeat de início, carrega configuração e estado persistente via lib/state.sh, define o objetivo da sessão e registra o início no log.",
+      "tags": [
+        "command",
+        "entry-point",
+        "session-cycle",
+        "initialization",
+        "state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:commands/braion/agent-wrapup.md",
+      "type": "document",
+      "name": "agent-wrapup.md",
+      "filePath": "commands/braion/agent-wrapup.md",
+      "summary": "Command de encerramento de sessão (modos review e full) que salva estado persistente via lib/state.sh, atualiza memória semântica e episódica, arquiva handoffs, marca jobs como completos, loga métricas e notifica via Telegram.",
+      "tags": [
+        "command",
+        "wrapup",
+        "session-cycle",
+        "state",
+        "metrics"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Maior command do ciclo de sessão, com modos review/full distintos e integração com múltiplos helpers (state, memory, job, metrics, logger, telegram)."
+    },
+    {
+      "id": "document:commands/braion/orchestrator.md",
+      "type": "document",
+      "name": "orchestrator.md",
+      "filePath": "commands/braion/orchestrator.md",
+      "summary": "Command do orquestrador Team Lead que decompõe tarefas, cria scoped handoffs via lib/handoff.sh para agentes especializados e controla concorrência via lib/lock.sh antes de consolidar resultados.",
+      "tags": [
+        "command",
+        "orchestrator",
+        "handoff",
+        "concurrency",
+        "task-distribution"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/index.md",
+      "type": "document",
+      "name": "index.md",
+      "filePath": "docs/index.md",
+      "summary": "Página inicial da documentação do BR.AI.ON que indexa os guias e a referência, descreve a estrutura do repositório e aponta a versão atual.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "overview",
+        "index"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:docs/overview.md",
+      "type": "document",
+      "name": "overview.md",
+      "filePath": "docs/overview.md",
+      "summary": "Visão geral da arquitetura do ecossistema: descreve o ciclo de vida de um agente, os modos de schedule, a comunicação entre agentes, os canais de entrada e a infraestrutura.",
+      "tags": [
+        "documentation",
+        "overview",
+        "architecture"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/agents.md",
+      "type": "document",
+      "name": "agents.md",
+      "filePath": "docs/agents.md",
+      "summary": "Catálogo dos agentes do ecossistema agrupados por categoria (infraestrutura, negócio, serviço e auxiliares), incluindo armazenamento de estado, runtime, permission mode e estrutura de diretórios por agente.",
+      "tags": [
+        "documentation",
+        "agents",
+        "reference",
+        "configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/commands.md",
+      "type": "document",
+      "name": "commands.md",
+      "filePath": "docs/commands.md",
+      "summary": "Referência dos commands do Claude Code (skills) que controlam o ciclo de sessão dos agentes: agent-init, agent-wrapup, agent-handoff, agent-inbox-router e orchestrator.",
+      "tags": [
+        "documentation",
+        "commands",
+        "reference",
+        "session-lifecycle"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:docs/libs.md",
+      "type": "document",
+      "name": "libs.md",
+      "filePath": "docs/libs.md",
+      "summary": "Referência detalhada das bibliotecas em lib/ organizadas por responsabilidade (backend, orquestração, comunicação, concorrência, observabilidade, memória e otimização), documentando cada script utilitário.",
+      "tags": [
+        "documentation",
+        "library",
+        "reference",
+        "shell"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Descreve a camada lib/ onde state.sh/state.py atuam como fronteira de estado e cli.sh abstrai o backend file/pg."
+    },
+    {
+      "id": "document:docs/scripts.md",
+      "type": "document",
+      "name": "scripts.md",
+      "filePath": "docs/scripts.md",
+      "summary": "Referência dos scripts em scripts/ agrupados por finalidade (infraestrutura, Telegram, release e utilitários), cobrindo instalação, setup de cron/TOTP, bridge do Telegram e criação de agentes.",
+      "tags": [
+        "documentation",
+        "scripts",
+        "reference",
+        "infrastructure"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:docs/dashboard.md",
+      "type": "document",
+      "name": "dashboard.md",
+      "filePath": "docs/dashboard.md",
+      "summary": "Documenta o dashboard web do ecossistema: stack, páginas, terminal web, componentes, endpoints da API, segurança, abstração cli-backend e validador de config.",
+      "tags": [
+        "documentation",
+        "dashboard",
+        "frontend",
+        "api"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/telegram.md",
+      "type": "document",
+      "name": "telegram.md",
+      "filePath": "docs/telegram.md",
+      "summary": "Guia da integração com Telegram: arquitetura da bridge, notificação direta por agentes, passos de setup (bot, chat ID, variáveis, Stop hook), comandos disponíveis e logs.",
+      "tags": [
+        "documentation",
+        "telegram",
+        "integration",
+        "setup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/handoffs-and-jobs.md",
+      "type": "document",
+      "name": "handoffs-and-jobs.md",
+      "filePath": "docs/handoffs-and-jobs.md",
+      "summary": "Documenta os mecanismos de comunicação assíncrona entre agentes: formato, tipos (expects), ciclo de vida e CLI de handoffs e jobs, além de threads e modo waiting.",
+      "tags": [
+        "documentation",
+        "handoff",
+        "jobs",
+        "reference"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md",
+      "type": "document",
+      "name": "2026-04-08-concurrent-agent-collaboration-review.md",
+      "filePath": "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md",
+      "summary": "Code review do plano de colaboração concorrente entre agentes, listando 3 correções obrigatórias que bloqueiam a execução (retorno de handoff_send, diretório do orchestrator, schema do frontmatter) e 6 correções recomendadas como race conditions em job_next_id e uso inseguro de git add -A.",
+      "tags": [
+        "documentation",
+        "code-review",
+        "concurrent",
+        "multi-agent",
+        "planning"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Documento de revisão estruturado em FIX (bloqueantes) e REC (recomendados), com referências de linha ao plano revisado."
+    },
+    {
+      "id": "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+      "type": "document",
+      "name": "2026-04-08-concurrent-agent-collaboration.md",
+      "filePath": "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+      "summary": "Plano de implementação da colaboração concorrente entre agentes, introduzindo um sistema de jobs em shared/jobs/ com lib/job.sh, suporte a job_id no handoff, um agente orchestrator e estados de espera (waiting) com injeção de respostas no agent-cron.sh.",
+      "tags": [
+        "documentation",
+        "planning",
+        "concurrent",
+        "multi-agent",
+        "orchestration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Plano detalhado em 10 tasks cobrindo scripts shell (job.sh, handoff.sh, agent-cron.sh), commands Claude Code e teste de integração."
+    },
+    {
+      "id": "document:docs/superpowers/plans/2026-04-11-config-wizard.md",
+      "type": "document",
+      "name": "2026-04-11-config-wizard.md",
+      "filePath": "docs/superpowers/plans/2026-04-11-config-wizard.md",
+      "summary": "Plano de implementação do Config Wizard do dashboard, com edição guiada de config.yaml via accordion, histórico/versionamento de configuração (lib + APIs GET/POST restore), preview YAML e seletor de versões na aba Config.",
+      "tags": [
+        "documentation",
+        "planning",
+        "config",
+        "wizard",
+        "dashboard"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Plano abrangente em 10 tasks com componentes React/TypeScript (AccordionSection, YamlPreview, ConfigWizard), Server Component e rotas de API de versionamento."
+    },
+    {
+      "id": "document:docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md",
+      "type": "document",
+      "name": "2026-04-23-qdrant-knowledge-layer.md",
+      "filePath": "docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md",
+      "summary": "Plano de implementação de uma camada de conhecimento baseada em Qdrant, com biblioteca core knowledge.ts, rotas de API para CRUD de entries e busca semântica, UI de dashboard dedicada e um script knowledge.sh para acesso via CLI.",
+      "tags": [
+        "documentation",
+        "planning",
+        "knowledge-layer",
+        "vector-search",
+        "qdrant"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Plano em 11 tasks cobrindo configuração, tipos TypeScript, biblioteca de busca semântica, rotas de API (entries, search, meta) e integração com dashboard."
+    },
+    {
+      "id": "document:docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md",
+      "type": "document",
+      "name": "2026-05-28-overview-metrics-redesign.md",
+      "filePath": "docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md",
+      "summary": "Plano de redesenho do painel de métricas da visão geral do dashboard, estendendo contagens nas rotas e tipos sem quebrar campos antigos, reescrevendo o MetricsPanel e propagando agents em page.tsx, com posterior remoção dos campos legados.",
+      "tags": [
+        "documentation",
+        "planning",
+        "dashboard",
+        "metrics",
+        "refactoring"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Plano em 3 tasks com estratégia de migração não-destrutiva (estender, reescrever, depois remover campos legados) e verificação sem framework de testes."
+    },
+    {
+      "id": "document:docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md",
+      "type": "document",
+      "name": "2026-04-08-concurrent-agent-collaboration-design.md",
+      "filePath": "docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md",
+      "summary": "Spec de design para colaboração concorrente entre agentes, definindo o Job Tracker em shared/jobs/, a API lib/job.sh, o agente Orchestrator e mudanças em lib/handoff.sh, agent-cron.sh e agent-wrapup para suportar fan-out, escalation e padrões peer-to-peer.",
+      "tags": [
+        "documentation",
+        "design-spec",
+        "orchestration",
+        "multi-agent",
+        "architecture"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "document:docs/superpowers/specs/2026-04-11-config-wizard-design.md",
+      "type": "document",
+      "name": "2026-04-11-config-wizard-design.md",
+      "filePath": "docs/superpowers/specs/2026-04-11-config-wizard-design.md",
+      "summary": "Spec de design do Config Wizard para edição de configuração de agentes no dashboard, cobrindo layout split-pane (desktop) e abas (mobile), seções accordion, histórico de versões, fluxo de dados e regras de validação client/server-side.",
+      "tags": [
+        "documentation",
+        "design-spec",
+        "configuration",
+        "dashboard",
+        "ui-design"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md",
+      "type": "document",
+      "name": "2026-04-23-qdrant-knowledge-layer-design.md",
+      "filePath": "docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md",
+      "summary": "Spec de design da camada de conhecimento baseada em Qdrant, definindo o schema do Knowledge Entry, a lib TypeScript dashboard/lib/knowledge.ts, as API routes, o shell script lib/knowledge.sh e a UI dashboard/app/knowledge/page.tsx para busca vetorial de conhecimento dos agentes.",
+      "tags": [
+        "documentation",
+        "design-spec",
+        "vector-search",
+        "knowledge-base",
+        "architecture"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "document:docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md",
+      "type": "document",
+      "name": "2026-05-28-overview-metrics-redesign-design.md",
+      "filePath": "docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md",
+      "summary": "Spec de design da reformulação do painel de métricas da Overview do dashboard, definindo as métricas finais, layout e mudanças nas API routes de metrics, types.ts, MetricsPanel.tsx e page.tsx.",
+      "tags": [
+        "documentation",
+        "design-spec",
+        "dashboard",
+        "metrics",
+        "ui-design"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "hub/plugins/claude/tasks/commands/README.md",
+      "summary": "Documentação de entrada do tasks plugin, listando os comandos disponíveis (extract, update, save-*, sync-*, check-stale, config) e as instruções de setup inicial.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "overview",
+        "tasks-plugin"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/check-stale.md",
+      "type": "document",
+      "name": "check-stale.md",
+      "filePath": "hub/plugins/claude/tasks/commands/check-stale.md",
+      "summary": "Definição do comando proativo que lista tarefas abertas no Obsidian, busca contexto adicional (PRs, histórico de conversa, Teams/Email) e notifica o usuário sobre tarefas paradas.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "notification",
+        "proactive"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Command definition em Markdown estruturado por etapas que orquestra MCP tools (Obsidian, work-artifacts, conversation-history, Microsoft 365)."
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "document",
+      "name": "config.md",
+      "filePath": "hub/plugins/claude/tasks/commands/config.md",
+      "summary": "Definição do comando de configuração do tasks plugin, com subcomandos show/init/set/validate para gerenciar dados do usuário, integrações Notion/Obsidian, extração e destinos.",
+      "tags": [
+        "documentation",
+        "command",
+        "configuration",
+        "tasks-plugin",
+        "setup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/extract.md",
+      "type": "document",
+      "name": "extract.md",
+      "filePath": "hub/plugins/claude/tasks/commands/extract.md",
+      "summary": "Definição do comando que extrai tarefas de email, Teams e calendário em um período, deduplica contra mensagens já processadas, classifica e encaminha o resultado para /tasks:update.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "extraction",
+        "data-pipeline"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Pipeline de extração multi-fonte com cache de log e registro de mensagens processadas para evitar reprocessamento."
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/save-notion.md",
+      "type": "document",
+      "name": "save-notion.md",
+      "filePath": "hub/plugins/claude/tasks/commands/save-notion.md",
+      "summary": "Definição do comando que persiste tarefas extraídas no Notion, verificando duplicatas e criando páginas no database configurado.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "notion",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/save-obsidian.md",
+      "type": "document",
+      "name": "save-obsidian.md",
+      "filePath": "hub/plugins/claude/tasks/commands/save-obsidian.md",
+      "summary": "Definição do comando que persiste tarefas extraídas como notas no Obsidian, montando path, conteúdo e frontmatter conforme as regras de organização.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "obsidian",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/sync-notion.md",
+      "type": "document",
+      "name": "sync-notion.md",
+      "filePath": "hub/plugins/claude/tasks/commands/sync-notion.md",
+      "summary": "Definição do comando que sincroniza o status de tarefas no Notion, localizando as páginas e aplicando atualizações de estado.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "notion",
+        "sync"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/sync-obsidian.md",
+      "type": "document",
+      "name": "sync-obsidian.md",
+      "filePath": "hub/plugins/claude/tasks/commands/sync-obsidian.md",
+      "summary": "Definição do comando que sincroniza o status de tarefas no Obsidian, localizando as notas e aplicando atualizações de estado.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "obsidian",
+        "sync"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "type": "document",
+      "name": "sync.md",
+      "filePath": "hub/plugins/claude/tasks/commands/sync.md",
+      "summary": "Definição do comando orquestrador de sincronização: carrega tarefas pendentes dos destinos, correlaciona com o contexto da conversa e delega para /tasks:sync-notion e /tasks:sync-obsidian.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "sync",
+        "orchestration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Correlaciona contexto da conversa com tarefas pendentes via match direto/indireto/sem-match antes de delegar aos comandos de destino."
+    },
+    {
+      "id": "document:hub/plugins/claude/tasks/commands/update.md",
+      "type": "document",
+      "name": "update.md",
+      "filePath": "hub/plugins/claude/tasks/commands/update.md",
+      "summary": "Definição do comando que recebe o JSON de tarefas extraídas, delega a persistência para /tasks:save-notion e /tasks:save-obsidian e registra as mensagens processadas.",
+      "tags": [
+        "documentation",
+        "command",
+        "tasks-plugin",
+        "persistence",
+        "orchestration"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:lib/logger.sh",
+      "type": "file",
+      "name": "logger.sh",
+      "filePath": "lib/logger.sh",
+      "summary": "Ponto de entrada de logging estruturado em JSONL: monta uma entrada com timestamp/agente/ação via jq e delega a persistência ao state_log_write, além de registrar métricas via metrics_log.",
+      "tags": [
+        "logging",
+        "entry-point",
+        "jsonl",
+        "observability"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Faz source de state.sh e metrics.sh; mantém compat retro do LOG_DIR mapeando para BRAION_LOGS_DIR."
+    },
+    {
+      "id": "file:lib/memory.sh",
+      "type": "file",
+      "name": "memory.sh",
+      "filePath": "lib/memory.sh",
+      "summary": "Wrapper de memória do agente sobre o state.sh: registra memória episódica, faz busca episódica e gerencia um cache get/set/clear.",
+      "tags": [
+        "memory",
+        "wrapper",
+        "cache",
+        "episodic"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/memory.sh:log_episodic",
+      "type": "function",
+      "name": "log_episodic",
+      "filePath": "lib/memory.sh",
+      "lineRange": [
+        23,
+        44
+      ],
+      "summary": "Registra um evento na memória episódica do agente, delegando a persistência ao state_episodic_append.",
+      "tags": [
+        "memory",
+        "episodic",
+        "state"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/metrics.sh",
+      "type": "file",
+      "name": "metrics.sh",
+      "filePath": "lib/metrics.sh",
+      "summary": "Coleta e sumarização de métricas operacionais dos agentes (latência, tokens, custo): registra eventos e gera resumos globais e por agente.",
+      "tags": [
+        "metrics",
+        "observability",
+        "analytics",
+        "cost-tracking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/metrics.sh:metrics_log",
+      "type": "function",
+      "name": "metrics_log",
+      "filePath": "lib/metrics.sh",
+      "lineRange": [
+        7,
+        36
+      ],
+      "summary": "Registra uma métrica de execução (status, latência, tokens, custo) para um agente e ação específicos.",
+      "tags": [
+        "metrics",
+        "logging",
+        "cost-tracking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/metrics.sh:metrics_summary",
+      "type": "function",
+      "name": "metrics_summary",
+      "filePath": "lib/metrics.sh",
+      "lineRange": [
+        38,
+        65
+      ],
+      "summary": "Agrega todas as métricas registradas em um resumo consolidado de desempenho e custo.",
+      "tags": [
+        "metrics",
+        "aggregation",
+        "reporting"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/metrics.sh:metrics_agent_summary",
+      "type": "function",
+      "name": "metrics_agent_summary",
+      "filePath": "lib/metrics.sh",
+      "lineRange": [
+        67,
+        90
+      ],
+      "summary": "Gera um resumo de métricas filtrado por um agente específico.",
+      "tags": [
+        "metrics",
+        "aggregation",
+        "reporting"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/obsidian-commit.sh",
+      "type": "file",
+      "name": "obsidian-commit.sh",
+      "filePath": "lib/obsidian-commit.sh",
+      "summary": "Script de sincronização que faz auto-commit, pull --rebase e push do vault Obsidian configurado, resolvendo o caminho do vault via config do plugin tasks.",
+      "tags": [
+        "utility",
+        "obsidian",
+        "git",
+        "sync"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/optimize.sh",
+      "type": "file",
+      "name": "optimize.sh",
+      "filePath": "lib/optimize.sh",
+      "summary": "Ferramentas de versionamento e otimização de prompts dos agentes: snapshots de versão, propostas de melhoria, histórico, rollback e auditoria de tamanho de prompts.",
+      "tags": [
+        "optimization",
+        "versioning",
+        "prompt-management",
+        "rollback"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/optimize.sh:version_snapshot",
+      "type": "function",
+      "name": "version_snapshot",
+      "filePath": "lib/optimize.sh",
+      "lineRange": [
+        13,
+        46
+      ],
+      "summary": "Cria um snapshot versionado do estado atual de um prompt/configuração de agente.",
+      "tags": [
+        "versioning",
+        "snapshot",
+        "prompt-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/optimize.sh:create_proposal",
+      "type": "function",
+      "name": "create_proposal",
+      "filePath": "lib/optimize.sh",
+      "lineRange": [
+        48,
+        84
+      ],
+      "summary": "Registra uma proposta de otimização de prompt para revisão posterior.",
+      "tags": [
+        "optimization",
+        "prompt-management",
+        "proposal"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/optimize.sh:rollback",
+      "type": "function",
+      "name": "rollback",
+      "filePath": "lib/optimize.sh",
+      "lineRange": [
+        120,
+        146
+      ],
+      "summary": "Reverte um prompt/configuração para uma versão anterior a partir do histórico de snapshots.",
+      "tags": [
+        "versioning",
+        "rollback",
+        "prompt-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/optimize.sh:audit_prompt_sizes",
+      "type": "function",
+      "name": "audit_prompt_sizes",
+      "filePath": "lib/optimize.sh",
+      "lineRange": [
+        148,
+        176
+      ],
+      "summary": "Audita o tamanho dos prompts de todos os agentes para detectar prompts excessivamente grandes.",
+      "tags": [
+        "optimization",
+        "audit",
+        "prompt-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/orchestrate.sh",
+      "type": "file",
+      "name": "orchestrate.sh",
+      "filePath": "lib/orchestrate.sh",
+      "summary": "Stub de compatibilidade retroativa cujas funções de orquestração foram migradas para o sistema de handoffs (lib/handoff.sh); mantido para não quebrar referências e marcado para remoção futura.",
+      "tags": [
+        "deprecated",
+        "compatibility",
+        "stub",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/state.sh",
+      "type": "file",
+      "name": "state.sh",
+      "filePath": "lib/state.sh",
+      "summary": "Fronteira do backend de estado do framework: abstrai persistência de heartbeats, docs, memória episódica, cache, KV compartilhado, logs, handoffs e jobs sobre dois backends (arquivos vs Postgres), despachando para os helpers _state_file_* ou _state_pg_* conforme BRAION_STATE_BACKEND.",
+      "tags": [
+        "state",
+        "abstraction",
+        "backend",
+        "persistence",
+        "facade"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Padrão de fachada/dispatch: funções públicas state_* delegam via _dispatch para implementações file (_state_file_*) ou Postgres (_state_pg_*). Nunca abrir arquivos de estado diretamente; sempre via state_* helpers."
+    },
+    {
+      "id": "function:lib/state.sh:_dispatch",
+      "type": "function",
+      "name": "_dispatch",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        850,
+        854
+      ],
+      "summary": "Roteador interno que seleciona a implementação de backend (file ou pg) para a operação solicitada, chamando _state_file_* ou _state_pg_* conforme o backend ativo.",
+      "tags": [
+        "state",
+        "dispatch",
+        "backend",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_backend",
+      "type": "function",
+      "name": "state_backend",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        41,
+        41
+      ],
+      "summary": "Retorna o backend de estado ativo (file ou pg) a partir de BRAION_STATE_BACKEND.",
+      "tags": [
+        "state",
+        "configuration",
+        "backend"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_log_write",
+      "type": "function",
+      "name": "state_log_write",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        868,
+        868
+      ],
+      "summary": "API pública para gravar uma entrada de log estruturado, despachando para o backend file ou Postgres.",
+      "tags": [
+        "state",
+        "logging",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_heartbeat_set",
+      "type": "function",
+      "name": "state_heartbeat_set",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        857,
+        857
+      ],
+      "summary": "API pública para atualizar o heartbeat de um agente, despachando para o backend ativo.",
+      "tags": [
+        "state",
+        "heartbeat",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_heartbeat_get",
+      "type": "function",
+      "name": "state_heartbeat_get",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        856,
+        856
+      ],
+      "summary": "API pública para ler o heartbeat atual de um agente, despachando para o backend ativo.",
+      "tags": [
+        "state",
+        "heartbeat",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_doc_get",
+      "type": "function",
+      "name": "state_doc_get",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        858,
+        858
+      ],
+      "summary": "API pública para ler um documento de estado persistente do agente.",
+      "tags": [
+        "state",
+        "document",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_doc_set",
+      "type": "function",
+      "name": "state_doc_set",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        859,
+        859
+      ],
+      "summary": "API pública para gravar/atualizar um documento de estado persistente do agente.",
+      "tags": [
+        "state",
+        "document",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_episodic_append",
+      "type": "function",
+      "name": "state_episodic_append",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        861,
+        861
+      ],
+      "summary": "API pública para anexar um evento à memória episódica do agente.",
+      "tags": [
+        "state",
+        "memory",
+        "episodic",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_episodic_search",
+      "type": "function",
+      "name": "state_episodic_search",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        862,
+        862
+      ],
+      "summary": "API pública para buscar na memória episódica do agente.",
+      "tags": [
+        "state",
+        "memory",
+        "search",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_cache_get",
+      "type": "function",
+      "name": "state_cache_get",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        863,
+        863
+      ],
+      "summary": "API pública para ler um valor do cache de estado.",
+      "tags": [
+        "state",
+        "cache",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_cache_set",
+      "type": "function",
+      "name": "state_cache_set",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        864,
+        864
+      ],
+      "summary": "API pública para gravar um valor no cache de estado.",
+      "tags": [
+        "state",
+        "cache",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_handoff_create",
+      "type": "function",
+      "name": "state_handoff_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        871,
+        871
+      ],
+      "summary": "API pública para criar um handoff persistente, despachando para o backend file ou Postgres.",
+      "tags": [
+        "state",
+        "handoff",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_handoff_list",
+      "type": "function",
+      "name": "state_handoff_list",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        873,
+        873
+      ],
+      "summary": "API pública para listar handoffs persistidos conforme filtros.",
+      "tags": [
+        "state",
+        "handoff",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_handoff_set_status",
+      "type": "function",
+      "name": "state_handoff_set_status",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        874,
+        874
+      ],
+      "summary": "API pública para alterar o status de um handoff (ex.: claimed, archived).",
+      "tags": [
+        "state",
+        "handoff",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_handoff_thread_history",
+      "type": "function",
+      "name": "state_handoff_thread_history",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        876,
+        876
+      ],
+      "summary": "API pública para recuperar o histórico de uma thread de handoffs encadeados.",
+      "tags": [
+        "state",
+        "handoff",
+        "history",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_job_create",
+      "type": "function",
+      "name": "state_job_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        881,
+        881
+      ],
+      "summary": "API pública para criar um job compartilhado persistente.",
+      "tags": [
+        "state",
+        "job-management",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_job_complete",
+      "type": "function",
+      "name": "state_job_complete",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        883,
+        883
+      ],
+      "summary": "API pública para marcar um job como concluído.",
+      "tags": [
+        "state",
+        "job-management",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:state_job_list_pending",
+      "type": "function",
+      "name": "state_job_list_pending",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        885,
+        885
+      ],
+      "summary": "API pública para listar os jobs ainda pendentes.",
+      "tags": [
+        "state",
+        "job-management",
+        "facade"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.sh:_state_file_handoff_create",
+      "type": "function",
+      "name": "_state_file_handoff_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        207,
+        230
+      ],
+      "summary": "Implementação do backend de arquivos para criar um handoff, gravando-o como arquivo no diretório do agente destinatário.",
+      "tags": [
+        "state",
+        "handoff",
+        "file-backend"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.sh:_state_pg_handoff_create",
+      "type": "function",
+      "name": "_state_pg_handoff_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        658,
+        672
+      ],
+      "summary": "Implementação do backend Postgres para criar um handoff, inserindo o registro via psql.",
+      "tags": [
+        "state",
+        "handoff",
+        "pg-backend",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.sh:_state_pg_heartbeat_set",
+      "type": "function",
+      "name": "_state_pg_heartbeat_set",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        467,
+        492
+      ],
+      "summary": "Implementação do backend Postgres para atualizar o heartbeat de um agente via upsert no psql.",
+      "tags": [
+        "state",
+        "heartbeat",
+        "pg-backend",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.sh:_state_file_doc_path",
+      "type": "function",
+      "name": "_state_file_doc_path",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        46,
+        62
+      ],
+      "summary": "Resolve o caminho do arquivo de estado de um documento no backend de arquivos, conforme agente e tipo de doc.",
+      "tags": [
+        "state",
+        "file-backend",
+        "path-resolution"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.sh:_state_pg_job_create",
+      "type": "function",
+      "name": "_state_pg_job_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        762,
+        784
+      ],
+      "summary": "Implementação do backend Postgres para criar um job compartilhado via insert no psql.",
+      "tags": [
+        "state",
+        "job-management",
+        "pg-backend",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.sh:_state_file_job_create",
+      "type": "function",
+      "name": "_state_file_job_create",
+      "filePath": "lib/state.sh",
+      "lineRange": [
+        351,
+        374
+      ],
+      "summary": "Implementação do backend de arquivos para criar um job compartilhado, persistindo-o como arquivo no diretório de jobs.",
+      "tags": [
+        "state",
+        "job-management",
+        "file-backend"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/telegram.sh",
+      "type": "file",
+      "name": "telegram.sh",
+      "filePath": "lib/telegram.sh",
+      "summary": "Integração com a Bot API do Telegram: carrega token e chat_id do ambiente e expõe envio de mensagens, indicador de digitação e notificações ao usuário.",
+      "tags": [
+        "telegram",
+        "integration",
+        "notification",
+        "messaging"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/telegram.sh:tg_send",
+      "type": "function",
+      "name": "tg_send",
+      "filePath": "lib/telegram.sh",
+      "lineRange": [
+        36,
+        55
+      ],
+      "summary": "Envia uma mensagem de texto via Bot API do Telegram para o chat configurado.",
+      "tags": [
+        "telegram",
+        "messaging",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/telegram.sh:tg_typing",
+      "type": "function",
+      "name": "tg_typing",
+      "filePath": "lib/telegram.sh",
+      "lineRange": [
+        57,
+        67
+      ],
+      "summary": "Dispara o indicador de digitação no chat do Telegram para sinalizar atividade.",
+      "tags": [
+        "telegram",
+        "messaging",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/telegram.sh:tg_notify",
+      "type": "function",
+      "name": "tg_notify",
+      "filePath": "lib/telegram.sh",
+      "lineRange": [
+        69,
+        71
+      ],
+      "summary": "Atalho de notificação que envia uma mensagem ao usuário via tg_send.",
+      "tags": [
+        "telegram",
+        "notification",
+        "integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/validate_output.sh",
+      "type": "file",
+      "name": "validate_output.sh",
+      "filePath": "lib/validate_output.sh",
+      "summary": "Valida o arquivo de saída de um agente — verifica existência, tamanho mínimo, sintaxe YAML/JSON e se o agente escreveu dentro de seu próprio diretório ou em shared/.",
+      "tags": [
+        "validation",
+        "utility",
+        "guardrail",
+        "output-check"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/agent-cron.sh",
+      "type": "file",
+      "name": "agent-cron.sh",
+      "filePath": "lib/agent-cron.sh",
+      "summary": "Orquestrador principal do cron que gerencia o ciclo de vida das sessões dos agentes — detecta sessões idle/stale, monitora heartbeats, constrói o system prompt e inicia/encerra sessões do CLI Claude Code via tmux.",
+      "tags": [
+        "entry-point",
+        "scheduler",
+        "session-management",
+        "heartbeat",
+        "cron"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Script de 837 linhas que faz source de telegram.sh, cli.sh e state.sh; concentra a lógica de supervisão de sessões dos agentes."
+    },
+    {
+      "id": "function:lib/agent-cron.sh:kill_stale_session",
+      "type": "function",
+      "name": "kill_stale_session",
+      "filePath": "lib/agent-cron.sh",
+      "lineRange": [
+        121,
+        169
+      ],
+      "summary": "Encerra uma sessão tmux considerada stale (travada ou inativa por tempo excessivo), liberando recursos para o próximo ciclo.",
+      "tags": [
+        "session-management",
+        "cleanup",
+        "tmux"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/agent-cron.sh:build_agent_system_prompt",
+      "type": "function",
+      "name": "build_agent_system_prompt",
+      "filePath": "lib/agent-cron.sh",
+      "lineRange": [
+        240,
+        370
+      ],
+      "summary": "Monta o system prompt completo do agente combinando IDENTITY, estado persistente e contexto operacional antes de iniciar a sessão.",
+      "tags": [
+        "prompt-building",
+        "session-management",
+        "configuration"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:lib/agent-cron.sh:start_session",
+      "type": "function",
+      "name": "start_session",
+      "filePath": "lib/agent-cron.sh",
+      "lineRange": [
+        372,
+        504
+      ],
+      "summary": "Inicia uma nova sessão do agente em tmux, despachando o comando de start do CLI com modelo, permissões e system prompt apropriados.",
+      "tags": [
+        "session-management",
+        "entry-point",
+        "tmux",
+        "cli"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:lib/agent-cron.sh:notify_user_handoff",
+      "type": "function",
+      "name": "notify_user_handoff",
+      "filePath": "lib/agent-cron.sh",
+      "lineRange": [
+        637,
+        676
+      ],
+      "summary": "Notifica o usuário via Telegram quando há um handoff pendente que requer atenção.",
+      "tags": [
+        "notification",
+        "telegram",
+        "handoff"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/agent-cron.sh:get_agent_permission_mode",
+      "type": "function",
+      "name": "get_agent_permission_mode",
+      "filePath": "lib/agent-cron.sh",
+      "lineRange": [
+        218,
+        238
+      ],
+      "summary": "Resolve o modo de permissão do agente a partir de sua configuração, aplicando o default quando não especificado.",
+      "tags": [
+        "configuration",
+        "permissions",
+        "session-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/check_concurrency.sh",
+      "type": "file",
+      "name": "check_concurrency.sh",
+      "filePath": "lib/check_concurrency.sh",
+      "summary": "Script utilitário curto que verifica concorrência de execução e registra um trap de cleanup para liberar recursos ao terminar.",
+      "tags": [
+        "utility",
+        "concurrency",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/cli.sh",
+      "type": "file",
+      "name": "cli.sh",
+      "filePath": "lib/cli.sh",
+      "summary": "Camada de abstração sobre o CLI do Claude Code: resolve modelos default/fallback, monta comandos de start, envia comandos/slash commands à sessão tmux e gerencia registro de hooks e diretórios de configuração.",
+      "tags": [
+        "utility",
+        "cli",
+        "abstraction",
+        "configuration"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Fronteira entre o framework e o binário do CLI; isola detalhes de invocação do Claude Code."
+    },
+    {
+      "id": "function:lib/cli.sh:cli_valid_models",
+      "type": "function",
+      "name": "cli_valid_models",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        75,
+        97
+      ],
+      "summary": "Retorna a lista de modelos válidos aceitos pelo CLI, usada para validar a configuração de cada agente.",
+      "tags": [
+        "cli",
+        "validation",
+        "configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_build_start_cmd",
+      "type": "function",
+      "name": "cli_build_start_cmd",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        103,
+        139
+      ],
+      "summary": "Constrói a linha de comando completa para iniciar uma sessão do CLI, incluindo modelo, modo de permissão e demais flags.",
+      "tags": [
+        "cli",
+        "command-builder",
+        "session-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_send_start_command",
+      "type": "function",
+      "name": "cli_send_start_command",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        155,
+        168
+      ],
+      "summary": "Envia o comando de inicialização para a sessão tmux do agente.",
+      "tags": [
+        "cli",
+        "tmux",
+        "session-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_send_slash_command",
+      "type": "function",
+      "name": "cli_send_slash_command",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        174,
+        186
+      ],
+      "summary": "Envia um slash command (ex.: /braion:agent-init) para a sessão ativa do CLI.",
+      "tags": [
+        "cli",
+        "tmux",
+        "command"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_wait_ready",
+      "type": "function",
+      "name": "cli_wait_ready",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        202,
+        214
+      ],
+      "summary": "Aguarda até que a sessão do CLI esteja pronta para receber comandos, com timeout.",
+      "tags": [
+        "cli",
+        "synchronization",
+        "session-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_hook_register",
+      "type": "function",
+      "name": "cli_hook_register",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        300,
+        338
+      ],
+      "summary": "Registra hooks do framework na configuração do CLI, mapeando eventos para os scripts correspondentes.",
+      "tags": [
+        "cli",
+        "hooks",
+        "configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_hook_unregister",
+      "type": "function",
+      "name": "cli_hook_unregister",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        343,
+        383
+      ],
+      "summary": "Remove hooks previamente registrados na configuração do CLI, revertendo o estado de instalação.",
+      "tags": [
+        "cli",
+        "hooks",
+        "configuration",
+        "cleanup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/cli.sh:cli_permission_mode_map",
+      "type": "function",
+      "name": "cli_permission_mode_map",
+      "filePath": "lib/cli.sh",
+      "lineRange": [
+        401,
+        435
+      ],
+      "summary": "Mapeia os modos de permissão lógicos do framework para as flags concretas aceitas pelo CLI.",
+      "tags": [
+        "cli",
+        "permissions",
+        "configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/evaluate.sh",
+      "type": "file",
+      "name": "evaluate.sh",
+      "filePath": "lib/evaluate.sh",
+      "summary": "Avaliação determinística do desempenho diário dos agentes e geração de relatórios diários e resumos semanais a partir das métricas registradas.",
+      "tags": [
+        "evaluation",
+        "reporting",
+        "metrics",
+        "analytics"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/evaluate.sh:evaluate_deterministic",
+      "type": "function",
+      "name": "evaluate_deterministic",
+      "filePath": "lib/evaluate.sh",
+      "lineRange": [
+        12,
+        47
+      ],
+      "summary": "Calcula um score determinístico de avaliação com base em regras fixas aplicadas às métricas do agente.",
+      "tags": [
+        "evaluation",
+        "metrics",
+        "scoring"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/evaluate.sh:evaluate_day",
+      "type": "function",
+      "name": "evaluate_day",
+      "filePath": "lib/evaluate.sh",
+      "lineRange": [
+        49,
+        91
+      ],
+      "summary": "Agrega e avalia as métricas de um dia inteiro para um agente, consolidando os dados para o relatório.",
+      "tags": [
+        "evaluation",
+        "metrics",
+        "aggregation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/evaluate.sh:generate_report",
+      "type": "function",
+      "name": "generate_report",
+      "filePath": "lib/evaluate.sh",
+      "lineRange": [
+        93,
+        141
+      ],
+      "summary": "Gera o relatório diário formatado a partir das métricas avaliadas do agente.",
+      "tags": [
+        "reporting",
+        "metrics",
+        "formatting"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/evaluate.sh:generate_weekly_summary",
+      "type": "function",
+      "name": "generate_weekly_summary",
+      "filePath": "lib/evaluate.sh",
+      "lineRange": [
+        143,
+        176
+      ],
+      "summary": "Consolida os relatórios diários em um resumo semanal de desempenho dos agentes.",
+      "tags": [
+        "reporting",
+        "metrics",
+        "aggregation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/feature-request.sh",
+      "type": "file",
+      "name": "feature-request.sh",
+      "filePath": "lib/feature-request.sh",
+      "summary": "Script interativo que coleta título e contexto de uma feature e cria um handoff para o agente braion-maintainer implementá-la no próximo ciclo do cron.",
+      "tags": [
+        "utility",
+        "handoff",
+        "feature-request",
+        "cli"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/handoff.sh",
+      "type": "file",
+      "name": "handoff.sh",
+      "filePath": "lib/handoff.sh",
+      "summary": "Wrapper de alto nível para o sistema de handoffs entre agentes, delegando criação, listagem, claim, arquivamento e histórico de threads aos helpers state_handoff_* do state.sh.",
+      "tags": [
+        "handoff",
+        "wrapper",
+        "agent-coordination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/handoff.sh:handoff_send",
+      "type": "function",
+      "name": "handoff_send",
+      "filePath": "lib/handoff.sh",
+      "lineRange": [
+        30,
+        56
+      ],
+      "summary": "Cria e envia um novo handoff de um agente para outro, persistindo-o via state_handoff_create.",
+      "tags": [
+        "handoff",
+        "agent-coordination",
+        "messaging"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/handoff.sh:handoff_claim",
+      "type": "function",
+      "name": "handoff_claim",
+      "filePath": "lib/handoff.sh",
+      "lineRange": [
+        63,
+        73
+      ],
+      "summary": "Reivindica um handoff pendente, marcando-o como em processamento pelo agente destinatário.",
+      "tags": [
+        "handoff",
+        "agent-coordination",
+        "state"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/handoff.sh:handoff_thread_history",
+      "type": "function",
+      "name": "handoff_thread_history",
+      "filePath": "lib/handoff.sh",
+      "lineRange": [
+        91,
+        100
+      ],
+      "summary": "Recupera o histórico completo de uma thread de handoffs encadeados entre agentes.",
+      "tags": [
+        "handoff",
+        "history",
+        "agent-coordination"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/job.sh",
+      "type": "file",
+      "name": "job.sh",
+      "filePath": "lib/job.sh",
+      "summary": "Wrapper de gerenciamento de jobs compartilhados sobre o state.sh, protegendo operações de escrita com lock e expondo create/complete/fail/status/list-pending/archive.",
+      "tags": [
+        "job-management",
+        "wrapper",
+        "lock",
+        "agent-coordination"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/job.sh:_with_lock",
+      "type": "function",
+      "name": "_with_lock",
+      "filePath": "lib/job.sh",
+      "lineRange": [
+        24,
+        30
+      ],
+      "summary": "Executa um comando de job adquirindo e liberando o lock do sistema de jobs via lock.sh, garantindo exclusão mútua.",
+      "tags": [
+        "lock",
+        "concurrency",
+        "job-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/knowledge.sh",
+      "type": "file",
+      "name": "knowledge.sh",
+      "filePath": "lib/knowledge.sh",
+      "summary": "Integração com a base de conhecimento (NotebookLM/coleções por agente): publica, busca e lista artefatos de conhecimento associados aos domínios de cada agente.",
+      "tags": [
+        "knowledge-base",
+        "integration",
+        "search",
+        "notebooklm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/knowledge.sh:knowledge_publish",
+      "type": "function",
+      "name": "knowledge_publish",
+      "filePath": "lib/knowledge.sh",
+      "lineRange": [
+        63,
+        108
+      ],
+      "summary": "Publica um item de conhecimento na coleção do agente correspondente, resolvendo a coleção e os domínios automaticamente.",
+      "tags": [
+        "knowledge-base",
+        "publishing",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/knowledge.sh:knowledge_search",
+      "type": "function",
+      "name": "knowledge_search",
+      "filePath": "lib/knowledge.sh",
+      "lineRange": [
+        110,
+        143
+      ],
+      "summary": "Realiza busca na base de conhecimento do agente, retornando os resultados mais relevantes.",
+      "tags": [
+        "knowledge-base",
+        "search",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/knowledge.sh:knowledge_list",
+      "type": "function",
+      "name": "knowledge_list",
+      "filePath": "lib/knowledge.sh",
+      "lineRange": [
+        145,
+        167
+      ],
+      "summary": "Lista os itens de conhecimento disponíveis na coleção do agente.",
+      "tags": [
+        "knowledge-base",
+        "listing",
+        "integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/knowledge.sh:_kb_agent_collection",
+      "type": "function",
+      "name": "_kb_agent_collection",
+      "filePath": "lib/knowledge.sh",
+      "lineRange": [
+        26,
+        43
+      ],
+      "summary": "Resolve o identificador da coleção de conhecimento associada a um agente a partir de sua configuração.",
+      "tags": [
+        "knowledge-base",
+        "configuration",
+        "helper"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/lock.sh",
+      "type": "file",
+      "name": "lock.sh",
+      "filePath": "lib/lock.sh",
+      "summary": "Primitiva de lock baseada em diretório para exclusão mútua entre agentes, expondo acquire, release e status de um recurso nomeado.",
+      "tags": [
+        "lock",
+        "concurrency",
+        "synchronization",
+        "primitive"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/lock.sh:acquire",
+      "type": "function",
+      "name": "acquire",
+      "filePath": "lib/lock.sh",
+      "lineRange": [
+        9,
+        39
+      ],
+      "summary": "Adquire um lock para um recurso nomeado, aguardando ou falhando conforme a disponibilidade.",
+      "tags": [
+        "lock",
+        "concurrency",
+        "synchronization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/lock.sh:release",
+      "type": "function",
+      "name": "release",
+      "filePath": "lib/lock.sh",
+      "lineRange": [
+        41,
+        61
+      ],
+      "summary": "Libera um lock previamente adquirido, removendo o marcador do recurso.",
+      "tags": [
+        "lock",
+        "concurrency",
+        "synchronization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/lock.sh:status",
+      "type": "function",
+      "name": "status",
+      "filePath": "lib/lock.sh",
+      "lineRange": [
+        63,
+        75
+      ],
+      "summary": "Reporta o estado atual de um lock — se está adquirido e por qual detentor.",
+      "tags": [
+        "lock",
+        "concurrency",
+        "status"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/agent-idle-hook.sh",
+      "type": "file",
+      "name": "agent-idle-hook.sh",
+      "filePath": "scripts/agent-idle-hook.sh",
+      "summary": "Hook do tipo Stop que marca uma sessão tmux braion-* como idle criando um flag file, invocado pelo backend de IA ao terminar de responder.",
+      "tags": [
+        "script",
+        "hook",
+        "event-handler",
+        "tmux"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/claude-switch.sh",
+      "type": "file",
+      "name": "claude-switch.sh",
+      "filePath": "scripts/claude-switch.sh",
+      "summary": "Wrapper de shell que intercepta o comando claude para fazer fallback automático para Ollama quando há rate limit detectado.",
+      "tags": [
+        "script",
+        "wrapper",
+        "fallback",
+        "rate-limit"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Redefine a função claude no shell para envolver o binário original com checagem de rate limit."
+    },
+    {
+      "id": "file:scripts/create-agent.sh",
+      "type": "file",
+      "name": "create-agent.sh",
+      "filePath": "scripts/create-agent.sh",
+      "summary": "Scaffolder interativo que cria a estrutura de um novo agente (IDENTITY.md, config.yaml e diretório de state) a partir de prompts no terminal.",
+      "tags": [
+        "script",
+        "scaffolding",
+        "factory",
+        "agent-setup"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:scripts/hub.sh",
+      "type": "file",
+      "name": "hub.sh",
+      "filePath": "scripts/hub.sh",
+      "summary": "CLI de gerenciamento de plugins que lista, instala, inicializa, desinstala e mostra o status dos plugins do ecossistema braion a partir de manifestos.",
+      "tags": [
+        "script",
+        "cli",
+        "plugin-manager",
+        "tooling"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:scripts/install.sh",
+      "type": "file",
+      "name": "install.sh",
+      "filePath": "scripts/install.sh",
+      "summary": "Instalador de deploy que verifica dependências, configura os commands do Claude Code e sobe o serviço (via cron/serviço) do ecossistema braion.",
+      "tags": [
+        "script",
+        "installer",
+        "deployment",
+        "setup"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:scripts/setup-cron.sh",
+      "type": "file",
+      "name": "setup-cron.sh",
+      "filePath": "scripts/setup-cron.sh",
+      "summary": "Registra os hooks periódicos (agent-idle-hook e telegram-hook) no crontab com mensagem de instalação do tmux ciente do SO.",
+      "tags": [
+        "script",
+        "cron",
+        "scheduling",
+        "deployment"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/setup_pg_tunnel.sh",
+      "type": "file",
+      "name": "setup_pg_tunnel.sh",
+      "filePath": "scripts/setup_pg_tunnel.sh",
+      "summary": "Configura no Mac um tunnel SSH (autossh + LaunchAgent) para o Postgres da VPS, gerando plist, pg_service.conf e .pgpass com subcomandos status/install/start/stop/uninstall.",
+      "tags": [
+        "script",
+        "tunnel",
+        "database",
+        "ssh"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Usa LaunchAgent (plist) do macOS e autossh para manter o tunnel persistente."
+    },
+    {
+      "id": "file:scripts/state_smoke_test.sh",
+      "type": "file",
+      "name": "state_smoke_test.sh",
+      "filePath": "scripts/state_smoke_test.sh",
+      "summary": "Smoke test que valida lib/state.sh em ambos os backends (file e pg), incluindo asserts de igualdade e guard de heartbeat.",
+      "tags": [
+        "script",
+        "test",
+        "smoke-test",
+        "state-backend"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/telegram-bridge.sh",
+      "type": "file",
+      "name": "telegram-bridge.sh",
+      "filePath": "scripts/telegram-bridge.sh",
+      "summary": "Ponte de longo-polling do Telegram para o bot @br_ai_on_bot que roteia comandos (start, clear, reset, status, pause, deploy) para sessões tmux do Claude Code.",
+      "tags": [
+        "script",
+        "telegram",
+        "bridge",
+        "event-handler",
+        "service"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Implementa long-polling via offset do Telegram e despacha cada update para um handler de comando dedicado."
+    },
+    {
+      "id": "file:scripts/telegram-hook.sh",
+      "type": "file",
+      "name": "telegram-hook.sh",
+      "filePath": "scripts/telegram-hook.sh",
+      "summary": "Hook periódico que sourcia lib/telegram.sh para encaminhar notificações ou mensagens pendentes ao Telegram.",
+      "tags": [
+        "script",
+        "hook",
+        "telegram",
+        "notification"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/uninstall.sh",
+      "type": "file",
+      "name": "uninstall.sh",
+      "filePath": "scripts/uninstall.sh",
+      "summary": "Reverte tudo que install.sh e setup-cron.sh criam: remove entradas do crontab, commands, hooks e o serviço do ecossistema braion.",
+      "tags": [
+        "script",
+        "uninstaller",
+        "cleanup",
+        "deployment"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/claude-switch.sh:claude",
+      "type": "function",
+      "name": "claude",
+      "filePath": "scripts/claude-switch.sh",
+      "lineRange": [
+        52,
+        78
+      ],
+      "summary": "Função wrapper que substitui o comando claude, fazendo a checagem de rate limit e redirecionando para Ollama quando necessário antes de invocar o binário real.",
+      "tags": [
+        "wrapper",
+        "fallback",
+        "entry-point"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/claude-switch.sh:_claude_auto_check",
+      "type": "function",
+      "name": "_claude_auto_check",
+      "filePath": "scripts/claude-switch.sh",
+      "lineRange": [
+        34,
+        43
+      ],
+      "summary": "Verifica automaticamente se o estado de rate limit ainda é válido e limpa a flag quando expirada.",
+      "tags": [
+        "rate-limit",
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/hub.sh:list_plugins",
+      "type": "function",
+      "name": "list_plugins",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        71,
+        95
+      ],
+      "summary": "Lista os plugins disponíveis lendo seus manifestos e exibindo nome, versão e descrição.",
+      "tags": [
+        "plugin-manager",
+        "listing",
+        "cli"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/hub.sh:list_installed",
+      "type": "function",
+      "name": "list_installed",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        97,
+        126
+      ],
+      "summary": "Lista os plugins atualmente instalados comparando a versão instalada com a versão disponível no manifesto.",
+      "tags": [
+        "plugin-manager",
+        "listing",
+        "cli"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/hub.sh:install_plugin",
+      "type": "function",
+      "name": "install_plugin",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        128,
+        180
+      ],
+      "summary": "Instala um plugin a partir do seu manifesto, copiando arquivos e registrando a versão instalada.",
+      "tags": [
+        "plugin-manager",
+        "installer",
+        "cli"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/hub.sh:init_plugin",
+      "type": "function",
+      "name": "init_plugin",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        182,
+        204
+      ],
+      "summary": "Inicializa a configuração de um plugin copiando o arquivo de exemplo de config para o local de configuração efetivo.",
+      "tags": [
+        "plugin-manager",
+        "configuration",
+        "cli"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/hub.sh:uninstall_plugin",
+      "type": "function",
+      "name": "uninstall_plugin",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        206,
+        243
+      ],
+      "summary": "Desinstala um plugin removendo seus arquivos e a entrada de versão registrada.",
+      "tags": [
+        "plugin-manager",
+        "uninstaller",
+        "cli"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/hub.sh:status_plugin",
+      "type": "function",
+      "name": "status_plugin",
+      "filePath": "scripts/hub.sh",
+      "lineRange": [
+        245,
+        289
+      ],
+      "summary": "Mostra o status detalhado de um plugin, comparando versão instalada com a disponível e verificando o estado da configuração.",
+      "tags": [
+        "plugin-manager",
+        "status",
+        "cli"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/install.sh:check_deps",
+      "type": "function",
+      "name": "check_deps",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        14,
+        79
+      ],
+      "summary": "Verifica e, quando possível, instala as dependências necessárias (tmux, jq, Homebrew etc.) para o deploy do ecossistema.",
+      "tags": [
+        "installer",
+        "validation",
+        "dependencies"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/install.sh:setup_commands",
+      "type": "function",
+      "name": "setup_commands",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        83,
+        113
+      ],
+      "summary": "Configura os commands do Claude Code copiando-os para o diretório de configuração esperado.",
+      "tags": [
+        "installer",
+        "configuration",
+        "setup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/install.sh:service_start",
+      "type": "function",
+      "name": "service_start",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        120,
+        157
+      ],
+      "summary": "Sobe o serviço do ecossistema braion via systemd, LaunchAgent ou nohup conforme o sistema operacional.",
+      "tags": [
+        "installer",
+        "service",
+        "deployment"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/setup-cron.sh:register_hook_wrapper",
+      "type": "function",
+      "name": "register_hook_wrapper",
+      "filePath": "scripts/setup-cron.sh",
+      "lineRange": [
+        58,
+        66
+      ],
+      "summary": "Registra um hook como wrapper periódico no crontab com o intervalo e nome informados.",
+      "tags": [
+        "cron",
+        "scheduling",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/setup_pg_tunnel.sh:status",
+      "type": "function",
+      "name": "status",
+      "filePath": "scripts/setup_pg_tunnel.sh",
+      "lineRange": [
+        59,
+        77
+      ],
+      "summary": "Mostra o estado atual do tunnel SSH para o Postgres, incluindo se o LaunchAgent está carregado e a porta ativa.",
+      "tags": [
+        "tunnel",
+        "status",
+        "diagnostics"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/setup_pg_tunnel.sh:install_files",
+      "type": "function",
+      "name": "install_files",
+      "filePath": "scripts/setup_pg_tunnel.sh",
+      "lineRange": [
+        79,
+        146
+      ],
+      "summary": "Gera os arquivos de configuração do tunnel (plist do LaunchAgent, pg_service.conf e .pgpass) para conexão ao Postgres da VPS.",
+      "tags": [
+        "tunnel",
+        "configuration",
+        "database"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/setup_pg_tunnel.sh:start_tunnel",
+      "type": "function",
+      "name": "start_tunnel",
+      "filePath": "scripts/setup_pg_tunnel.sh",
+      "lineRange": [
+        148,
+        165
+      ],
+      "summary": "Carrega o LaunchAgent para iniciar o tunnel SSH persistente via autossh.",
+      "tags": [
+        "tunnel",
+        "ssh",
+        "lifecycle"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/state_smoke_test.sh:setup_pg_backend",
+      "type": "function",
+      "name": "setup_pg_backend",
+      "filePath": "scripts/state_smoke_test.sh",
+      "lineRange": [
+        24,
+        43
+      ],
+      "summary": "Prepara o ambiente do backend Postgres para o smoke test, configurando variáveis e conexão.",
+      "tags": [
+        "test",
+        "state-backend",
+        "setup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/state_smoke_test.sh:assert_eq",
+      "type": "function",
+      "name": "assert_eq",
+      "filePath": "scripts/state_smoke_test.sh",
+      "lineRange": [
+        49,
+        59
+      ],
+      "summary": "Asserção de igualdade que compara valor esperado e obtido, falhando o teste em caso de divergência.",
+      "tags": [
+        "test",
+        "assertion",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/state_smoke_test.sh:run_suite",
+      "type": "function",
+      "name": "run_suite",
+      "filePath": "scripts/state_smoke_test.sh",
+      "lineRange": [
+        61,
+        122
+      ],
+      "summary": "Executa a suíte completa de testes contra lib/state.sh, exercitando os helpers state_* e o guard de heartbeat.",
+      "tags": [
+        "test",
+        "smoke-test",
+        "state-backend"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:clean_response",
+      "type": "function",
+      "name": "clean_response",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        47,
+        61
+      ],
+      "summary": "Limpa a resposta do Claude Code removendo códigos ANSI e ruído de TUI antes de enviar ao Telegram.",
+      "tags": [
+        "telegram",
+        "serialization",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:ensure_session",
+      "type": "function",
+      "name": "ensure_session",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        70,
+        104
+      ],
+      "summary": "Garante que a sessão tmux do Claude Code exista, criando-a quando necessário antes de enviar mensagens.",
+      "tags": [
+        "telegram",
+        "tmux",
+        "session-management"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:send_and_wait",
+      "type": "function",
+      "name": "send_and_wait",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        108,
+        145
+      ],
+      "summary": "Envia uma mensagem para a sessão tmux e aguarda a resposta do Claude Code via captura do pane.",
+      "tags": [
+        "telegram",
+        "tmux",
+        "event-handler"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:handle_deploy",
+      "type": "function",
+      "name": "handle_deploy",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        221,
+        300
+      ],
+      "summary": "Handler do comando /deploy que executa o fluxo de deploy a partir de uma mensagem do Telegram.",
+      "tags": [
+        "telegram",
+        "deployment",
+        "event-handler"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:handle_message",
+      "type": "function",
+      "name": "handle_message",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        302,
+        327
+      ],
+      "summary": "Roteia uma mensagem recebida do Telegram para o handler de comando apropriado.",
+      "tags": [
+        "telegram",
+        "router",
+        "event-handler"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/telegram-bridge.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/telegram-bridge.sh",
+      "lineRange": [
+        330,
+        397
+      ],
+      "summary": "Loop principal de long-polling que consome updates do Telegram via offset e despacha cada um para handle_message.",
+      "tags": [
+        "telegram",
+        "entry-point",
+        "event-loop"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Arquivo de ignore do plugin understand-anything, listando padrões de caminhos a serem excluídos da análise do knowledge graph.",
+      "tags": [
+        "configuration",
+        "ignore-file",
+        "tooling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.understand-anything/config.json",
+      "type": "config",
+      "name": "config.json",
+      "filePath": ".understand-anything/config.json",
+      "summary": "Config mínima do plugin understand-anything definindo o idioma de saída (outputLanguage) das análises.",
+      "tags": [
+        "configuration",
+        "tooling",
+        "meta"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:agents/_defaults/agent-builder/config.yaml",
+      "type": "config",
+      "name": "config.yaml",
+      "filePath": "agents/_defaults/agent-builder/config.yaml",
+      "summary": "Config do agente AgentBuilder definindo model, fallback_model, capabilities, schedule, budget, runtime e integrations da camada meta de criação de agentes.",
+      "tags": [
+        "configuration",
+        "agent-definition",
+        "schedule",
+        "budget"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:agents/_defaults/agent-builder/IDENTITY.md",
+      "type": "document",
+      "name": "IDENTITY.md",
+      "filePath": "agents/_defaults/agent-builder/IDENTITY.md",
+      "summary": "IDENTITY persistente do agente AgentBuilder — persona meta que cria e configura novos agentes, com heurísticas de escolha de modelo, budget, schedule e o schema completo do config.yaml.",
+      "tags": [
+        "documentation",
+        "agent-definition",
+        "identity",
+        "meta",
+        "persona"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "IDENTITY.md serve como prompt de persona persistente entre sessões do agente."
+    },
+    {
+      "id": "config:agents/_defaults/orchestrator/config.yaml",
+      "type": "config",
+      "name": "config.yaml",
+      "filePath": "agents/_defaults/orchestrator/config.yaml",
+      "summary": "Config do agente Orchestrator definindo model, runtime, capabilities, schedule, budget e integrations para o Team Lead que decompõe e distribui tarefas.",
+      "tags": [
+        "configuration",
+        "agent-definition",
+        "orchestration",
+        "schedule"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:agents/_defaults/orchestrator/IDENTITY.md",
+      "type": "document",
+      "name": "IDENTITY.md",
+      "filePath": "agents/_defaults/orchestrator/IDENTITY.md",
+      "summary": "IDENTITY persistente do agente Orchestrator descrevendo os modos de operação fan-out, fan-in e escalation para coordenação de jobs entre agentes especializados.",
+      "tags": [
+        "documentation",
+        "agent-definition",
+        "identity",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:agents/_defaults/task-manager/config.yaml",
+      "type": "config",
+      "name": "config.yaml",
+      "filePath": "agents/_defaults/task-manager/config.yaml",
+      "summary": "Config do agente Task Manager definindo model, capabilities, schedule, budget e integrations para gestão autônoma de tarefas via Notion e Obsidian.",
+      "tags": [
+        "configuration",
+        "agent-definition",
+        "schedule",
+        "budget"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:agents/_defaults/task-manager/IDENTITY.md",
+      "type": "document",
+      "name": "IDENTITY.md",
+      "filePath": "agents/_defaults/task-manager/IDENTITY.md",
+      "summary": "IDENTITY persistente do agente Task Manager — persona com pipeline de operação autônoma, comandos disponíveis, pré-requisitos e MCP tools requeridas para extração e sincronização de tarefas.",
+      "tags": [
+        "documentation",
+        "agent-definition",
+        "identity",
+        "persona"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:config/integrations.json",
+      "type": "config",
+      "name": "integrations.json",
+      "filePath": "config/integrations.json",
+      "summary": "Config global de integrações externas dos agentes, contendo as regras do Obsidian (obsidian_rules) compartilhadas no ecossistema.",
+      "tags": [
+        "configuration",
+        "integrations",
+        "obsidian"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:config/knowledge.yaml",
+      "type": "config",
+      "name": "knowledge.yaml",
+      "filePath": "config/knowledge.yaml",
+      "summary": "Config do backend de conhecimento/RAG definindo Qdrant, Ollama, modelo de embedding, dimensões, collection padrão e dashboard usados na busca semântica.",
+      "tags": [
+        "configuration",
+        "knowledge-base",
+        "embeddings",
+        "vector-search"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:db/CUTOVER.md",
+      "type": "document",
+      "name": "CUTOVER.md",
+      "filePath": "db/CUTOVER.md",
+      "summary": "Runbook de cutover da migração do backend de estado de arquivos para Postgres, organizado em fases (provisionamento, deploy, migração inicial, cutover, cleanup) com plano de rollback.",
+      "tags": [
+        "documentation",
+        "migration",
+        "database",
+        "runbook",
+        "deployment"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:db/schema.sql:agents",
+      "type": "table",
+      "name": "agents",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de registro dos agentes do ecossistema com timestamps de criação e atualização.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "agents"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:heartbeat",
+      "type": "table",
+      "name": "heartbeat",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de heartbeat por agente registrando last_ping, status, waiting_since e proteções ativas para monitoramento de presença.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "monitoring"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:agent_documents",
+      "type": "table",
+      "name": "agent_documents",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela que armazena documentos de estado por agente (doc_type, doc_date, content) com versionamento via last_commit.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:episodic_memory",
+      "type": "table",
+      "name": "episodic_memory",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de memória episódica dos agentes registrando ação, contexto, outcome, importância e payload por timestamp.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "memory"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:cache_kv",
+      "type": "table",
+      "name": "cache_kv",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de cache key-value por agente com expiração (expires_at).",
+      "tags": [
+        "database",
+        "schema-definition",
+        "cache"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:handoffs",
+      "type": "table",
+      "name": "handoffs",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de handoffs entre agentes (from_agent, to_agent, status, expects, reply_to, job_id) com frontmatter e body da mensagem.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "agent-communication"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:handoff_artifacts",
+      "type": "table",
+      "name": "handoff_artifacts",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de artefatos anexados a handoffs, vinculados por handoff_id com nome e conteúdo.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "agent-communication"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:jobs",
+      "type": "table",
+      "name": "jobs",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de jobs do orquestrador com thread_id, status, contadores expected/completed/failed e result_summary para coordenação fan-out/fan-in.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:shared_kv",
+      "type": "table",
+      "name": "shared_kv",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela key-value compartilhada entre agentes para estado global como o schedule_state.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:db/schema.sql:logs",
+      "type": "table",
+      "name": "logs",
+      "filePath": "db/schema.sql",
+      "summary": "Tabela de logs estruturados dos agentes com action, message, prompt_version, status e metadata por timestamp.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "logging"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "schema:data:db/schema.sql",
+      "type": "schema",
+      "name": "schema.sql",
+      "filePath": "db/schema.sql",
+      "summary": "Schema Postgres completo do backend de estado dos agentes, definindo 10 tabelas (agents, heartbeat, documentos, memória episódica, cache, handoffs, jobs, logs) e índices de suporte.",
+      "tags": [
+        "database",
+        "schema-definition",
+        "migration",
+        "state"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Usa JSONB para payloads flexíveis (extra, metadata, payload) e índices compostos por agente+timestamp."
+    },
+    {
+      "id": "config:hub/plugins/claude/tasks/manifest.json",
+      "type": "config",
+      "name": "manifest.json",
+      "filePath": "hub/plugins/claude/tasks/manifest.json",
+      "summary": "Manifest do plugin Claude tasks declarando nome, versão, commands, config, requires, install_dir e hook de post_install.",
+      "tags": [
+        "configuration",
+        "plugin-manifest",
+        "tooling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:hub/plugins/claude/tasks/tasks-config.example.json",
+      "type": "config",
+      "name": "tasks-config.example.json",
+      "filePath": "hub/plugins/claude/tasks/tasks-config.example.json",
+      "summary": "Config de exemplo do plugin tasks definindo perfil de usuário, fontes de extração, classificação, integrações Notion/Obsidian, modo proativo e save_targets.",
+      "tags": [
+        "configuration",
+        "plugin-config",
+        "example",
+        "integrations"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/agent-scheduler.py",
+      "type": "file",
+      "name": "agent-scheduler.py",
+      "filePath": "lib/agent-scheduler.py",
+      "summary": "Scheduler que carrega os config.yaml de todos os agentes e computa quais estão due, waiting, inactive ou bloqueados por budget, com suporte a intervalos e expressões cron.",
+      "tags": [
+        "service",
+        "scheduler",
+        "agent-orchestration",
+        "cli"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Usa croniter para expressões cron e consulta lib/state.py como fronteira de estado (shared_kv)."
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:load_configs",
+      "type": "function",
+      "name": "load_configs",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        131,
+        142
+      ],
+      "summary": "Carrega e faz parse de todos os config.yaml dos agentes via glob, retornando a lista de configs válidas.",
+      "tags": [
+        "loader",
+        "configuration",
+        "yaml"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:compute_schedule",
+      "type": "function",
+      "name": "compute_schedule",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        156,
+        291
+      ],
+      "summary": "Núcleo do scheduler que avalia cada agente contra intervalo/cron, budget diário, janela de trabalho e last_run, classificando-os em due, waiting, inactive ou budget_blocked.",
+      "tags": [
+        "scheduler",
+        "core-logic",
+        "cron",
+        "budget"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:cmd_status",
+      "type": "function",
+      "name": "cmd_status",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        294,
+        316
+      ],
+      "summary": "Comando CLI que carrega configs e estado, computa o schedule e imprime o resultado consolidado em JSON.",
+      "tags": [
+        "cli",
+        "command",
+        "serialization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:cmd_mark_ran",
+      "type": "function",
+      "name": "cmd_mark_ran",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        319,
+        338
+      ],
+      "summary": "Comando CLI que marca agentes como executados, atualizando last_run no schedule_state e incrementando o contador de budget diário.",
+      "tags": [
+        "cli",
+        "command",
+        "state"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:parse_interval",
+      "type": "function",
+      "name": "parse_interval",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        92,
+        102
+      ],
+      "summary": "Converte strings de intervalo (ex: 30m, 2h, 1d) em segundos para o cálculo de agendamento.",
+      "tags": [
+        "utility",
+        "parsing",
+        "time"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:read_budget_count",
+      "type": "function",
+      "name": "read_budget_count",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        114,
+        122
+      ],
+      "summary": "Lê o contador de execuções do dia de um agente a partir do arquivo de budget.",
+      "tags": [
+        "utility",
+        "budget",
+        "state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/agent-scheduler.py:read_permission_mode",
+      "type": "function",
+      "name": "read_permission_mode",
+      "filePath": "lib/agent-scheduler.py",
+      "lineRange": [
+        81,
+        89
+      ],
+      "summary": "Resolve o permission_mode do agente a partir do runtime do config, com fallback para o default do CLI.",
+      "tags": [
+        "utility",
+        "configuration",
+        "runtime"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/state.py",
+      "type": "file",
+      "name": "state.py",
+      "filePath": "lib/state.py",
+      "summary": "Fronteira de estado dos agentes que abstrai o backend (file ou Postgres) expondo helpers shared_kv, heartbeat, episodic_memory e log com dispatch dinâmico por backend.",
+      "tags": [
+        "service",
+        "state-management",
+        "abstraction",
+        "facade"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Usa dispatch via globals() para rotear cada operação para a implementação _file_* ou _pg_* conforme BRAION_STATE_BACKEND."
+    },
+    {
+      "id": "function:lib/state.py:_dispatch",
+      "type": "function",
+      "name": "_dispatch",
+      "filePath": "lib/state.py",
+      "lineRange": [
+        184,
+        189
+      ],
+      "summary": "Resolve dinamicamente a implementação da operação (_file_* ou _pg_*) conforme o backend ativo, lançando erro se não existir.",
+      "tags": [
+        "dispatch",
+        "core-logic",
+        "abstraction"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:lib/state.py:_pg_heartbeat_set",
+      "type": "function",
+      "name": "_pg_heartbeat_set",
+      "filePath": "lib/state.py",
+      "lineRange": [
+        132,
+        149
+      ],
+      "summary": "Persiste o heartbeat de um agente no Postgres via upsert, garantindo previamente o registro do agente.",
+      "tags": [
+        "state-management",
+        "postgres",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.py:_pg_episodic_append",
+      "type": "function",
+      "name": "_pg_episodic_append",
+      "filePath": "lib/state.py",
+      "lineRange": [
+        152,
+        165
+      ],
+      "summary": "Insere uma entrada de memória episódica de um agente no Postgres a partir do entry serializado.",
+      "tags": [
+        "state-management",
+        "postgres",
+        "memory"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.py:_pg_heartbeat_get",
+      "type": "function",
+      "name": "_pg_heartbeat_get",
+      "filePath": "lib/state.py",
+      "lineRange": [
+        118,
+        129
+      ],
+      "summary": "Recupera o heartbeat de um agente do Postgres, retornando o JSON decodificado.",
+      "tags": [
+        "state-management",
+        "postgres",
+        "monitoring"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:lib/state.py:_pg_psql",
+      "type": "function",
+      "name": "_pg_psql",
+      "filePath": "lib/state.py",
+      "lineRange": [
+        94,
+        99
+      ],
+      "summary": "Executa SQL no Postgres via subprocess psql e retorna a saída padrão tratada.",
+      "tags": [
+        "postgres",
+        "subprocess",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:prompts/system-prompts/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "prompts/system-prompts/README.md",
+      "summary": "Documentação dos system prompts do ecossistema, explicando os arquivos disponíveis, como funcionam e como editá-los.",
+      "tags": [
+        "documentation",
+        "system-prompts",
+        "guide"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/migrate_fs_to_pg.py",
+      "type": "file",
+      "name": "migrate_fs_to_pg.py",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "summary": "Script idempotente de migração que espelha o estado baseado em arquivos (heartbeat, documentos, memória episódica, cache, handoffs, jobs, shared_kv e logs) para as tabelas Postgres.",
+      "tags": [
+        "script",
+        "migration",
+        "database",
+        "data-pipeline"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Gera SQL com quoting manual e dollar-quoting para conteúdos grandes, suportando modo --dry-run."
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        359,
+        397
+      ],
+      "summary": "Entrypoint do migrador que parseia argumentos, itera os diretórios de agentes e orquestra todas as funções de migração por domínio.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "orchestration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:migrate_handoffs",
+      "type": "function",
+      "name": "migrate_handoffs",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        204,
+        260
+      ],
+      "summary": "Migra os handoffs em arquivos de um agente para as tabelas handoffs e handoff_artifacts, parseando frontmatter e anexos.",
+      "tags": [
+        "migration",
+        "agent-communication",
+        "data-pipeline"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:migrate_logs",
+      "type": "function",
+      "name": "migrate_logs",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        321,
+        356
+      ],
+      "summary": "Migra os arquivos de log JSONL diários por agente para a tabela logs do Postgres.",
+      "tags": [
+        "migration",
+        "logging",
+        "data-pipeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:migrate_jobs",
+      "type": "function",
+      "name": "migrate_jobs",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        263,
+        296
+      ],
+      "summary": "Migra os jobs em arquivos JSON para a tabela jobs do Postgres.",
+      "tags": [
+        "migration",
+        "orchestration",
+        "data-pipeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:migrate_episodic",
+      "type": "function",
+      "name": "migrate_episodic",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        127,
+        159
+      ],
+      "summary": "Migra as entradas de memória episódica JSONL de um agente para a tabela episodic_memory.",
+      "tags": [
+        "migration",
+        "memory",
+        "data-pipeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:migrate_documents",
+      "type": "function",
+      "name": "migrate_documents",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        95,
+        124
+      ],
+      "summary": "Migra os documentos de estado de um agente (state, semantic, flat) para a tabela agent_documents.",
+      "tags": [
+        "migration",
+        "state",
+        "data-pipeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/migrate_fs_to_pg.py:psql",
+      "type": "function",
+      "name": "psql",
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "lineRange": [
+        32,
+        42
+      ],
+      "summary": "Executa um comando SQL via subprocess psql, com suporte a dry-run e tratamento de erro.",
+      "tags": [
+        "postgres",
+        "subprocess",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/setup-totp.js",
+      "type": "file",
+      "name": "setup-totp.js",
+      "filePath": "scripts/setup-totp.js",
+      "summary": "Script interativo de setup de TOTP que gera um segredo base32, exibe QR code e persiste as variáveis de autenticação no arquivo .env.",
+      "tags": [
+        "script",
+        "security",
+        "totp",
+        "cli"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Implementa base32 e otpauth URI manualmente usando crypto nativo do Node, sem dependências de autenticação externas."
+    },
+    {
+      "id": "function:scripts/setup-totp.js:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/setup-totp.js",
+      "lineRange": [
+        68,
+        91
+      ],
+      "summary": "Fluxo principal interativo que confirma sobrescrita, gera o segredo TOTP, monta o URI, imprime o QR code e grava no .env.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "security"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/setup-totp.js:base32Encode",
+      "type": "function",
+      "name": "base32Encode",
+      "filePath": "scripts/setup-totp.js",
+      "lineRange": [
+        11,
+        23
+      ],
+      "summary": "Codifica um buffer em string base32 conforme o alfabeto RFC 4648 para o segredo TOTP.",
+      "tags": [
+        "utility",
+        "encoding",
+        "security"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/setup-totp.js:readEnv",
+      "type": "function",
+      "name": "readEnv",
+      "filePath": "scripts/setup-totp.js",
+      "lineRange": [
+        33,
+        41
+      ],
+      "summary": "Lê e parseia o arquivo .env existente em um objeto de variáveis chave-valor.",
+      "tags": [
+        "utility",
+        "env",
+        "io"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/setup-totp.js:printQr",
+      "type": "function",
+      "name": "printQr",
+      "filePath": "scripts/setup-totp.js",
+      "lineRange": [
+        57,
+        66
+      ],
+      "summary": "Renderiza um QR code do URI TOTP no terminal usando a lib qrcode quando disponível.",
+      "tags": [
+        "utility",
+        "cli",
+        "rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_integration_collaboration.sh",
+      "type": "file",
+      "name": "test_integration_collaboration.sh",
+      "filePath": "tests/test_integration_collaboration.sh",
+      "summary": "Teste de integração que exercita o fluxo de colaboração entre agentes (handoffs e jobs) com asserções via assert_eq.",
+      "tags": [
+        "test",
+        "integration-test",
+        "agent-communication",
+        "shell"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_job.sh",
+      "type": "file",
+      "name": "test_job.sh",
+      "filePath": "tests/test_job.sh",
+      "summary": "Teste de integração da camada de jobs (criação, status e ciclo de vida) com helpers cleanup e assert_eq.",
+      "tags": [
+        "test",
+        "integration-test",
+        "orchestration",
+        "shell"
+      ],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:heartbeat",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:agent_documents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:episodic_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:cache_kv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:handoffs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:handoff_artifacts",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:jobs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:shared_kv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql",
+      "target": "table:db/migrations/0001_init.sql:logs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:heartbeat",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:agent_documents",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:episodic_memory",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:cache_kv",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:handoffs",
+      "target": "table:db/migrations/0001_init.sql:agents",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0001_init.sql:handoff_artifacts",
+      "target": "table:db/migrations/0001_init.sql:handoffs",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "table:db/migrations/0002_agent_documents_nullable_doc_date.sql",
+      "target": "table:db/migrations/0001_init.sql:agent_documents",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "table:db/migrations/0003_handoffs_drop_reply_to_fk.sql",
+      "target": "table:db/migrations/0001_init.sql:handoffs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "service:docker-compose.pg-braion.yml",
+      "target": "service:docker-compose.pg-braion.yml:pg-braion",
+      "type": "deploys",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "document:CLAUDE.md",
+      "target": "document:AGENTS.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:CLAUDE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "service:docker-compose.pg-braion.yml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:commands/braion/agent-handoff.md",
+      "target": "file:lib/handoff.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-handoff.md",
+      "target": "file:lib/state.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-handoff.md",
+      "target": "file:lib/memory.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-handoff.md",
+      "target": "file:lib/logger.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-inbox-router.md",
+      "target": "file:lib/handoff.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-inbox-router.md",
+      "target": "file:lib/logger.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-init.md",
+      "target": "file:lib/state.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-init.md",
+      "target": "file:lib/logger.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/state.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/memory.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/handoff.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/job.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/metrics.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/logger.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/agent-wrapup.md",
+      "target": "file:lib/telegram.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/orchestrator.md",
+      "target": "file:lib/handoff.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/orchestrator.md",
+      "target": "file:lib/lock.sh",
+      "type": "triggers",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:commands/braion/orchestrator.md",
+      "target": "document:commands/braion/agent-handoff.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:commands/braion/agent-inbox-router.md",
+      "target": "document:commands/braion/agent-handoff.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:commands/braion/agent-init.md",
+      "target": "document:commands/braion/agent-wrapup.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/overview.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/agents.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/commands.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/libs.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/scripts.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/dashboard.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/telegram.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/index.md",
+      "target": "document:docs/handoffs-and-jobs.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/commands.md",
+      "target": "document:docs/handoffs-and-jobs.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/cli.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/agent-cron.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/agent-scheduler.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/telegram.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/handoff.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/job.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/lock.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/check_concurrency.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/logger.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/metrics.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/evaluate.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/memory.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/optimize.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/validate_output.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/feature-request.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/obsidian-commit.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/libs.md",
+      "target": "file:lib/orchestrate.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/install.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/uninstall.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/setup-cron.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/setup-totp.js",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/telegram-bridge.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/telegram-hook.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/create-agent.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/claude-switch.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/agent-idle-hook.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/scripts.md",
+      "target": "file:scripts/hub.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/telegram.md",
+      "target": "file:lib/telegram.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/telegram.md",
+      "target": "file:scripts/telegram-bridge.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/telegram.md",
+      "target": "file:scripts/telegram-hook.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/handoffs-and-jobs.md",
+      "target": "file:lib/handoff.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/handoffs-and-jobs.md",
+      "target": "file:lib/job.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/overview.md",
+      "target": "document:docs/agents.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md",
+      "target": "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/README.md",
+      "target": "document:hub/plugins/claude/tasks/commands/extract.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/README.md",
+      "target": "document:hub/plugins/claude/tasks/commands/update.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/README.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/README.md",
+      "target": "document:hub/plugins/claude/tasks/commands/check-stale.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/README.md",
+      "target": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/extract.md",
+      "target": "document:hub/plugins/claude/tasks/commands/update.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/update.md",
+      "target": "document:hub/plugins/claude/tasks/commands/save-notion.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/update.md",
+      "target": "document:hub/plugins/claude/tasks/commands/save-obsidian.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "target": "document:hub/plugins/claude/tasks/commands/sync-notion.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "target": "document:hub/plugins/claude/tasks/commands/sync-obsidian.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/check-stale.md",
+      "target": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/extract.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/check-stale.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/save-notion.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/save-obsidian.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/sync.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/sync-notion.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/sync-obsidian.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:hub/plugins/claude/tasks/commands/update.md",
+      "target": "document:hub/plugins/claude/tasks/commands/config.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/logger.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/logger.sh",
+      "target": "file:lib/metrics.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/logger.sh",
+      "target": "function:lib/state.sh:state_log_write",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/logger.sh",
+      "target": "function:lib/metrics.sh:metrics_log",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/memory.sh",
+      "target": "function:lib/memory.sh:log_episodic",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/memory.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:lib/memory.sh:log_episodic",
+      "target": "function:lib/state.sh:state_episodic_append",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/metrics.sh",
+      "target": "function:lib/metrics.sh:metrics_log",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/metrics.sh",
+      "target": "function:lib/metrics.sh:metrics_summary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/metrics.sh",
+      "target": "function:lib/metrics.sh:metrics_agent_summary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/obsidian-commit.sh",
+      "target": "file:lib/cli.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/optimize.sh",
+      "target": "function:lib/optimize.sh:version_snapshot",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/optimize.sh",
+      "target": "function:lib/optimize.sh:create_proposal",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/optimize.sh",
+      "target": "function:lib/optimize.sh:rollback",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/optimize.sh",
+      "target": "function:lib/optimize.sh:audit_prompt_sizes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/orchestrate.sh",
+      "target": "file:lib/handoff.sh",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_dispatch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_backend",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_log_write",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_heartbeat_set",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_heartbeat_get",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_doc_get",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_doc_set",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_episodic_append",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_episodic_search",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_cache_get",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_cache_set",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_handoff_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_handoff_list",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_handoff_set_status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_handoff_thread_history",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_job_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_job_complete",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:state_job_list_pending",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_file_handoff_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_pg_handoff_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_pg_heartbeat_set",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_file_doc_path",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_pg_job_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.sh",
+      "target": "function:lib/state.sh:_state_file_job_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "function:lib/state.sh:state_handoff_create",
+      "target": "function:lib/state.sh:_dispatch",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/state.sh:state_job_create",
+      "target": "function:lib/state.sh:_dispatch",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/state.sh:_dispatch",
+      "target": "function:lib/state.sh:_state_file_handoff_create",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/state.sh:_dispatch",
+      "target": "function:lib/state.sh:_state_pg_handoff_create",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/state.sh:_dispatch",
+      "target": "function:lib/state.sh:_state_file_job_create",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/state.sh:_dispatch",
+      "target": "function:lib/state.sh:_state_pg_job_create",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/telegram.sh",
+      "target": "function:lib/telegram.sh:tg_send",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/telegram.sh",
+      "target": "function:lib/telegram.sh:tg_typing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/telegram.sh",
+      "target": "function:lib/telegram.sh:tg_notify",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "function:lib/telegram.sh:tg_notify",
+      "target": "function:lib/telegram.sh:tg_send",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "function:lib/agent-cron.sh:kill_stale_session",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "function:lib/agent-cron.sh:build_agent_system_prompt",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "function:lib/agent-cron.sh:start_session",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "function:lib/agent-cron.sh:notify_user_handoff",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "function:lib/agent-cron.sh:get_agent_permission_mode",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "file:lib/telegram.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "file:lib/cli.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/agent-cron.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:lib/agent-cron.sh:start_session",
+      "target": "function:lib/cli.sh:cli_build_start_cmd",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/agent-cron.sh:start_session",
+      "target": "function:lib/cli.sh:cli_send_start_command",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/agent-cron.sh:notify_user_handoff",
+      "target": "function:lib/telegram.sh:tg_notify",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_valid_models",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_build_start_cmd",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_send_start_command",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_send_slash_command",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_wait_ready",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_hook_register",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_hook_unregister",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/cli.sh",
+      "target": "function:lib/cli.sh:cli_permission_mode_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/evaluate.sh",
+      "target": "function:lib/evaluate.sh:evaluate_deterministic",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/evaluate.sh",
+      "target": "function:lib/evaluate.sh:evaluate_day",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/evaluate.sh",
+      "target": "function:lib/evaluate.sh:generate_report",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/evaluate.sh",
+      "target": "function:lib/evaluate.sh:generate_weekly_summary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/evaluate.sh",
+      "target": "file:lib/metrics.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:lib/evaluate.sh:evaluate_day",
+      "target": "function:lib/metrics.sh:metrics_agent_summary",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/feature-request.sh",
+      "target": "file:lib/handoff.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/handoff.sh",
+      "target": "function:lib/handoff.sh:handoff_send",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/handoff.sh",
+      "target": "function:lib/handoff.sh:handoff_claim",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/handoff.sh",
+      "target": "function:lib/handoff.sh:handoff_thread_history",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/handoff.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:lib/handoff.sh:handoff_send",
+      "target": "function:lib/state.sh:state_handoff_create",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/handoff.sh:handoff_thread_history",
+      "target": "function:lib/state.sh:state_handoff_thread_history",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/job.sh",
+      "target": "function:lib/job.sh:_with_lock",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/job.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:lib/job.sh",
+      "target": "file:lib/lock.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:lib/job.sh:_with_lock",
+      "target": "function:lib/lock.sh:acquire",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:lib/job.sh:_with_lock",
+      "target": "function:lib/lock.sh:release",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:lib/knowledge.sh",
+      "target": "function:lib/knowledge.sh:knowledge_publish",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/knowledge.sh",
+      "target": "function:lib/knowledge.sh:knowledge_search",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/knowledge.sh",
+      "target": "function:lib/knowledge.sh:knowledge_list",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/knowledge.sh",
+      "target": "function:lib/knowledge.sh:_kb_agent_collection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/lock.sh",
+      "target": "function:lib/lock.sh:acquire",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/lock.sh",
+      "target": "function:lib/lock.sh:release",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/lock.sh",
+      "target": "function:lib/lock.sh:status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/claude-switch.sh",
+      "target": "function:scripts/claude-switch.sh:claude",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/claude-switch.sh",
+      "target": "function:scripts/claude-switch.sh:_claude_auto_check",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:list_plugins",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:list_installed",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:install_plugin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:init_plugin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:uninstall_plugin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "function:scripts/hub.sh:status_plugin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:check_deps",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:setup_commands",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:service_start",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup-cron.sh",
+      "target": "function:scripts/setup-cron.sh:register_hook_wrapper",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup_pg_tunnel.sh",
+      "target": "function:scripts/setup_pg_tunnel.sh:status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup_pg_tunnel.sh",
+      "target": "function:scripts/setup_pg_tunnel.sh:install_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup_pg_tunnel.sh",
+      "target": "function:scripts/setup_pg_tunnel.sh:start_tunnel",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/state_smoke_test.sh",
+      "target": "function:scripts/state_smoke_test.sh:setup_pg_backend",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/state_smoke_test.sh",
+      "target": "function:scripts/state_smoke_test.sh:assert_eq",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/state_smoke_test.sh",
+      "target": "function:scripts/state_smoke_test.sh:run_suite",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:clean_response",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:ensure_session",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:send_and_wait",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:handle_deploy",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:handle_message",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "function:scripts/telegram-bridge.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/create-agent.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/uninstall.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/hub.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/setup-cron.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "file:lib/cli.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/telegram-bridge.sh",
+      "target": "file:lib/telegram.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/telegram-hook.sh",
+      "target": "file:lib/telegram.sh",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/state_smoke_test.sh",
+      "target": "file:lib/state.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/setup-cron.sh",
+      "target": "file:scripts/agent-idle-hook.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/setup-cron.sh",
+      "target": "file:scripts/telegram-hook.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "file:scripts/setup-cron.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/uninstall.sh",
+      "target": "file:scripts/install.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/uninstall.sh",
+      "target": "file:scripts/setup-cron.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/uninstall.sh",
+      "target": "file:scripts/agent-idle-hook.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/uninstall.sh",
+      "target": "file:scripts/telegram-hook.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:agents/_defaults/agent-builder/config.yaml",
+      "target": "document:agents/_defaults/agent-builder/IDENTITY.md",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:agents/_defaults/agent-builder/config.yaml",
+      "target": "document:agents/_defaults/agent-builder/IDENTITY.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:agents/_defaults/orchestrator/config.yaml",
+      "target": "document:agents/_defaults/orchestrator/IDENTITY.md",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:agents/_defaults/orchestrator/config.yaml",
+      "target": "document:agents/_defaults/orchestrator/IDENTITY.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:agents/_defaults/task-manager/config.yaml",
+      "target": "document:agents/_defaults/task-manager/IDENTITY.md",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:agents/_defaults/task-manager/config.yaml",
+      "target": "document:agents/_defaults/task-manager/IDENTITY.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:agents",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:heartbeat",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:agent_documents",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:episodic_memory",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:cache_kv",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:handoffs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:handoff_artifacts",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:jobs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:shared_kv",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "schema:data:db/schema.sql",
+      "target": "table:db/schema.sql:logs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "document:db/CUTOVER.md",
+      "target": "schema:data:db/schema.sql",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:db/CUTOVER.md",
+      "target": "file:scripts/migrate_fs_to_pg.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:db/CUTOVER.md",
+      "target": "file:lib/state.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "file:lib/state.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:load_configs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:compute_schedule",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:cmd_status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:cmd_mark_ran",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:parse_interval",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:read_budget_count",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/agent-scheduler.py",
+      "target": "function:lib/agent-scheduler.py:read_permission_mode",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.py",
+      "target": "function:lib/state.py:_dispatch",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.py",
+      "target": "function:lib/state.py:_pg_heartbeat_set",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.py",
+      "target": "function:lib/state.py:_pg_episodic_append",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.py",
+      "target": "function:lib/state.py:_pg_heartbeat_get",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:lib/state.py",
+      "target": "function:lib/state.py:_pg_psql",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:migrate_handoffs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:migrate_logs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:migrate_jobs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:migrate_episodic",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:migrate_documents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "function:scripts/migrate_fs_to_pg.py:psql",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "table:db/schema.sql:handoffs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "table:db/schema.sql:jobs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "table:db/schema.sql:logs",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "table:db/schema.sql:episodic_memory",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/migrate_fs_to_pg.py",
+      "target": "table:db/schema.sql:agent_documents",
+      "type": "migrates",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:scripts/setup-totp.js",
+      "target": "function:scripts/setup-totp.js:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup-totp.js",
+      "target": "function:scripts/setup-totp.js:base32Encode",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup-totp.js",
+      "target": "function:scripts/setup-totp.js:readEnv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/setup-totp.js",
+      "target": "function:scripts/setup-totp.js:printQr",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:config/integrations.json",
+      "target": "file:lib/agent-scheduler.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:config/knowledge.yaml",
+      "target": "file:lib/state.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/test_job.sh",
+      "target": "table:db/schema.sql:jobs",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/test_integration_collaboration.sh",
+      "target": "table:db/schema.sql:handoffs",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/agents.md",
+      "target": "document:AGENTS.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/overview.md",
+      "target": "document:AGENTS.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md",
+      "target": "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/superpowers/specs/2026-04-11-config-wizard-design.md",
+      "target": "document:docs/superpowers/plans/2026-04-11-config-wizard.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md",
+      "target": "document:docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md",
+      "target": "document:docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:orchestration",
+      "name": "Camada de Orquestração",
+      "description": "Slash-commands do ciclo de sessão (init, wrapup, handoff, inbox-router, orchestrator) e definições de agentes (IDENTITY e config.yaml) que coordenam o comportamento dos agentes AI.",
+      "nodeIds": [
+        "document:commands/braion/agent-handoff.md",
+        "document:commands/braion/agent-inbox-router.md",
+        "document:commands/braion/agent-init.md",
+        "document:commands/braion/agent-wrapup.md",
+        "document:commands/braion/orchestrator.md",
+        "config:agents/_defaults/agent-builder/config.yaml",
+        "document:agents/_defaults/agent-builder/IDENTITY.md",
+        "config:agents/_defaults/orchestrator/config.yaml",
+        "document:agents/_defaults/orchestrator/IDENTITY.md",
+        "config:agents/_defaults/task-manager/config.yaml",
+        "document:agents/_defaults/task-manager/IDENTITY.md"
+      ]
+    },
+    {
+      "id": "layer:runtime",
+      "name": "Camada de Runtime/Core",
+      "description": "Biblioteca central de utilitários em shell e Python — state.sh/state.py como fronteira do state-backend, além de logger, memory, handoff, job, lock, métricas e scheduler que sustentam a execução dos agentes.",
+      "nodeIds": [
+        "file:lib/logger.sh",
+        "file:lib/memory.sh",
+        "file:lib/metrics.sh",
+        "file:lib/obsidian-commit.sh",
+        "file:lib/optimize.sh",
+        "file:lib/orchestrate.sh",
+        "file:lib/state.sh",
+        "file:lib/telegram.sh",
+        "file:lib/validate_output.sh",
+        "file:lib/agent-cron.sh",
+        "file:lib/check_concurrency.sh",
+        "file:lib/cli.sh",
+        "file:lib/evaluate.sh",
+        "file:lib/feature-request.sh",
+        "file:lib/handoff.sh",
+        "file:lib/job.sh",
+        "file:lib/knowledge.sh",
+        "file:lib/lock.sh",
+        "file:lib/agent-scheduler.py",
+        "file:lib/state.py"
+      ]
+    },
+    {
+      "id": "layer:persistence",
+      "name": "Camada de Persistência",
+      "description": "State-backend Postgres do projeto: schema, migrations idempotentes e as tabelas de estado (agents, heartbeat, memória episódica, handoffs, jobs, logs) que armazenam o estado entre sessões.",
+      "nodeIds": [
+        "table:db/migrations/0001_init.sql",
+        "table:db/migrations/0001_init.sql:agents",
+        "table:db/migrations/0001_init.sql:heartbeat",
+        "table:db/migrations/0001_init.sql:agent_documents",
+        "table:db/migrations/0001_init.sql:episodic_memory",
+        "table:db/migrations/0001_init.sql:cache_kv",
+        "table:db/migrations/0001_init.sql:handoffs",
+        "table:db/migrations/0001_init.sql:handoff_artifacts",
+        "table:db/migrations/0001_init.sql:jobs",
+        "table:db/migrations/0001_init.sql:shared_kv",
+        "table:db/migrations/0001_init.sql:logs",
+        "table:db/migrations/0002_agent_documents_nullable_doc_date.sql",
+        "table:db/migrations/0003_handoffs_drop_reply_to_fk.sql",
+        "document:db/CUTOVER.md",
+        "table:db/schema.sql:agents",
+        "table:db/schema.sql:heartbeat",
+        "table:db/schema.sql:agent_documents",
+        "table:db/schema.sql:episodic_memory",
+        "table:db/schema.sql:cache_kv",
+        "table:db/schema.sql:handoffs",
+        "table:db/schema.sql:handoff_artifacts",
+        "table:db/schema.sql:jobs",
+        "table:db/schema.sql:shared_kv",
+        "table:db/schema.sql:logs",
+        "schema:data:db/schema.sql"
+      ]
+    },
+    {
+      "id": "layer:operations",
+      "name": "Camada de Operações e Deploy",
+      "description": "Scripts de instalação, criação de agentes, cron, túnel PG e migração FS→PG, testes de integração, release e o docker-compose do Postgres que provisionam e operam o ecossistema.",
+      "nodeIds": [
+        "service:docker-compose.pg-braion.yml",
+        "service:docker-compose.pg-braion.yml:pg-braion",
+        "file:release.sh",
+        "file:scripts/agent-idle-hook.sh",
+        "file:scripts/claude-switch.sh",
+        "file:scripts/create-agent.sh",
+        "file:scripts/hub.sh",
+        "file:scripts/install.sh",
+        "file:scripts/setup-cron.sh",
+        "file:scripts/setup_pg_tunnel.sh",
+        "file:scripts/state_smoke_test.sh",
+        "file:scripts/telegram-bridge.sh",
+        "file:scripts/telegram-hook.sh",
+        "file:scripts/uninstall.sh",
+        "file:.understand-anything/.understandignore",
+        "config:.understand-anything/config.json",
+        "file:scripts/migrate_fs_to_pg.py",
+        "file:scripts/setup-totp.js",
+        "file:tests/test_integration_collaboration.sh",
+        "file:tests/test_job.sh"
+      ]
+    },
+    {
+      "id": "layer:configuration",
+      "name": "Camada de Configuração e Integrações",
+      "description": "Arquivos de configuração do projeto e integrações externas — .project.yaml, .mcp, knowledge.yaml, integrations.json e manifests do plugin distribuível \"tasks\" do hub.",
+      "nodeIds": [
+        "config:.env.example",
+        "config:.mcp.example.json",
+        "config:.project.yaml",
+        "config:config/integrations.json",
+        "config:config/knowledge.yaml",
+        "config:hub/plugins/claude/tasks/manifest.json",
+        "config:hub/plugins/claude/tasks/tasks-config.example.json"
+      ]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "Camada de Documentação e Design",
+      "description": "Documentação do projeto (README, AGENTS, CLAUDE, USER), guias e planos/specs de design em docs/superpowers, prompts de sistema e a documentação dos comandos distribuíveis do hub.",
+      "nodeIds": [
+        "document:AGENTS.md",
+        "document:CLAUDE.md",
+        "document:LICENSE.md",
+        "document:README.md",
+        "document:USER.example.md",
+        "document:docs/index.md",
+        "document:docs/overview.md",
+        "document:docs/agents.md",
+        "document:docs/commands.md",
+        "document:docs/libs.md",
+        "document:docs/scripts.md",
+        "document:docs/dashboard.md",
+        "document:docs/telegram.md",
+        "document:docs/handoffs-and-jobs.md",
+        "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md",
+        "document:docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+        "document:docs/superpowers/plans/2026-04-11-config-wizard.md",
+        "document:docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md",
+        "document:docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md",
+        "document:docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md",
+        "document:docs/superpowers/specs/2026-04-11-config-wizard-design.md",
+        "document:docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md",
+        "document:docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md",
+        "document:hub/plugins/claude/tasks/commands/README.md",
+        "document:hub/plugins/claude/tasks/commands/check-stale.md",
+        "document:hub/plugins/claude/tasks/commands/config.md",
+        "document:hub/plugins/claude/tasks/commands/extract.md",
+        "document:hub/plugins/claude/tasks/commands/save-notion.md",
+        "document:hub/plugins/claude/tasks/commands/save-obsidian.md",
+        "document:hub/plugins/claude/tasks/commands/sync-notion.md",
+        "document:hub/plugins/claude/tasks/commands/sync-obsidian.md",
+        "document:hub/plugins/claude/tasks/commands/sync.md",
+        "document:hub/plugins/claude/tasks/commands/update.md",
+        "document:prompts/system-prompts/README.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Visão Geral do Projeto",
+      "description": "Comece pelo README.md para entender o propósito do BR.AI.ON: um ecossistema multi-agente de IA pessoal orquestrado pelo Claude Code, onde cada agente tem identidade persistente, estado entre sessões e integrações via MCP. Este documento cobre o quickstart de instalação, os ambientes (produção/homolog via systemd), o auto-deploy por cron e o dashboard. É o mapa que orienta todo o restante do tour. Em seguida, docs/overview.md aprofunda a arquitetura: o ciclo de vida de um agente, modos de schedule, comunicação entre agentes e a infraestrutura.",
+      "nodeIds": [
+        "document:README.md",
+        "document:docs/overview.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Regras Operacionais e Convenções",
+      "description": "AGENTS.md define as regras que regem TODOS os agentes — backend de estado, ciclo de vida, logging, scheduler, budget, concorrência, memória, handoffs peer-to-peer e jobs paralelos. CLAUDE.md complementa orientando o próprio Claude Code sobre estrutura de diretórios e convenções (estado em Markdown, config em YAML, logs em JSONL). Juntos, esses dois documentos estabelecem o vocabulário e os contratos que você verá implementados em código nos próximos passos.",
+      "nodeIds": [
+        "document:AGENTS.md",
+        "document:CLAUDE.md"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Definição dos Agentes (IDENTITY + config)",
+      "description": "Cada agente é definido por um par IDENTITY.md (a persona persistente) e config.yaml (model, fallback, schedule, budget e integrações). O Task Manager é o agente de produtividade base; o AgentBuilder é a persona meta que cria e configura novos agentes. Esse padrão IDENTITY+config é a unidade fundamental do ecossistema — entendê-lo aqui torna óbvio como o scheduler e os commands operam mais adiante.",
+      "nodeIds": [
+        "document:agents/_defaults/task-manager/IDENTITY.md",
+        "config:agents/_defaults/task-manager/config.yaml",
+        "config:agents/_defaults/agent-builder/config.yaml"
+      ],
+      "languageLesson": "YAML usa indentação (espaços, nunca tabs) para hierarquia. Listas começam com '- ' e mapas usam 'chave: valor'. Nos config.yaml dos agentes, campos como schedule e budget são lidos pelo scheduler em Python e pelos scripts shell, servindo de contrato declarativo entre as camadas."
+    },
+    {
+      "order": 4,
+      "title": "Início de Sessão — agent-init",
+      "description": "O ciclo de vida de cada agente começa aqui. O command agent-init.md emite o heartbeat de início, carrega a configuração e o estado persistente via lib/state.sh e define o objetivo da sessão. Construindo sobre as definições de agente do Passo 3, este é o ponto onde a IDENTITY e o estado salvo voltam a ser carregados na memória — o equivalente ao bootstrap de uma aplicação tradicional, mas dirigido pelo Claude Code.",
+      "nodeIds": [
+        "document:commands/braion/agent-init.md",
+        "document:docs/commands.md"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Encerramento de Sessão — agent-wrapup",
+      "description": "No fim da sessão, agent-wrapup.md fecha o ciclo: salva o estado persistente via lib/state.sh, atualiza memória semântica e episódica, arquiva handoffs, marca jobs como completos, loga métricas e notifica via Telegram. É o passo de maior fan-out entre os commands, pois toca quase todas as bibliotecas do runtime — o espelho do agent-init do Passo 4 e a garantia de que nada do trabalho da sessão se perde.",
+      "nodeIds": [
+        "document:commands/braion/agent-wrapup.md"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Comunicação Entre Agentes — Handoffs, Orchestrator e Inbox",
+      "description": "Agentes colaboram de forma assíncrona. O orchestrator.md decompõe tarefas e cria scoped handoffs para agentes especializados, controlando concorrência via lib/lock.sh; agent-handoff.md processa handoffs pendentes; agent-inbox-router.md lê notas do inbox do Obsidian e roteia para o agente responsável conforme o mapa de domínios dos config.yaml. Esses três commands implementam o padrão de comunicação descrito no Passo 2.",
+      "nodeIds": [
+        "document:commands/braion/orchestrator.md",
+        "document:commands/braion/agent-handoff.md",
+        "document:commands/braion/agent-inbox-router.md",
+        "document:docs/handoffs-and-jobs.md"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "A Fronteira do Estado — state.sh / state.py",
+      "description": "Aqui está o núcleo do runtime e o arquivo de maior fan-in do projeto. lib/state.sh é a fronteira do backend de estado: abstrai persistência de heartbeats, docs, memória e handoffs, escolhendo entre arquivos (default) ou Postgres conforme BRAION_STATE_BACKEND. lib/state.py oferece a mesma fronteira para o lado Python. Nenhum código novo deve abrir arquivos de estado diretamente — tudo passa por estes helpers. Os commands dos Passos 4-6 dependem inteiramente desta abstração.",
+      "nodeIds": [
+        "file:lib/state.sh",
+        "file:lib/state.py",
+        "document:docs/libs.md"
+      ],
+      "languageLesson": "Em shell, este padrão de 'fronteira' usa funções com prefixo (state_*) e despacha por uma variável de ambiente (BRAION_STATE_BACKEND). É o equivalente shell de uma interface com duas implementações — trocar o backend não exige mudar nenhum chamador."
+    },
+    {
+      "order": 8,
+      "title": "Bibliotecas de Runtime — logger, cli, handoff, lock",
+      "description": "Em volta da fronteira de estado giram as bibliotecas mais reusadas (alto fan-in). lib/logger.sh escreve logs estruturados em JSONL via state_log_write; lib/cli.sh abstrai o CLI do Claude Code resolvendo model default/fallback; lib/handoff.sh é o wrapper de alto nível usado pelos commands de comunicação do Passo 6; lib/lock.sh provê exclusão mútua baseada em diretório. Juntas, são a infraestrutura compartilhada que sustenta cada sessão de agente.",
+      "nodeIds": [
+        "file:lib/logger.sh",
+        "file:lib/cli.sh",
+        "file:lib/handoff.sh",
+        "file:lib/lock.sh"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Memória, Jobs e Métricas",
+      "description": "Estas bibliotecas implementam capacidades de mais alto nível sobre o state.sh. lib/memory.sh registra e busca memória episódica; lib/job.sh gerencia jobs compartilhados para coordenação fan-out/fan-in do orquestrador; lib/metrics.sh coleta latência, tokens e custo. Elas dão aos agentes aprendizado entre sessões e observabilidade — exatamente o que o agent-wrapup do Passo 5 aciona ao encerrar.",
+      "nodeIds": [
+        "file:lib/memory.sh",
+        "file:lib/job.sh",
+        "file:lib/metrics.sh"
+      ]
+    },
+    {
+      "order": 10,
+      "title": "Scheduler e Cron — Quem Executa os Agentes",
+      "description": "Se os commands definem O QUE acontece numa sessão, o scheduler define QUANDO. lib/agent-scheduler.py lê os config.yaml de todos os agentes e computa quais estão due, waiting ou idle; lib/agent-cron.sh é o orquestrador do cron que gerencia o ciclo de vida das sessões tmux dos agentes. É o motor de auto-execução mencionado no README, ligando as definições do Passo 3 à execução real.",
+      "nodeIds": [
+        "file:lib/agent-scheduler.py",
+        "file:lib/agent-cron.sh"
+      ],
+      "languageLesson": "O scheduler em Python e o orquestrador em shell dividem responsabilidades: Python decide o agendamento (parse de YAML, cálculo de janelas) e shell faz a orquestração de processos (tmux, cron). É um padrão comum em automação: a lógica de decisão na linguagem expressiva, a cola de sistema operacional no shell."
+    },
+    {
+      "order": 11,
+      "title": "Schema do Estado em Postgres",
+      "description": "Quando o backend é Postgres, o estado vive nas tabelas definidas em db/schema.sql. A tabela 'agents' é a raiz (PK por name) referenciada em cascata por quase tudo: 'heartbeat' (liveness), 'episodic_memory' (a memória do Passo 9), 'handoffs' e 'jobs' (comunicação dos Passos 6/9) e 'logs' (saída do logger do Passo 8). Este schema é o espelho relacional exato dos conceitos que o state.sh abstrai em arquivos.",
+      "nodeIds": [
+        "schema:data:db/schema.sql",
+        "table:db/schema.sql:agents",
+        "table:db/schema.sql:handoffs",
+        "table:db/schema.sql:jobs"
+      ],
+      "languageLesson": "Foreign keys com ON DELETE CASCADE ancoradas em agents(name) garantem que apagar um agente limpe todo o seu estado automaticamente. Colunas JSONB armazenam payloads flexíveis (metadata, listas de itens de job) sem exigir colunas rígidas — um meio-termo entre relacional e documento."
+    },
+    {
+      "order": 12,
+      "title": "Migrations e Evolução do Schema",
+      "description": "O schema não nasceu pronto. db/migrations/0001_init.sql cria o schema 'braion' e as 10 tabelas iniciais; 0002 torna doc_date opcional em agent_documents trocando a PK por UNIQUE NULLS NOT DISTINCT; 0003 remove a FK auto-referencial de handoffs.reply_to para tolerar handoffs arquivados. Essa sequência mostra como o modelo de dados do Passo 11 evoluiu com as necessidades reais dos agentes.",
+      "nodeIds": [
+        "table:db/migrations/0001_init.sql",
+        "table:db/migrations/0002_agent_documents_nullable_doc_date.sql",
+        "table:db/migrations/0003_handoffs_drop_reply_to_fk.sql"
+      ],
+      "languageLesson": "Migrations SQL devem ser idempotentes (CREATE TABLE IF NOT EXISTS) e ordenadas por número. Cada arquivo aplica mudanças incrementais, permitindo que o banco evolua em sincronia com o código sem recriar dados existentes."
+    },
+    {
+      "order": 13,
+      "title": "Provisionamento e Cutover do Postgres",
+      "description": "Para operar o backend Postgres, docker-compose.pg-braion.yml provisiona o Postgres 16 como fonte da verdade, com bind em 127.0.0.1, volume persistente e healthcheck via pg_isready. scripts/migrate_fs_to_pg.py espelha o estado de arquivos para o banco de forma idempotente (não apaga os arquivos), e db/CUTOVER.md é o runbook que orquestra a transição em fases com plano de rollback. Este é o caminho prático de file para pg apresentado no Passo 7.",
+      "nodeIds": [
+        "service:docker-compose.pg-braion.yml",
+        "file:scripts/migrate_fs_to_pg.py",
+        "document:db/CUTOVER.md"
+      ],
+      "languageLesson": "Em docker-compose, healthchecks (pg_isready) sinalizam quando o serviço está pronto, e volumes nomeados/bind mounts persistem os dados além da vida do container. O bind em 127.0.0.1 isola o banco para acesso apenas local, reduzindo a superfície de exposição."
+    },
+    {
+      "order": 14,
+      "title": "Operações — Instalação, Criação de Agentes e Deploy",
+      "description": "A camada de operações coloca tudo em produção. scripts/install.sh verifica dependências e configura os commands do Claude Code; scripts/create-agent.sh é o scaffolder que gera a estrutura (IDENTITY.md + config.yaml) de um novo agente — o padrão do Passo 3 automatizado; scripts/setup-cron.sh registra os hooks periódicos no crontab (o motor do Passo 10); e scripts/state_smoke_test.sh valida o lib/state.sh em ambos os backends, fechando o ciclo de qualidade da fronteira de estado.",
+      "nodeIds": [
+        "file:scripts/install.sh",
+        "file:scripts/create-agent.sh",
+        "file:scripts/setup-cron.sh",
+        "file:scripts/state_smoke_test.sh"
+      ]
+    },
+    {
+      "order": 15,
+      "title": "Configuração e Integrações Externas",
+      "description": "Para encerrar, veja como o ecossistema se conecta ao mundo. .mcp.example.json declara os servidores MCP (tools) disponíveis aos agentes Claude Code; config/knowledge.yaml configura a camada de conhecimento/RAG (Qdrant, Ollama, embeddings); config/integrations.json carrega regras compartilhadas como as do Obsidian; e .env.example reúne os segredos e flags (SESSION_SECRET, DISABLE_AUTH, TOTP_SECRET) usados pela autenticação do dashboard e pelo runtime. Estes arquivos são a fronteira de configuração que personaliza todo o comportamento visto no tour.",
+      "nodeIds": [
+        "config:.mcp.example.json",
+        "config:config/knowledge.yaml",
+        "config:config/integrations.json",
+        "config:.env.example"
+      ]
+    }
+  ]
+}

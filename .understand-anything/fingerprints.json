@@ -1,0 +1,3183 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "9c2c5238b305b4b354c42d6bfd74a2ae9604d9ca",
+  "generatedAt": "2026-06-03T10:52:55.581Z",
+  "files": {
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "0a5ac1dd9b6afbab2f8decc46c5c7365d034f5d5619cac1fba5c3b6aca5b90f5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 26,
+      "hasStructuralAnalysis": true
+    },
+    ".mcp.example.json": {
+      "filePath": ".mcp.example.json",
+      "contentHash": "ca7a74c6b2ab55d9b0a027326368a6af1ed0c9aa808df36560a44908adb9a71e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    ".project.yaml": {
+      "filePath": ".project.yaml",
+      "contentHash": "dfca4999ac2aae96ee94febb96b6d080f5db8525ab294f0a33d9bed07fbe81fc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 3,
+      "hasStructuralAnalysis": true
+    },
+    ".understand-anything/.understandignore": {
+      "filePath": ".understand-anything/.understandignore",
+      "contentHash": "41845d14171d440ef3c0ac902003d341eb06c8daf574c48ccf81956bdfa073f3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 37,
+      "hasStructuralAnalysis": false
+    },
+    ".understand-anything/config.json": {
+      "filePath": ".understand-anything/config.json",
+      "contentHash": "7164da3441435ea1950aa5d1079345c243910c8238faf4bcd4bbfaad17375b18",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": true
+    },
+    "AGENTS.md": {
+      "filePath": "AGENTS.md",
+      "contentHash": "17994ab141052559db9c62ab4072b44db31c8210370b7c0f95a68ae6d2fb28b5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 290,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/agent-builder/config.yaml": {
+      "filePath": "agents/_defaults/agent-builder/config.yaml",
+      "contentHash": "d5d44fc43e726ec2cb09230c97364638d00a480188e6125f23cfbf1eb285be49",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/agent-builder/IDENTITY.md": {
+      "filePath": "agents/_defaults/agent-builder/IDENTITY.md",
+      "contentHash": "5c4d33f28a2966f363236f36947ec2afba3a1535738238ac8aa3b048dbaeeff1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 242,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/orchestrator/config.yaml": {
+      "filePath": "agents/_defaults/orchestrator/config.yaml",
+      "contentHash": "269e75462039fb3a03567011db38459f4963e64d94f5c3e55c66769693e10ea9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/orchestrator/IDENTITY.md": {
+      "filePath": "agents/_defaults/orchestrator/IDENTITY.md",
+      "contentHash": "63dc8cd783294a8734dd17003642ca97342a71cb0d13e0486bda91f43f02948b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/task-manager/config.yaml": {
+      "filePath": "agents/_defaults/task-manager/config.yaml",
+      "contentHash": "f3ff3bf3f95655d5cfcab968df4956d14d505c5f531b0e0576446dce49e1c1df",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "agents/_defaults/task-manager/IDENTITY.md": {
+      "filePath": "agents/_defaults/task-manager/IDENTITY.md",
+      "contentHash": "168e578fe0e70599e23df16a0726458eb5a24b231773f5b8e001711ceca91482",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 99,
+      "hasStructuralAnalysis": true
+    },
+    "CLAUDE.md": {
+      "filePath": "CLAUDE.md",
+      "contentHash": "aeedb718e0ba76f0adb8847da69d10046f0b6e9e63f976763734c0ea5beef84d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    "commands/braion/agent-handoff.md": {
+      "filePath": "commands/braion/agent-handoff.md",
+      "contentHash": "c06f41d3ae5bfd8b5454298034b4cd05d7a19a952c9c2dfae244910216264f40",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 146,
+      "hasStructuralAnalysis": true
+    },
+    "commands/braion/agent-inbox-router.md": {
+      "filePath": "commands/braion/agent-inbox-router.md",
+      "contentHash": "7c920a5f1a19bf5e6eaa9f9f866d750aeb305af35c7de8245706269030276ddb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 105,
+      "hasStructuralAnalysis": true
+    },
+    "commands/braion/agent-init.md": {
+      "filePath": "commands/braion/agent-init.md",
+      "contentHash": "e91c930f9b3db861a68d54dc6649695f76f56edc99780570d2173d77355d61bc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    "commands/braion/agent-wrapup.md": {
+      "filePath": "commands/braion/agent-wrapup.md",
+      "contentHash": "81bdb7720e9b4a7339bce2fec99df0073dcafc723e920711ddc28db53aa29e53",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 175,
+      "hasStructuralAnalysis": true
+    },
+    "commands/braion/orchestrator.md": {
+      "filePath": "commands/braion/orchestrator.md",
+      "contentHash": "baeb8cfe9548fa522b205928131e841d50e0490e58745146d828c6560726eb36",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 71,
+      "hasStructuralAnalysis": true
+    },
+    "config/integrations.json": {
+      "filePath": "config/integrations.json",
+      "contentHash": "983eb565d3f0354d38545892b4a002a949af2e52b9b5136dca750f77b983e6b2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": true
+    },
+    "config/knowledge.yaml": {
+      "filePath": "config/knowledge.yaml",
+      "contentHash": "ba0eacf2f80813be79b52d2e7fe8f31c05e014f5a77e0e6029710b7f2714f215",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "db/CUTOVER.md": {
+      "filePath": "db/CUTOVER.md",
+      "contentHash": "8678894ddc22372c85de9599eeea9ee8665452187ea706d90346aec5783e6b79",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 140,
+      "hasStructuralAnalysis": true
+    },
+    "db/migrations/0001_init.sql": {
+      "filePath": "db/migrations/0001_init.sql",
+      "contentHash": "7e9f828126e75304f4bec692de29ec94ec3018e27c6ff3247360ae93543021b5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 109,
+      "hasStructuralAnalysis": true
+    },
+    "db/migrations/0002_agent_documents_nullable_doc_date.sql": {
+      "filePath": "db/migrations/0002_agent_documents_nullable_doc_date.sql",
+      "contentHash": "a38fe35f7e7b2e9cf782b27e573ad2430b09c6fc87c5ea5fd1c1dfa8acf61e87",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    "db/migrations/0003_handoffs_drop_reply_to_fk.sql": {
+      "filePath": "db/migrations/0003_handoffs_drop_reply_to_fk.sql",
+      "contentHash": "85a0786ebe6911379beb2e6feb37959c8a93fbaecb27b1151658127f2799f481",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "db/schema.sql": {
+      "filePath": "db/schema.sql",
+      "contentHash": "2fd9d7a655cde61a84637a479258a4ddc57dba0a12322bb2aafb921cd970f732",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 113,
+      "hasStructuralAnalysis": true
+    },
+    "docker-compose.pg-braion.yml": {
+      "filePath": "docker-compose.pg-braion.yml",
+      "contentHash": "1051d95867f4790eac46ab4bb91f39add567030f48a17ed0121e8c607c369fd2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": true
+    },
+    "docs/agents.md": {
+      "filePath": "docs/agents.md",
+      "contentHash": "c0f53fe16ef82568188661b21565eba9ec3775d67c853e247358a31ec772e614",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 161,
+      "hasStructuralAnalysis": true
+    },
+    "docs/commands.md": {
+      "filePath": "docs/commands.md",
+      "contentHash": "98692bb30198ccbfb89bfbe9aa4dadf47ffc30eef23752cc315c903714f2acc7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 71,
+      "hasStructuralAnalysis": true
+    },
+    "docs/dashboard.md": {
+      "filePath": "docs/dashboard.md",
+      "contentHash": "879138081315a471d28441164921a12ec30a65c2a5ff92b134f8632b50d57358",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 112,
+      "hasStructuralAnalysis": true
+    },
+    "docs/handoffs-and-jobs.md": {
+      "filePath": "docs/handoffs-and-jobs.md",
+      "contentHash": "eb1c8a1c18978ec490f7c5b91bfea016bb7ccc3ab1a7c2ded7b6b6a9ee2cde94",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 108,
+      "hasStructuralAnalysis": true
+    },
+    "docs/index.md": {
+      "filePath": "docs/index.md",
+      "contentHash": "a3b01415de56ecf248a268b9324cac2d829de12479817e26275545ba2eba132d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 43,
+      "hasStructuralAnalysis": true
+    },
+    "docs/libs.md": {
+      "filePath": "docs/libs.md",
+      "contentHash": "e2e7119e4ac9562075002b1815d0ecfc0b6e123ecfb106cbc94a284df451644b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 181,
+      "hasStructuralAnalysis": true
+    },
+    "docs/overview.md": {
+      "filePath": "docs/overview.md",
+      "contentHash": "526c0086c0e7a224be5ee7772dee1f8264c094d394bcb9024668a9a1c5c46df3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 78,
+      "hasStructuralAnalysis": true
+    },
+    "docs/scripts.md": {
+      "filePath": "docs/scripts.md",
+      "contentHash": "943ea6b4c11bc016db5136269ed82da94ed5d24ec96603b94d6940f2d27ebe43",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md": {
+      "filePath": "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration-review.md",
+      "contentHash": "87a82f84ddb96003e1eb1aaeb3e5f6d9c25178a16047c5012a1527e2b9c9fc45",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 143,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md": {
+      "filePath": "docs/superpowers/plans/2026-04-08-concurrent-agent-collaboration.md",
+      "contentHash": "0fee9ff1344e90b89c98bcc889ee14b4e8f254a7606ae64e3cd3ce908217e3b1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1088,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/plans/2026-04-11-config-wizard.md": {
+      "filePath": "docs/superpowers/plans/2026-04-11-config-wizard.md",
+      "contentHash": "b77fcbfde8f283ef6b13d7d6d11973b24a467f19845b5e7aeef9a110e1cd64d0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2016,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md": {
+      "filePath": "docs/superpowers/plans/2026-04-23-qdrant-knowledge-layer.md",
+      "contentHash": "ca481dadae1a9724cc765a1bee53e220a9797408421e58e8e314455925e21c6a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1725,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md": {
+      "filePath": "docs/superpowers/plans/2026-05-28-overview-metrics-redesign.md",
+      "contentHash": "3d3afd79cb74d89aae21ea3756774f2b62e81d77f4b2b8888bcaa738b2d51647",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 478,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md": {
+      "filePath": "docs/superpowers/specs/2026-04-08-concurrent-agent-collaboration-design.md",
+      "contentHash": "ad39d233b2354f1e0de2ae1507f3eac33c6787378b943555ecb551fc8f5c28c8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 303,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/specs/2026-04-11-config-wizard-design.md": {
+      "filePath": "docs/superpowers/specs/2026-04-11-config-wizard-design.md",
+      "contentHash": "021927202ca7cfe62d109bcb733d1504339c4118af593eb9c418da6bf7095997",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 183,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md": {
+      "filePath": "docs/superpowers/specs/2026-04-23-qdrant-knowledge-layer-design.md",
+      "contentHash": "385162df837b1f8407658492950a9e075b3f36aa71b1362c589244c22ff5bbe1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 252,
+      "hasStructuralAnalysis": true
+    },
+    "docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md": {
+      "filePath": "docs/superpowers/specs/2026-05-28-overview-metrics-redesign-design.md",
+      "contentHash": "8c14d7557d3aacb46e711a4f0cd8fc6e4a84e5629a8e27cf40b7302a05d98ecd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 148,
+      "hasStructuralAnalysis": true
+    },
+    "docs/telegram.md": {
+      "filePath": "docs/telegram.md",
+      "contentHash": "da89d4ce7c4ad6b56f739f18c668c6d39b2402c05ada8d1f80a0f7fd6e4210bd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 116,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/check-stale.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/check-stale.md",
+      "contentHash": "a05fafe94f30c0aa308196d60d9023bb9c9e3f964c9da5c9b8700e018aa1ecfa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 151,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/config.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/config.md",
+      "contentHash": "fbaf62e4c0df89160b3eb144efcb24eda47a322c124df2be4f373c0d5f8b75af",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 117,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/extract.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/extract.md",
+      "contentHash": "a4384ad61f96d780cbdaeecf4c8a2fd731c5fdc6d9edd52d39f80b6923b81853",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 172,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/README.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/README.md",
+      "contentHash": "add329540ad3cedc5e335276173d59e1e08c6842b38a8bbb61c63d871875a800",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/save-notion.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/save-notion.md",
+      "contentHash": "1274483873828c06e7972fb1a3dacc244cd8a0815124f52a4831fcea8423ed47",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 73,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/save-obsidian.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/save-obsidian.md",
+      "contentHash": "62e37d51915e76ed646696eb8fe2504230b6f1036c6988e034cf91796b402e47",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 89,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/sync-notion.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/sync-notion.md",
+      "contentHash": "bbdf7b8bb7ea079dd0c2c820ccef75d41664600fb857ad6e9495b7bc68e627fc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 81,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/sync-obsidian.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/sync-obsidian.md",
+      "contentHash": "79e4eed89564366f9e07e56a2b07cbad58a92970caaa22f36831949f33055bfa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 83,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/sync.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/sync.md",
+      "contentHash": "5027a244afcd034961d70ceecbe4c985f87bfd36a1c8aa7cf7786794b2320c3d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 172,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/commands/update.md": {
+      "filePath": "hub/plugins/claude/tasks/commands/update.md",
+      "contentHash": "f94f542050e20a06a6300ceed63ed85a801b92618d291e95e719fba98223253c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 143,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/manifest.json": {
+      "filePath": "hub/plugins/claude/tasks/manifest.json",
+      "contentHash": "d1af0346d61f91b8b6f20fa57ea421f7e8a7bc96a55569f0e0598315523b1904",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": true
+    },
+    "hub/plugins/claude/tasks/tasks-config.example.json": {
+      "filePath": "hub/plugins/claude/tasks/tasks-config.example.json",
+      "contentHash": "53bb251c2dacc46c293fec804a3b3dac224e4f5475a25d5675e943990a8a6597",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 82,
+      "hasStructuralAnalysis": true
+    },
+    "lib/agent-cron.sh": {
+      "filePath": "lib/agent-cron.sh",
+      "contentHash": "43a219a768ddc70534cb97a3f61e240366af67c4501e5ec5399f46346c248e7b",
+      "functions": [
+        {
+          "name": "parse_working_directory",
+          "params": [],
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "log",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "session_running",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "session_is_idle",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "session_clear_idle",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "session_is_stale",
+          "params": [],
+          "exported": false,
+          "lineCount": 12
+        },
+        {
+          "name": "_hb_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "heartbeat_is_awaiting_review",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "heartbeat_review_expired",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "kill_stale_session",
+          "params": [],
+          "exported": false,
+          "lineCount": 49
+        },
+        {
+          "name": "heartbeat_is_processing",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "heartbeat_is_waiting",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "heartbeat_waiting_expired",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "get_agent_model",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "get_agent_command",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "get_agent_permission_mode",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "build_agent_system_prompt",
+          "params": [],
+          "exported": false,
+          "lineCount": 131
+        },
+        {
+          "name": "start_session",
+          "params": [],
+          "exported": false,
+          "lineCount": 133
+        },
+        {
+          "name": "git_pull_vault",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "notify_user_handoff",
+          "params": [],
+          "exported": false,
+          "lineCount": 40
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 838,
+      "hasStructuralAnalysis": true
+    },
+    "lib/agent-scheduler.py": {
+      "filePath": "lib/agent-scheduler.py",
+      "contentHash": "f9abeacc5be613c03b2e62d771641b8ecb230b7432a149dd19749288fcdc6a70",
+      "functions": [
+        {
+          "name": "_cli_query",
+          "params": [
+            "fn_name",
+            "fallback"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "cli_default_model",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "cli_fallback_model",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "cli_permission_mode_default",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "read_permission_mode",
+          "params": [
+            "cfg"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "parse_interval",
+          "params": [
+            "interval_str"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "read_schedule_state",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "write_schedule_state",
+          "params": [
+            "state_dict"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "read_budget_count",
+          "params": [
+            "agent_name",
+            "today_str"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "increment_budget_count",
+          "params": [
+            "agent_name",
+            "today_str"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "load_configs",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "resolve_mode",
+          "params": [
+            "sched"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "compute_schedule",
+          "params": [
+            "configs",
+            "schedule_state",
+            "now"
+          ],
+          "exported": true,
+          "lineCount": 136
+        },
+        {
+          "name": "cmd_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "cmd_mark_ran",
+          "params": [
+            "agent_names"
+          ],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "glob",
+          "specifiers": [
+            "glob"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "state",
+          "specifiers": [
+            "state"
+          ]
+        }
+      ],
+      "exports": [
+        "_cli_query",
+        "cli_default_model",
+        "cli_fallback_model",
+        "cli_permission_mode_default",
+        "read_permission_mode",
+        "parse_interval",
+        "read_schedule_state",
+        "write_schedule_state",
+        "read_budget_count",
+        "increment_budget_count",
+        "load_configs",
+        "resolve_mode",
+        "compute_schedule",
+        "cmd_status",
+        "cmd_mark_ran"
+      ],
+      "totalLines": 351,
+      "hasStructuralAnalysis": true
+    },
+    "lib/check_concurrency.sh": {
+      "filePath": "lib/check_concurrency.sh",
+      "contentHash": "77650ebf05152c6d85af55d2be827511270487b058e6b248a26a7f97569e2122",
+      "functions": [
+        {
+          "name": "cleanup",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "lib/cli.sh": {
+      "filePath": "lib/cli.sh",
+      "contentHash": "8c8779eaf150576ba499b99d040de814ee61e81d8dd957ff17eb8dd4caf8ecc1",
+      "functions": [
+        {
+          "name": "cli_check_available",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "cli_default_model",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_fallback_model",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_valid_models",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        },
+        {
+          "name": "cli_build_start_cmd",
+          "params": [],
+          "exported": false,
+          "lineCount": 37
+        },
+        {
+          "name": "cli_send_command",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "cli_send_start_command",
+          "params": [],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "cli_send_slash_command",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "cli_send_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "cli_wait_ready",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "cli_prompt_glyph",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_session_is_idle",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "cli_session_clear_idle",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "cli_config_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_commands_install_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_hook_config_path",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_projects_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_hook_event_name",
+          "params": [],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "cli_hook_register",
+          "params": [],
+          "exported": false,
+          "lineCount": 39
+        },
+        {
+          "name": "cli_hook_unregister",
+          "params": [],
+          "exported": false,
+          "lineCount": 41
+        },
+        {
+          "name": "cli_permission_mode_default",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "cli_permission_mode_map",
+          "params": [],
+          "exported": false,
+          "lineCount": 35
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 436,
+      "hasStructuralAnalysis": true
+    },
+    "lib/evaluate.sh": {
+      "filePath": "lib/evaluate.sh",
+      "contentHash": "7bac92f02ecc9966c1a4dbdc77aa5e011e15ef781b6158aefec1beee0ce0927b",
+      "functions": [
+        {
+          "name": "evaluate_deterministic",
+          "params": [],
+          "exported": false,
+          "lineCount": 36
+        },
+        {
+          "name": "evaluate_day",
+          "params": [],
+          "exported": false,
+          "lineCount": 43
+        },
+        {
+          "name": "generate_report",
+          "params": [],
+          "exported": false,
+          "lineCount": 49
+        },
+        {
+          "name": "generate_weekly_summary",
+          "params": [],
+          "exported": false,
+          "lineCount": 34
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 188,
+      "hasStructuralAnalysis": true
+    },
+    "lib/feature-request.sh": {
+      "filePath": "lib/feature-request.sh",
+      "contentHash": "80cba40d806f575538c953506484c0a7a9f0a4556fcde5befff7ba093142f0e0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    "lib/handoff.sh": {
+      "filePath": "lib/handoff.sh",
+      "contentHash": "41c5a9c6cc7cc6e0362013f4f759326ab3451ecd563164d9238d720b2850345c",
+      "functions": [
+        {
+          "name": "_handoff_id_from_path",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "handoff_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "handoff_send",
+          "params": [],
+          "exported": false,
+          "lineCount": 27
+        },
+        {
+          "name": "handoff_list",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "handoff_claim",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "handoff_archive",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "handoff_artifacts_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "handoff_thread_history",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "handoff_job_agent",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 121,
+      "hasStructuralAnalysis": true
+    },
+    "lib/job.sh": {
+      "filePath": "lib/job.sh",
+      "contentHash": "adb02f5f4a175c90c0dba6a7e779e22e44ac45acc6217367ea9b7158efb742a3",
+      "functions": [
+        {
+          "name": "_with_lock",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "job_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "job_complete",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "job_fail",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "job_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "job_list_pending",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "job_archive",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 50,
+      "hasStructuralAnalysis": true
+    },
+    "lib/knowledge.sh": {
+      "filePath": "lib/knowledge.sh",
+      "contentHash": "c3642c4ab05d4398c56643ee469a10d7c571dde4ca4e246a17f3099dd07b01ac",
+      "functions": [
+        {
+          "name": "_kb_dashboard_url",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "_kb_agent_collection",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "_kb_agent_domains",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "knowledge_publish",
+          "params": [],
+          "exported": false,
+          "lineCount": 46
+        },
+        {
+          "name": "knowledge_search",
+          "params": [],
+          "exported": false,
+          "lineCount": 34
+        },
+        {
+          "name": "knowledge_list",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 218,
+      "hasStructuralAnalysis": true
+    },
+    "lib/lock.sh": {
+      "filePath": "lib/lock.sh",
+      "contentHash": "20978d19dfecd140b3e1922cd57fa22d116cb18553438b15dd3a1ed3eaa29919",
+      "functions": [
+        {
+          "name": "acquire",
+          "params": [],
+          "exported": false,
+          "lineCount": 31
+        },
+        {
+          "name": "release",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "status",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 78,
+      "hasStructuralAnalysis": true
+    },
+    "lib/logger.sh": {
+      "filePath": "lib/logger.sh",
+      "contentHash": "524fd53a1d74c1da14de3e1f23d3521204bc96d296bbc9703dc20e01a8601c12",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 39,
+      "hasStructuralAnalysis": true
+    },
+    "lib/memory.sh": {
+      "filePath": "lib/memory.sh",
+      "contentHash": "a443b6f97466873eeba207b66e04e6b9dec12b86ff28cea3b62e066861ffbe5f",
+      "functions": [
+        {
+          "name": "log_episodic",
+          "params": [],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "search_episodic",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "cache_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "cache_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "cache_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 69,
+      "hasStructuralAnalysis": true
+    },
+    "lib/metrics.sh": {
+      "filePath": "lib/metrics.sh",
+      "contentHash": "1ee65469d19e58ff2f7bf272bc46124b3e1b902e431c9a4f672790d1df1e882c",
+      "functions": [
+        {
+          "name": "metrics_log",
+          "params": [],
+          "exported": false,
+          "lineCount": 30
+        },
+        {
+          "name": "metrics_summary",
+          "params": [],
+          "exported": false,
+          "lineCount": 28
+        },
+        {
+          "name": "metrics_agent_summary",
+          "params": [],
+          "exported": false,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 102,
+      "hasStructuralAnalysis": true
+    },
+    "lib/obsidian-commit.sh": {
+      "filePath": "lib/obsidian-commit.sh",
+      "contentHash": "d4d0622e0cb90b43a7e73df9f98e5ff2dfc5d0bdd038414da678f9d6cf43b682",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "lib/optimize.sh": {
+      "filePath": "lib/optimize.sh",
+      "contentHash": "86ac0f2300469e539f1305b82959be1c4b5ab7a79ddc08f8f9793604cfc9bc1d",
+      "functions": [
+        {
+          "name": "version_snapshot",
+          "params": [],
+          "exported": false,
+          "lineCount": 34
+        },
+        {
+          "name": "create_proposal",
+          "params": [],
+          "exported": false,
+          "lineCount": 37
+        },
+        {
+          "name": "list_proposals",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "version_history",
+          "params": [],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "rollback",
+          "params": [],
+          "exported": false,
+          "lineCount": 27
+        },
+        {
+          "name": "audit_prompt_sizes",
+          "params": [],
+          "exported": false,
+          "lineCount": 29
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 190,
+      "hasStructuralAnalysis": true
+    },
+    "lib/orchestrate.sh": {
+      "filePath": "lib/orchestrate.sh",
+      "contentHash": "4d2654bfc2e2730a0bf1f3247660a9473f43a37ae2b531c72b473609df641e3c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "lib/state.py": {
+      "filePath": "lib/state.py",
+      "contentHash": "a78c440ce375c934d9b1aa252e4da96e186fe39c1157779e80e09f62cb355cc3",
+      "functions": [
+        {
+          "name": "_backend",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_not_impl",
+          "params": [
+            "op"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_file_shared_kv_get",
+          "params": [
+            "key"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_file_shared_kv_set",
+          "params": [
+            "key",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_file_heartbeat_get",
+          "params": [
+            "agent"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_file_heartbeat_set",
+          "params": [
+            "agent",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_file_episodic_append",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_file_log_write",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_pg_psql",
+          "params": [
+            "sql"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_pg_ensure_agent",
+          "params": [
+            "agent"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_pg_shared_kv_get",
+          "params": [
+            "key"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_pg_shared_kv_set",
+          "params": [
+            "key",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_pg_heartbeat_get",
+          "params": [
+            "agent"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_pg_heartbeat_set",
+          "params": [
+            "agent",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_pg_episodic_append",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "_pg_log_write",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_dispatch",
+          "params": [
+            "op"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "shared_kv_get",
+          "params": [
+            "key"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "shared_kv_set",
+          "params": [
+            "key",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "heartbeat_get",
+          "params": [
+            "agent"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "heartbeat_set",
+          "params": [
+            "agent",
+            "value"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "episodic_append",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "log_write",
+          "params": [
+            "agent",
+            "entry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 1
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        }
+      ],
+      "exports": [
+        "_backend",
+        "_not_impl",
+        "_file_shared_kv_get",
+        "_file_shared_kv_set",
+        "_file_heartbeat_get",
+        "_file_heartbeat_set",
+        "_file_episodic_append",
+        "_file_log_write",
+        "_pg_psql",
+        "_pg_ensure_agent",
+        "_pg_shared_kv_get",
+        "_pg_shared_kv_set",
+        "_pg_heartbeat_get",
+        "_pg_heartbeat_set",
+        "_pg_episodic_append",
+        "_pg_log_write",
+        "_dispatch",
+        "shared_kv_get",
+        "shared_kv_set",
+        "heartbeat_get",
+        "heartbeat_set",
+        "episodic_append",
+        "log_write"
+      ],
+      "totalLines": 198,
+      "hasStructuralAnalysis": true
+    },
+    "lib/state.sh": {
+      "filePath": "lib/state.sh",
+      "contentHash": "0fde09eb6894bfb86ea81d8cd631783d48e59b03bb75591bcf777e386fc0dadd",
+      "functions": [
+        {
+          "name": "state_backend",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "_state_file_doc_path",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "_state_file_heartbeat_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "_state_file_heartbeat_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_doc_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_doc_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_doc_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_episodic_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_episodic_search",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_cache_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "_state_file_cache_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "_state_file_cache_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_shared_kv_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "_state_file_shared_kv_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_log_write",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_handoff_dirs_for",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_handoff_find",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_file_handoff_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "_state_file_handoff_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 24
+        },
+        {
+          "name": "_state_file_handoff_read",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "_state_file_handoff_list",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "_state_file_handoff_set_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "_state_file_handoff_find_thread",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_handoff_thread_history",
+          "params": [],
+          "exported": false,
+          "lineCount": 24
+        },
+        {
+          "name": "_state_file_handoff_artifact_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_handoff_artifact_save",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_file_job_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_file_job_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 24
+        },
+        {
+          "name": "_state_file_job_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_file_job_update",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "_state_file_job_complete",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_state_file_job_fail",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_state_file_job_list_pending",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_state_file_job_archive",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_pg_psql",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "_state_pg_ensure_agent",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "_state_pg_heartbeat_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "_state_pg_heartbeat_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "_state_pg_doc_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "_state_pg_doc_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "_state_pg_doc_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_pg_episodic_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "_state_pg_episodic_search",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_pg_cache_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_state_pg_cache_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "_state_pg_cache_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "_state_pg_shared_kv_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_state_pg_shared_kv_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_state_pg_log_write",
+          "params": [],
+          "exported": false,
+          "lineCount": 19
+        },
+        {
+          "name": "_state_pg_handoff_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "_state_pg_handoff_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_pg_handoff_read",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "_state_pg_handoff_list",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "_state_pg_handoff_set_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "_state_pg_handoff_find_thread",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "_state_pg_handoff_thread_history",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "_state_pg_handoff_artifact_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_state_pg_handoff_artifact_save",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "_state_pg_job_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_pg_job_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        },
+        {
+          "name": "_state_pg_job_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "_state_pg_job_complete",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "_state_pg_job_fail",
+          "params": [],
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "_state_pg_job_list_pending",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "_state_pg_job_archive",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "_dispatch",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "state_heartbeat_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_heartbeat_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_doc_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_doc_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_doc_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_episodic_append",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_episodic_search",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_cache_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_cache_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_cache_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_shared_kv_get",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_shared_kv_set",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_log_write",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_read",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_list",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_set_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_find_thread",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_thread_history",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_artifact_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_handoff_artifact_save",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_next_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_create",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_complete",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_fail",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_list_pending",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "state_job_archive",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 893,
+      "hasStructuralAnalysis": true
+    },
+    "lib/telegram.sh": {
+      "filePath": "lib/telegram.sh",
+      "contentHash": "8b90dd0a3e59a430719a47406abc0fb041305facf372a11a157f4f008bdf2630",
+      "functions": [
+        {
+          "name": "_tg_load_env",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_tg_bot_token",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "_tg_default_chat_id",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "tg_send",
+          "params": [],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "tg_typing",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "tg_notify",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 142,
+      "hasStructuralAnalysis": true
+    },
+    "lib/validate_output.sh": {
+      "filePath": "lib/validate_output.sh",
+      "contentHash": "1aaa40130f57c37c9a5401293e9c6d3eec7886d5e106d4e32395660b79002ad0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 47,
+      "hasStructuralAnalysis": true
+    },
+    "LICENSE.md": {
+      "filePath": "LICENSE.md",
+      "contentHash": "a3031cf85b42a4db19a14dc2ff9875d569642e5cf0da5e61981075cbcd7e6039",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 3,
+      "hasStructuralAnalysis": true
+    },
+    "prompts/system-prompts/README.md": {
+      "filePath": "prompts/system-prompts/README.md",
+      "contentHash": "311662ff61d3f24b0590779f632480f89317a684a2bd731741d8f81e32cb61c1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "1ffb246c04d0e3bedfca853be6b36a597b54acd39ee34477f74151b4220dceb2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 299,
+      "hasStructuralAnalysis": true
+    },
+    "release.sh": {
+      "filePath": "release.sh",
+      "contentHash": "e04c1df2dd51e75121e9d629928ee1ded1f50d15bdb2c7e28c49416ae41be449",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 42,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/agent-idle-hook.sh": {
+      "filePath": "scripts/agent-idle-hook.sh",
+      "contentHash": "1daa299ddaeaabde7e379782ff865f7345ff3d5b90eca0ae5206a43c79195e36",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/claude-switch.sh": {
+      "filePath": "scripts/claude-switch.sh",
+      "contentHash": "e87512303e5a75c629c4b51d9cd7fd75aa22ba8c34a22e819eeec5f9e03c93a8",
+      "functions": [
+        {
+          "name": "_claude_is_ratelimited",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "_claude_auto_check",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_claude_ollama",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "claude",
+          "params": [],
+          "exported": false,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 84,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/create-agent.sh": {
+      "filePath": "scripts/create-agent.sh",
+      "contentHash": "7326875cf195e1cb411c26e96d3813f83514ef4ffc4022f05832dce19d1f6ae4",
+      "functions": [
+        {
+          "name": "prompt",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "success",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "header",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 232,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/hub.sh": {
+      "filePath": "scripts/hub.sh",
+      "contentHash": "2360c8190505a0f998e97c928e857977e983bafd8fa1f7336e2fb1ad578523d3",
+      "functions": [
+        {
+          "name": "usage",
+          "params": [],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "get_manifest_field",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "get_plugin_version",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "get_installed_version",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "get_config_file",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "get_config_example",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "list_plugins",
+          "params": [],
+          "exported": false,
+          "lineCount": 25
+        },
+        {
+          "name": "list_installed",
+          "params": [],
+          "exported": false,
+          "lineCount": 30
+        },
+        {
+          "name": "install_plugin",
+          "params": [],
+          "exported": false,
+          "lineCount": 53
+        },
+        {
+          "name": "init_plugin",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        },
+        {
+          "name": "uninstall_plugin",
+          "params": [],
+          "exported": false,
+          "lineCount": 38
+        },
+        {
+          "name": "status_plugin",
+          "params": [],
+          "exported": false,
+          "lineCount": 45
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 300,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/install.sh": {
+      "filePath": "scripts/install.sh",
+      "contentHash": "3b95141321bde302489879eadb42a2708c326393ce54caf5e53fbd84938ff37a",
+      "functions": [
+        {
+          "name": "check_deps",
+          "params": [],
+          "exported": false,
+          "lineCount": 66
+        },
+        {
+          "name": "setup_commands",
+          "params": [],
+          "exported": false,
+          "lineCount": 31
+        },
+        {
+          "name": "log",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "service_start",
+          "params": [],
+          "exported": false,
+          "lineCount": 38
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 238,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/migrate_fs_to_pg.py": {
+      "filePath": "scripts/migrate_fs_to_pg.py",
+      "contentHash": "30f3be0def788986a24c126004bb28cb5fedcebb29a20eecfcb61106ab0e44d0",
+      "functions": [
+        {
+          "name": "psql",
+          "params": [
+            "sql",
+            "dry"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "quote",
+          "params": [
+            "s"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "dollar",
+          "params": [
+            "s",
+            "tag"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "upsert_agent",
+          "params": [
+            "name",
+            "dry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "migrate_heartbeat",
+          "params": [
+            "agent",
+            "agent_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "migrate_doc",
+          "params": [
+            "agent",
+            "doc_type",
+            "doc_date",
+            "content",
+            "dry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "migrate_documents",
+          "params": [
+            "agent",
+            "agent_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "migrate_episodic",
+          "params": [
+            "agent",
+            "agent_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "migrate_cache",
+          "params": [
+            "agent",
+            "agent_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "parse_handoff",
+          "params": [
+            "path"
+          ],
+          "returnType": "tuple[dict, str] | None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "migrate_handoffs",
+          "params": [
+            "agent",
+            "agent_dir",
+            "dry"
+          ],
+          "returnType": "tuple[int, int]",
+          "exported": true,
+          "lineCount": 57
+        },
+        {
+          "name": "migrate_jobs",
+          "params": [
+            "agents_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "migrate_shared_kv",
+          "params": [
+            "agents_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "migrate_logs",
+          "params": [
+            "logs_dir",
+            "dry"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 39
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "psql",
+        "quote",
+        "dollar",
+        "upsert_agent",
+        "migrate_heartbeat",
+        "migrate_doc",
+        "migrate_documents",
+        "migrate_episodic",
+        "migrate_cache",
+        "parse_handoff",
+        "migrate_handoffs",
+        "migrate_jobs",
+        "migrate_shared_kv",
+        "migrate_logs",
+        "main"
+      ],
+      "totalLines": 402,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/setup_pg_tunnel.sh": {
+      "filePath": "scripts/setup_pg_tunnel.sh",
+      "contentHash": "38694288225db0e5f21caa06f9603b46464c0a89d364615fd0a30f5dc857cad5",
+      "functions": [
+        {
+          "name": "require_autossh",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "prompt_password",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "status",
+          "params": [],
+          "exported": false,
+          "lineCount": 19
+        },
+        {
+          "name": "install_files",
+          "params": [],
+          "exported": false,
+          "lineCount": 68
+        },
+        {
+          "name": "start_tunnel",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "stop_tunnel",
+          "params": [],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "uninstall",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 186,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/setup-cron.sh": {
+      "filePath": "scripts/setup-cron.sh",
+      "contentHash": "16d1757c1f14c79d3a4685e9d1eb55e4a0ca76b99d37bd02f612b6be3d3fa94e",
+      "functions": [
+        {
+          "name": "register_hook_wrapper",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 79,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/setup-totp.js": {
+      "filePath": "scripts/setup-totp.js",
+      "contentHash": "adbbb573699073dd284d03b50e4ff6b76d76fdb030aac3ed1f93bfb1147e2bb5",
+      "functions": [
+        {
+          "name": "base32Encode",
+          "params": [
+            "buf"
+          ],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "generateSecret",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "keyUri",
+          "params": [
+            "account",
+            "issuer",
+            "secret"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "readEnv",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "writeEnv",
+          "params": [
+            "vars"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "confirm",
+          "params": [
+            "question"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "printQr",
+          "params": [
+            "text"
+          ],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 94,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/state_smoke_test.sh": {
+      "filePath": "scripts/state_smoke_test.sh",
+      "contentHash": "cca715497478bdfc0098bed728542446b634036ddd03273b611fc4a3ff934c7d",
+      "functions": [
+        {
+          "name": "setup_file_backend",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "setup_pg_backend",
+          "params": [],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "cleanup_file_backend",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "assert_eq",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "run_suite",
+          "params": [],
+          "exported": false,
+          "lineCount": 62
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 143,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/telegram-bridge.sh": {
+      "filePath": "scripts/telegram-bridge.sh",
+      "contentHash": "dd68a95befcc887ee49f519991966433940b24f17fbbad2f94b3fcd5b75d7f1b",
+      "functions": [
+        {
+          "name": "log",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "strip_ansi",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "clean_response",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "session_running",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "session_is_idle",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "ensure_session",
+          "params": [],
+          "exported": false,
+          "lineCount": 35
+        },
+        {
+          "name": "send_and_wait",
+          "params": [],
+          "exported": false,
+          "lineCount": 38
+        },
+        {
+          "name": "handle_start",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "handle_clear",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "handle_reset",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "handle_status",
+          "params": [],
+          "exported": false,
+          "lineCount": 12
+        },
+        {
+          "name": "handle_pause",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "handle_unpause",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "handle_deploy",
+          "params": [],
+          "exported": false,
+          "lineCount": 80
+        },
+        {
+          "name": "handle_message",
+          "params": [],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 68
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 400,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/telegram-hook.sh": {
+      "filePath": "scripts/telegram-hook.sh",
+      "contentHash": "d22712f9356b17f7a43400d5ebc8952f653ff781a1a7bcb02f3933815c0e6d77",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/uninstall.sh": {
+      "filePath": "scripts/uninstall.sh",
+      "contentHash": "a7b5e8ec50a1d1b9cbc1f0d49bf232e238e0c201a67cf762650e664b009852ad",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 98,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_integration_collaboration.sh": {
+      "filePath": "tests/test_integration_collaboration.sh",
+      "contentHash": "d1b9987f0ef1bda958831201ea3abe0332f3df5b27dde67c7f51be7f3d27ca2d",
+      "functions": [
+        {
+          "name": "assert_eq",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 67,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_job.sh": {
+      "filePath": "tests/test_job.sh",
+      "contentHash": "4d7750b9b26b2253793689c9c889b39df00180724d00ae824cbde1b430518f8f",
+      "functions": [
+        {
+          "name": "cleanup",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "assert_eq",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 81,
+      "hasStructuralAnalysis": true
+    },
+    "USER.example.md": {
+      "filePath": "USER.example.md",
+      "contentHash": "a322c23ff6b02358dd4fa7a1cd2066d9341f3c37e9e4ca47b45883b722bf834c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": true
+    }
+  }
+}
