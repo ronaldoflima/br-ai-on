@@ -81,6 +81,17 @@ IDLE_DIR="${IDLE_DIR:-$HOME/.config/br-ai-on/idle}"
 session_is_idle()    { cli_session_is_idle    "$1"; }
 session_clear_idle() { cli_session_clear_idle "$1"; }
 
+get_agent_stale_threshold() {
+  local agent_name=$1
+  local config="$BRAION/agents/${agent_name}/config.yaml"
+  python3 -c "
+import yaml, os
+cfg = yaml.safe_load(open('$config')) if os.path.exists('$config') else {}
+v = cfg.get('runtime', {}).get('stale_threshold')
+print(v if v else '')
+" 2>/dev/null || true
+}
+
 session_is_stale() {
   local session=$1
   tmux has-session -t "$session" 2>/dev/null || return 1
@@ -123,6 +134,13 @@ kill_stale_session() {
 
   local agent_name
   agent_name=$(echo "$session" | sed 's/^braion-//' | sed 's/-HO-.*//')
+
+  local _agent_stale
+  _agent_stale=$(get_agent_stale_threshold "$agent_name")
+  if [ -n "$_agent_stale" ]; then
+    local STALE_THRESHOLD=$_agent_stale
+  fi
+
   local hb_json
   hb_json=$(_hb_get "$agent_name")
 
