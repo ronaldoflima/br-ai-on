@@ -143,7 +143,10 @@ cmd_collect() {
     local detail
     detail=$(GH pr view "$number" --repo "$repo_name" \
       --json number,title,url,author,createdAt,updatedAt,isDraft,reviewDecision,mergeable,statusCheckRollup \
-      2>/dev/null || echo '{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}')
+      2>/dev/null) || {
+      echo "WARN: gh pr view $number ($repo_name) falhou — usando default" >&2
+      detail='{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}'
+    }
 
     local is_draft
     is_draft=$(echo "$detail" | jq -r '.isDraft // false')
@@ -153,9 +156,8 @@ cmd_collect() {
     rollup=$(echo "$detail" | jq '.statusCheckRollup // []')
     ci=$(_ci_state "$rollup")
 
-    local created updated age_days mergeable_raw mergeable
+    local created age_days mergeable_raw mergeable
     created=$(echo "$detail" | jq -r '.createdAt // empty')
-    updated=$(echo "$detail" | jq -r '.updatedAt // empty')
     age_days=0
     [ -n "$created" ] && age_days=$(_age_days "$created")
     mergeable_raw=$(echo "$detail" | jq -r '.mergeable // "MERGEABLE"')
@@ -202,7 +204,10 @@ cmd_collect() {
     local detail
     detail=$(GH pr view "$number" --repo "$repo_name" \
       --json number,title,url,author,createdAt,updatedAt,isDraft,reviewDecision,mergeable,statusCheckRollup \
-      2>/dev/null || echo '{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}')
+      2>/dev/null) || {
+      echo "WARN: gh pr view $number ($repo_name) falhou — usando default" >&2
+      detail='{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}'
+    }
 
     local is_draft
     is_draft=$(echo "$detail" | jq -r '.isDraft // false')
@@ -340,6 +345,7 @@ cmd_collect() {
       out=$(jq -n --argjson o "$out" --argjson i "$item" '$o + [$i]')
     done < <(echo "$prs_raw" | jq -c '.[]')
   done
+  local IFS=$' \t\n'
 
   echo "$out"
 }
