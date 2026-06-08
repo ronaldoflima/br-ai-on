@@ -74,7 +74,23 @@ Campos: `timestamp`, `agent`, `action`, `message`, `metadata`, `prompt_version`,
 ```bash
 python3 lib/agent-scheduler.py              # status completo
 python3 lib/agent-scheduler.py --mark-ran <nome>  # registra execução
+python3 lib/agent-scheduler.py --force-run <nome>  # força execução no próximo ciclo
+python3 lib/agent-scheduler.py --clear-force <nome> # cancela force pendente
 ```
+
+### Force Run
+
+Força um agente a rodar no próximo ciclo do cron (one-shot), independente do interval/cron configurado:
+
+```bash
+python3 lib/agent-scheduler.py --force-run release-radar
+```
+
+- O agente aparece em `due` no próximo ciclo, mesmo se for `handoff-only`
+- O marcador é limpo automaticamente quando o agente é iniciado (one-shot)
+- Budget e concorrência continuam sendo respeitados
+- Agentes `disabled` também podem ser forçados
+- Marcador armazenado via shared_kv (chave `force_run`) — funciona nos backends file e pg
 
 ## Budget
 

@@ -42,7 +42,7 @@ try:
 except ImportError:
     HAS_CRONITER = False
 
-BRAION_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BRAION_BASE = os.environ.get("BRAION", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCHEDULE_STATE_FILE = os.path.join(BRAION_BASE, "agents", "shared", "schedule_state.json")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
@@ -111,6 +111,40 @@ def write_schedule_state(state_dict):
     state.shared_kv_set("schedule_state", state_dict)
 
 
+def read_force_run():
+    val = state.shared_kv_get("force_run")
+    return val if isinstance(val, list) else []
+
+
+def write_force_run(agents_list):
+    state.shared_kv_set("force_run", agents_list)
+
+
+def add_force_run(agent_names):
+    current = read_force_run()
+    added = []
+    errors = []
+    for name in agent_names:
+        config_path = os.path.join(BRAION_BASE, "agents", name, "config.yaml")
+        if not os.path.exists(config_path):
+            errors.append(f"config não encontrado para: {name}")
+            continue
+        if name not in current:
+            current.append(name)
+            added.append(name)
+    write_force_run(current)
+    return added, errors
+
+
+def clear_force_run(agent_name):
+    current = read_force_run()
+    if agent_name in current:
+        current.remove(agent_name)
+        write_force_run(current)
+        return True
+    return False
+
+
 def read_budget_count(agent_name, today_str):
     path = f"/tmp/agent-{agent_name}-sessions-{today_str}.count"
     if not os.path.exists(path):
@@ -155,6 +189,7 @@ def resolve_mode(sched):
 
 def compute_schedule(configs, schedule_state, now):
     today_str = now.strftime("%Y-%m-%d")
+    forced_agents = read_force_run()
 
     due = []
     waiting = []
@@ -166,7 +201,9 @@ def compute_schedule(configs, schedule_state, now):
         sched = cfg.get("schedule", {})
         mode = resolve_mode(sched)
 
-        if mode == "disabled":
+        is_forced = name in forced_agents
+
+        if mode == "disabled" and not is_forced:
             inactive.append({
                 "name": name,
                 "domain": cfg.get("domain", ""),
@@ -175,7 +212,7 @@ def compute_schedule(configs, schedule_state, now):
             })
             continue
 
-        if mode == "handoff-only":
+        if mode == "handoff-only" and not is_forced:
             inactive.append({
                 "name": name,
                 "domain": cfg.get("domain", ""),
@@ -255,7 +292,7 @@ def compute_schedule(configs, schedule_state, now):
         base_entry = {
             "name": name,
             "domain": cfg.get("domain", ""),
-            "mode": "alive",
+            "mode": mode,
             "priority": priority,
             "run_alone": run_alone,
             "schedule_type": "cron" if use_cron else "interval",
@@ -277,7 +314,10 @@ def compute_schedule(configs, schedule_state, now):
         if obsidian_info:
             base_entry["obsidian"] = obsidian_info
 
-        if is_due:
+        if is_forced:
+            base_entry["forced"] = True
+
+        if is_due or is_forced:
             if used_today >= max_sessions:
                 budget_blocked.append({**base_entry, "elapsed_s": elapsed_s})
             else:
@@ -299,6 +339,7 @@ def cmd_status():
     due, waiting, inactive, budget_blocked = compute_schedule(configs, schedule_state, now)
 
     total = len(due) + len(waiting) + len(inactive) + len(budget_blocked)
+    forced = read_force_run()
     result = {
         "now_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": {
@@ -307,7 +348,9 @@ def cmd_status():
             "waiting": len(waiting),
             "inactive": len(inactive),
             "budget_blocked": len(budget_blocked),
+            "forced": len(forced),
         },
+        "forced_agents": forced,
         "due": due,
         "waiting": waiting,
         "inactive": inactive,
@@ -338,6 +381,19 @@ def cmd_mark_ran(agent_names):
     print(json.dumps({"updated": updated, "errors": errors, "timestamp": now_str}, indent=2))
 
 
+def cmd_force_run(agent_names):
+    added, errors = add_force_run(agent_names)
+    print(json.dumps({"forced": added, "errors": errors, "pending": read_force_run()}, indent=2))
+
+
+def cmd_clear_force(agent_names):
+    cleared = []
+    for name in agent_names:
+        if clear_force_run(name):
+            cleared.append(name)
+    print(json.dumps({"cleared": cleared, "pending": read_force_run()}, indent=2))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args and args[0] == "--mark-ran":
@@ -346,5 +402,17 @@ if __name__ == "__main__":
             print(json.dumps({"error": "--mark-ran requer ao menos um nome de agente"}))
             sys.exit(1)
         cmd_mark_ran(agents)
+    elif args and args[0] == "--force-run":
+        agents = args[1:]
+        if not agents:
+            print(json.dumps({"error": "--force-run requer ao menos um nome de agente"}))
+            sys.exit(1)
+        cmd_force_run(agents)
+    elif args and args[0] == "--clear-force":
+        agents = args[1:]
+        if not agents:
+            print(json.dumps({"error": "--clear-force requer ao menos um nome de agente"}))
+            sys.exit(1)
+        cmd_clear_force(agents)
     else:
         cmd_status()
