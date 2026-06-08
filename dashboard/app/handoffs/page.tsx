@@ -182,6 +182,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
 }) {
   const [to, setTo] = useState(agents[0]?.name || "");
   const [expects, setExpects] = useState("action");
+  const [replyTo, setReplyTo] = useState("");
   const [description, setDescription] = useState("");
   const [context, setContext] = useState("");
   const [expected, setExpected] = useState("");
@@ -193,7 +194,7 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
     await fetch("/api/handoffs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, expects, description, context, expected }),
+      body: JSON.stringify({ to, expects, reply_to: replyTo.trim() || null, description, context, expected }),
     });
     setSaving(false);
     onCreated();
@@ -225,6 +226,12 @@ function NewHandoffModal({ agents, onClose, onCreated }: {
               <option value="review">review</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <div className="text-muted-xs" style={{ marginBottom: 4 }}>Reply to <span style={{ opacity: 0.5 }}>(opcional — ex: HO-20260606-001)</span></div>
+          <input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="HO-XXXXXXXX-XXX"
+            style={{ width: "100%", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "var(--text-primary)", padding: "6px 8px", boxSizing: "border-box", fontFamily: "monospace" }} />
         </div>
 
         {[

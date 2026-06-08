@@ -183,10 +183,11 @@ function nextHandoffId(): string {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { to, expects = "action", description = "", context = "", expected = "" } = body;
+  const { to, expects = "action", reply_to = null, description = "", context = "", expected = "" } = body;
 
   if (!to) return NextResponse.json({ error: "campo 'to' obrigatório" }, { status: 400 });
   if (!AGENT_RE.test(to)) return NextResponse.json({ error: "campo 'to' inválido" }, { status: 400 });
+  if (reply_to && !/^HO-\d{8}-\d{3}$/.test(reply_to)) return NextResponse.json({ error: "reply_to inválido" }, { status: 400 });
 
   const agentDir = join(AGENTS_DIR, to);
   if (!existsSync(agentDir)) return NextResponse.json({ error: "agente não encontrado" }, { status: 404 });
@@ -205,7 +206,7 @@ to: ${to}
 created: ${created}
 status: pending
 expects: ${expects}
-reply_to: null
+reply_to: ${reply_to ?? "null"}
 ---
 
 ## Descricao
