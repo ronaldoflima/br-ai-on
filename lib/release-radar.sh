@@ -13,6 +13,29 @@ _age_days() {
   echo $(( (t1 - t0) / 86400 ))
 }
 
+# horas inteiras entre uma data ISO e NOW
+_age_hours() {
+  local iso="$1"
+  local now="${NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  local t0 t1
+  t0=$(date -u -d "$iso" +%s 2>/dev/null || echo 0)
+  t1=$(date -u -d "$now" +%s 2>/dev/null || echo 0)
+  echo $(( (t1 - t0) / 3600 ))
+}
+
+# Deriva estado de CI a partir do statusCheckRollup JSON (array)
+# Imprime: failing | pending | passing | none
+_ci_state() {
+  local rollup="$1"
+  echo "$rollup" | jq -r '
+    if (. == null or length == 0) then "none"
+    elif any(.[]; .conclusion == "FAILURE" or .state == "FAILURE" or .state == "ERROR") then "failing"
+    elif any(.[]; .state == "PENDING" or .conclusion == null) then "pending"
+    else "passing"
+    end
+  '
+}
+
 cmd_classify() {
   local stale_h=24
   while [ $# -gt 0 ]; do
@@ -92,29 +115,164 @@ cmd_format() {
 }
 
 cmd_collect() {
-  local user="" org="px-center" critical=""
+  local user="" org="px-center" critical="" aging_days=5
   while [ $# -gt 0 ]; do
     case "$1" in
       --user) user="${2:-}"; shift 2;;
       --org) org="${2:-}"; shift 2;;
       --critical-repos) critical="${2:-}"; shift 2;;
+      --aging-days) aging_days="${2:-5}"; shift 2;;
       *) shift;;
     esac
   done
 
   local out='[]'
-  local map_pr='{repo: .repository.nameWithOwner, number: .number, branch: null, title: .title, url: .url, author: .author.login, created: .createdAt, updated: .updatedAt}'
+  # track which (repo,number) pairs we've already collected to avoid duplicates in team_aging
+  local seen_keys='[]'
 
-  local rr
-  rr=$(GH search prs --review-requested="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
-  rr=$(echo "$rr" | jq "map($map_pr + {reason:\"review_requested\", approved:false, ci:\"none\", mergeable:true, stale_hours:0})")
+  # review-requested PRs
+  local rr_raw
+  rr_raw=$(GH search prs --review-requested="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
 
-  local mine
-  mine=$(GH search prs --author="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
-  mine=$(echo "$mine" | jq "map($map_pr + {reason:\"your_pr_stuck\", approved:true, ci:\"passing\", mergeable:true, stale_hours:0})")
+  while IFS= read -r pr_basic; do
+    [ -n "$pr_basic" ] || continue
+    local number repo_name
+    number=$(echo "$pr_basic" | jq -r '.number')
+    repo_name=$(echo "$pr_basic" | jq -r '.repository.nameWithOwner')
 
-  out=$(jq -n --argjson a "$rr" --argjson b "$mine" '$a + $b')
+    local detail
+    detail=$(GH pr view "$number" --repo "$repo_name" \
+      --json number,title,url,author,createdAt,updatedAt,isDraft,reviewDecision,mergeable,statusCheckRollup \
+      2>/dev/null || echo '{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}')
 
+    local is_draft
+    is_draft=$(echo "$detail" | jq -r '.isDraft // false')
+    [ "$is_draft" = "true" ] && continue
+
+    local rollup ci
+    rollup=$(echo "$detail" | jq '.statusCheckRollup // []')
+    ci=$(_ci_state "$rollup")
+
+    local created updated age_days mergeable_raw mergeable
+    created=$(echo "$detail" | jq -r '.createdAt // empty')
+    updated=$(echo "$detail" | jq -r '.updatedAt // empty')
+    age_days=0
+    [ -n "$created" ] && age_days=$(_age_days "$created")
+    mergeable_raw=$(echo "$detail" | jq -r '.mergeable // "MERGEABLE"')
+    mergeable=true
+    [ "$mergeable_raw" = "CONFLICTING" ] && mergeable=false
+
+    local item
+    item=$(echo "$detail" | jq \
+      --arg repo "$repo_name" \
+      --arg ci "$ci" \
+      --argjson mergeable "$mergeable" \
+      --argjson age_days "$age_days" \
+      '{
+        repo: $repo,
+        number: .number,
+        branch: null,
+        title: .title,
+        url: .url,
+        author: .author.login,
+        created: .createdAt,
+        updated: .updatedAt,
+        reason: "review_requested",
+        approved: false,
+        ci: $ci,
+        mergeable: $mergeable,
+        stale_hours: 0,
+        age_days: $age_days
+      }')
+
+    out=$(jq -n --argjson o "$out" --argjson i "$item" '$o + [$i]')
+    seen_keys=$(jq -n --argjson k "$seen_keys" --arg key "${repo_name}#${number}" '$k + [$key]')
+  done < <(echo "$rr_raw" | jq -c '.[]')
+
+  # author PRs (your_pr_stuck) — only actionable ones
+  local mine_raw
+  mine_raw=$(GH search prs --author="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
+
+  while IFS= read -r pr_basic; do
+    [ -n "$pr_basic" ] || continue
+    local number repo_name
+    number=$(echo "$pr_basic" | jq -r '.number')
+    repo_name=$(echo "$pr_basic" | jq -r '.repository.nameWithOwner')
+
+    local detail
+    detail=$(GH pr view "$number" --repo "$repo_name" \
+      --json number,title,url,author,createdAt,updatedAt,isDraft,reviewDecision,mergeable,statusCheckRollup \
+      2>/dev/null || echo '{"isDraft":false,"reviewDecision":null,"mergeable":"MERGEABLE","statusCheckRollup":[]}')
+
+    local is_draft
+    is_draft=$(echo "$detail" | jq -r '.isDraft // false')
+    [ "$is_draft" = "true" ] && continue
+
+    local rollup ci
+    rollup=$(echo "$detail" | jq '.statusCheckRollup // []')
+    ci=$(_ci_state "$rollup")
+
+    local review_decision approved
+    review_decision=$(echo "$detail" | jq -r '.reviewDecision // ""')
+    approved=false
+    [ "$review_decision" = "APPROVED" ] && approved=true
+
+    local mergeable_raw mergeable conflict
+    mergeable_raw=$(echo "$detail" | jq -r '.mergeable // "MERGEABLE"')
+    mergeable=true
+    conflict=false
+    if [ "$mergeable_raw" = "CONFLICTING" ]; then
+      mergeable=false
+      conflict=true
+    fi
+
+    # Only emit if actionable: approved OR ci failing OR conflict
+    local is_actionable=false
+    [ "$approved" = "true" ] && is_actionable=true
+    [ "$ci" = "failing" ] && is_actionable=true
+    [ "$conflict" = "true" ] && is_actionable=true
+    [ "$is_actionable" = "false" ] && continue
+
+    local created updated age_days stale_hours
+    created=$(echo "$detail" | jq -r '.createdAt // empty')
+    updated=$(echo "$detail" | jq -r '.updatedAt // empty')
+    age_days=0
+    [ -n "$created" ] && age_days=$(_age_days "$created")
+    stale_hours=0
+    if [ "$approved" = "true" ] && [ -n "$updated" ]; then
+      stale_hours=$(_age_hours "$updated")
+    fi
+
+    local item
+    item=$(echo "$detail" | jq \
+      --arg repo "$repo_name" \
+      --arg ci "$ci" \
+      --argjson approved "$approved" \
+      --argjson mergeable "$mergeable" \
+      --argjson stale_hours "$stale_hours" \
+      --argjson age_days "$age_days" \
+      '{
+        repo: $repo,
+        number: .number,
+        branch: null,
+        title: .title,
+        url: .url,
+        author: .author.login,
+        created: .createdAt,
+        updated: .updatedAt,
+        reason: "your_pr_stuck",
+        approved: $approved,
+        ci: $ci,
+        mergeable: $mergeable,
+        stale_hours: $stale_hours,
+        age_days: $age_days
+      }')
+
+    out=$(jq -n --argjson o "$out" --argjson i "$item" '$o + [$i]')
+    seen_keys=$(jq -n --argjson k "$seen_keys" --arg key "${repo_name}#${number}" '$k + [$key]')
+  done < <(echo "$mine_raw" | jq -c '.[]')
+
+  # ci_red_main per critical repo
   local IFS=','
   local repo
   for repo in $critical; do
@@ -129,16 +287,61 @@ cmd_collect() {
     fi
   done
 
-  echo "$out" | jq -c '.[]' | while read -r line; do
-    local created age
-    created=$(echo "$line" | jq -r '.created // empty')
-    if [ -n "$created" ]; then
-      age=$(_age_days "$created")
-      echo "$line" | jq --argjson age "$age" '. + {age_days:$age}'
-    else
-      echo "$line"
-    fi
-  done | jq -s '.'
+  # team_aging: PRs from others in critical repos that are old and not already seen
+  for repo in $critical; do
+    [ -n "$repo" ] || continue
+    local prs_raw
+    prs_raw=$(GH pr list --repo "$repo" --state open --json number,title,url,author,createdAt,isDraft 2>/dev/null || echo '[]')
+
+    while IFS= read -r pr; do
+      [ -n "$pr" ] || continue
+
+      local is_draft author_login number
+      is_draft=$(echo "$pr" | jq -r '.isDraft // false')
+      [ "$is_draft" = "true" ] && continue
+
+      author_login=$(echo "$pr" | jq -r '.author.login // ""')
+      [ "$author_login" = "$user" ] && continue
+
+      number=$(echo "$pr" | jq -r '.number')
+      local key="${repo}#${number}"
+
+      # skip if already in seen_keys
+      local already_seen
+      already_seen=$(echo "$seen_keys" | jq --arg k "$key" 'any(.[]; . == $k)')
+      [ "$already_seen" = "true" ] && continue
+
+      local created age_days
+      created=$(echo "$pr" | jq -r '.createdAt // empty')
+      age_days=0
+      [ -n "$created" ] && age_days=$(_age_days "$created")
+
+      [ "$age_days" -le "$aging_days" ] && continue
+
+      local item
+      item=$(echo "$pr" | jq \
+        --arg repo "$repo" \
+        --argjson age_days "$age_days" \
+        '{
+          repo: $repo,
+          number: .number,
+          branch: null,
+          title: .title,
+          url: .url,
+          author: .author.login,
+          reason: "team_aging",
+          approved: false,
+          ci: "none",
+          mergeable: true,
+          stale_hours: 0,
+          age_days: $age_days
+        }')
+
+      out=$(jq -n --argjson o "$out" --argjson i "$item" '$o + [$i]')
+    done < <(echo "$prs_raw" | jq -c '.[]')
+  done
+
+  echo "$out"
 }
 
 cmd_run() {

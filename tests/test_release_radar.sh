@@ -76,12 +76,38 @@ assert_eq "vazio => silencio" "" "$empty"
 echo "--- Test: collect ---"
 export GH_BIN="$PROJECT_ROOT/tests/fixtures/gh-fake.sh"
 chmod +x "$GH_BIN"
-collected=$(NOW="2026-06-08T09:00:00Z" bash "$RR" collect --user me --org px-center --critical-repos px-center/px-torre-core)
+collected=$(NOW="2026-06-08T09:00:00Z" bash "$RR" collect --user me --org px-center --critical-repos px-center/px-torre-core --aging-days 5)
 assert_eq "collect retorna JSON array" "true" "$(echo "$collected" | jq -e 'type=="array"' >/dev/null 2>&1 && echo true || echo false)"
 assert_eq "collect acha review_requested" "true" "$(echo "$collected" | jq 'any(.[]; .reason=="review_requested" and .number==482)')"
 assert_eq "collect acha your_pr_stuck"    "true" "$(echo "$collected" | jq 'any(.[]; .reason=="your_pr_stuck" and .number==91)')"
 assert_eq "collect acha ci_red_main"      "true" "$(echo "$collected" | jq 'any(.[]; .reason=="ci_red_main" and .repo=="px-center/px-torre-core")')"
 assert_eq "review tem age_days calc"      "2"    "$(echo "$collected" | jq '[.[] | select(.number==482)][0].age_days')"
+
+# --- enriquecimento: dados reais por PR ---
+# PR 482 (review_requested): ci derivado de statusCheckRollup (SUCCESS)
+assert_eq "review_requested ci=passing (real)"    "passing" "$(echo "$collected" | jq -r '[.[] | select(.number==482)][0].ci')"
+assert_eq "review_requested approved=false (real)" "false"  "$(echo "$collected" | jq -r '[.[] | select(.number==482)][0].approved')"
+
+# PR 91 (your_pr_stuck): reviewDecision=APPROVED => approved=true, stale_hours > 0
+assert_eq "your_pr_stuck approved=true (real)"  "true"  "$(echo "$collected" | jq '[.[] | select(.number==91)][0].approved')"
+pr91_stale=$(echo "$collected" | jq '[.[] | select(.number==91)][0].stale_hours')
+assert_eq "your_pr_stuck stale_hours>0"         "true"  "$([ "$pr91_stale" -gt 0 ] && echo true || echo false)"
+
+# PR 92 (author, nao acionavel): deve ser DESCARTADO
+assert_eq "PR 92 nao-acionavel descartado"  "false" "$(echo "$collected" | jq 'any(.[]; .number==92)')"
+
+# PR 93 (draft): deve ser DESCARTADO
+assert_eq "draft PR descartado"             "false" "$(echo "$collected" | jq 'any(.[]; .number==93)')"
+
+# team_aging: PR 700 de outro autor, antigo, em px-torre-core
+assert_eq "team_aging gerado (PR 700)"      "true"  "$(echo "$collected" | jq 'any(.[]; .reason=="team_aging" and .number==700)')"
+pr700_age=$(echo "$collected" | jq '[.[] | select(.number==700)][0].age_days')
+assert_eq "team_aging age_days>5"           "true"  "$([ "$pr700_age" -gt 5 ] && echo true || echo false)"
+assert_eq "team_aging ci=none"              "none"  "$(echo "$collected" | jq -r '[.[] | select(.number==700)][0].ci')"
+
+# PR 91 aprovado + stale => red ao classificar com threshold 24h
+classified_91=$(echo "$collected" | bash "$RR" classify --approved-stale-hours 24)
+assert_eq "PR 91 aprovado+stale => red"     "red"   "$(echo "$classified_91" | jq -r '[.[] | select(.number==91)][0].severity')"
 unset GH_BIN
 
 # --- run (integracao) ---
