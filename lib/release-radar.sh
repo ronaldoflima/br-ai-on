@@ -23,10 +23,28 @@ cmd_classify() {
     )})'
 }
 
+cmd_diff() {
+  local snapshot="${1:-}"
+  local prev='[]'
+  if [ -n "$snapshot" ] && [ -f "$snapshot" ]; then
+    prev=$(jq '.items // []' "$snapshot")
+  fi
+  jq --argjson prev "$prev" '
+    ($prev | map({key: "\(.repo)#\(.number // .branch)", value: .}) | from_entries) as $pmap
+    | map(. + {_key: "\(.repo)#\(.number // .branch)"})
+    | map(select(
+        ($pmap[._key] == null)
+        or ($pmap[._key].severity != .severity)
+        or ($pmap[._key].ci != .ci)
+      ))
+    | map(del(._key))'
+}
+
 main() {
   local sub="${1:-}"; shift || true
   case "$sub" in
     classify) cmd_classify "$@";;
+    diff) cmd_diff "$@";;
     *) echo "uso: release-radar.sh {collect|classify|diff|format|run}" >&2; exit 2;;
   esac
 }

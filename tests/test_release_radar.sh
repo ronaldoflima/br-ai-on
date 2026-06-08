@@ -33,6 +33,29 @@ assert_eq "team_aging => yellow"      "yellow" "$(echo "$out" | jq -r '.[4].seve
 green_out=$(echo '[{"repo":"x/y","number":1,"reason":"no_action","approved":false,"stale_hours":0,"ci":"passing"}]' | bash "$RR" classify)
 assert_eq "reason desconhecido => green" "green" "$(echo "$green_out" | jq -r '.[0].severity')"
 
+# --- diff ---
+echo "--- Test: diff ---"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+cat > "$TMP/snapshot.json" <<'EOF'
+{"items":[
+  {"repo":"px-center/px-motor","number":91,"severity":"yellow","ci":"passing"},
+  {"repo":"px-center/px-cortex","number":10,"severity":"yellow","ci":"passing"}
+]}
+EOF
+current='[
+  {"repo":"px-center/px-motor","number":91,"severity":"yellow","ci":"passing"},
+  {"repo":"px-center/px-cortex","number":10,"severity":"red","ci":"failing"},
+  {"repo":"px-center/px-novo","number":5,"severity":"yellow","ci":"passing"}
+]'
+changes=$(echo "$current" | bash "$RR" diff "$TMP/snapshot.json")
+assert_eq "diff retorna 2 mudancas" "2" "$(echo "$changes" | jq 'length')"
+assert_eq "diff inclui PR novo"     "true" "$(echo "$changes" | jq 'any(.[]; .repo=="px-center/px-novo")')"
+assert_eq "diff inclui sev mudada"  "true" "$(echo "$changes" | jq 'any(.[]; .repo=="px-center/px-cortex")')"
+assert_eq "diff exclui inalterado"  "false" "$(echo "$changes" | jq 'any(.[]; .repo=="px-center/px-motor")')"
+changes_first=$(echo "$current" | bash "$RR" diff "$TMP/inexistente.json")
+assert_eq "sem snapshot => tudo muda" "3" "$(echo "$changes_first" | jq 'length')"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1
