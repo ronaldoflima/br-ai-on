@@ -830,6 +830,7 @@ if [ "$due_count" -gt 0 ]; then
     start_session "$session" "$agent_dir" "$prompt" "${agent_model:-$DEFAULT_MODEL}" "$_mapped_perm" "$agent_cmd" "$alive_sp" "$alive_additional_dirs"
 
     python3 "$BRAION/lib/agent-scheduler.py" --mark-ran "$agent_name" > /dev/null 2>&1
+    python3 "$BRAION/lib/agent-scheduler.py" --clear-force "$agent_name" > /dev/null 2>&1
     log "Alive: $agent_name iniciado e marcado como ran"
   done
 fi
