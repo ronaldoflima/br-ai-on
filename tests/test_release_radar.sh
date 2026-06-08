@@ -56,6 +56,22 @@ assert_eq "diff exclui inalterado"  "false" "$(echo "$changes" | jq 'any(.[]; .r
 changes_first=$(echo "$current" | bash "$RR" diff "$TMP/inexistente.json")
 assert_eq "sem snapshot => tudo muda" "3" "$(echo "$changes_first" | jq 'length')"
 
+# --- format ---
+echo "--- Test: format ---"
+changes_fmt='[
+  {"repo":"px-center/px-torre-core","branch":"main","number":null,"reason":"ci_red_main","severity":"red","commit":"a1b2c3","title":"fix conciliation","age_days":0},
+  {"repo":"px-center/px-cortex","number":91,"reason":"your_pr_stuck","severity":"yellow","title":"refactor","age_days":1,"author":"me"},
+  {"repo":"px-center/px-motor","number":482,"reason":"review_requested","severity":"yellow","title":"retry webhook","age_days":2,"author":"maria"}
+]'
+text=$(echo "$changes_fmt" | bash "$RR" format --date "08/06 09:00")
+assert_eq "tem cabecalho"        "true" "$(echo "$text" | grep -q 'Release Radar — 08/06 09:00' && echo true || echo false)"
+assert_eq "conta 1 critico"      "true" "$(echo "$text" | grep -q '🔴 1 crítico' && echo true || echo false)"
+assert_eq "conta 2 amarelos"     "true" "$(echo "$text" | grep -q '🟡 2 precisam de você' && echo true || echo false)"
+assert_eq "cita repo critico"    "true" "$(echo "$text" | grep -q 'px-torre-core' && echo true || echo false)"
+assert_eq "cita PR review"       "true" "$(echo "$text" | grep -q '#482' && echo true || echo false)"
+empty=$(echo '[]' | bash "$RR" format --date "08/06 09:00")
+assert_eq "vazio => silencio" "" "$empty"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1
