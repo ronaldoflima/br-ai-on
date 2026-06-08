@@ -141,6 +141,43 @@ cmd_collect() {
   done | jq -s '.'
 }
 
+cmd_run() {
+  local user="" org="px-center" critical="" snapshot="" date_str="" stale_h=24
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --user) user="${2:-}"; shift 2;;
+      --org) org="${2:-}"; shift 2;;
+      --critical-repos) critical="${2:-}"; shift 2;;
+      --snapshot) snapshot="${2:-}"; shift 2;;
+      --date) date_str="${2:-}"; shift 2;;
+      --approved-stale-hours) stale_h="${2:-}"; shift 2;;
+      *) shift;;
+    esac
+  done
+
+  local current
+  current=$(cmd_collect --user "$user" --org "$org" --critical-repos "$critical" \
+    | cmd_classify --approved-stale-hours "$stale_h")
+
+  local changes
+  changes=$(echo "$current" | cmd_diff "$snapshot")
+
+  if [ -n "$snapshot" ]; then
+    mkdir -p "$(dirname "$snapshot")"
+    jq -n --argjson items "$current" --arg at "${NOW:-}" '{generated_at:$at, items:$items}' > "$snapshot"
+  fi
+
+  local text
+  text=$(echo "$changes" | cmd_format --date "$date_str")
+  [ -n "$text" ] || return 0
+
+  if [ "${RR_DRY_RUN:-0}" = "1" ]; then
+    printf '%s\n' "$text"
+  else
+    bash "$(dirname "${BASH_SOURCE[0]}")/telegram.sh" send "$text"
+  fi
+}
+
 main() {
   local sub="${1:-}"; shift || true
   case "$sub" in
@@ -148,6 +185,7 @@ main() {
     classify) cmd_classify "$@";;
     diff) cmd_diff "$@";;
     format) cmd_format "$@";;
+    run) cmd_run "$@";;
     *) echo "uso: release-radar.sh {collect|classify|diff|format|run}" >&2; exit 2;;
   esac
 }

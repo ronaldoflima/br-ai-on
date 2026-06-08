@@ -84,6 +84,23 @@ assert_eq "collect acha ci_red_main"      "true" "$(echo "$collected" | jq 'any(
 assert_eq "review tem age_days calc"      "2"    "$(echo "$collected" | jq '[.[] | select(.number==482)][0].age_days')"
 unset GH_BIN
 
+# --- run (integracao) ---
+echo "--- Test: run ---"
+export GH_BIN="$PROJECT_ROOT/tests/fixtures/gh-fake.sh"
+RUN_TMP=$(mktemp -d)
+snap="$RUN_TMP/last_digest.json"
+text1=$(RR_DRY_RUN=1 NOW="2026-06-08T09:00:00Z" bash "$RR" run \
+  --user me --org px-center --critical-repos px-center/px-torre-core \
+  --snapshot "$snap" --date "08/06 09:00")
+assert_eq "run gera texto na 1a vez" "true" "$(echo "$text1" | grep -q 'Release Radar' && echo true || echo false)"
+assert_eq "run salva snapshot"       "true" "$([ -f "$snap" ] && echo true || echo false)"
+text2=$(RR_DRY_RUN=1 NOW="2026-06-08T14:00:00Z" bash "$RR" run \
+  --user me --org px-center --critical-repos px-center/px-torre-core \
+  --snapshot "$snap" --date "08/06 14:00")
+assert_eq "run silencia sem mudancas" "" "$text2"
+rm -rf "$RUN_TMP"
+unset GH_BIN
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1
