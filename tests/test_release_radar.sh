@@ -30,6 +30,8 @@ assert_eq "approved+stale => red"     "red"    "$(echo "$out" | jq -r '.[1].seve
 assert_eq "approved+fresh => yellow"  "yellow" "$(echo "$out" | jq -r '.[2].severity')"
 assert_eq "review_requested => yellow" "yellow" "$(echo "$out" | jq -r '.[3].severity')"
 assert_eq "team_aging => yellow"      "yellow" "$(echo "$out" | jq -r '.[4].severity')"
+green_out=$(echo '[{"repo":"x/y","number":1,"reason":"no_action","approved":false,"stale_hours":0,"ci":"passing"}]' | bash "$RR" classify)
+assert_eq "reason desconhecido => green" "green" "$(echo "$green_out" | jq -r '.[0].severity')"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

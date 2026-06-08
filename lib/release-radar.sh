@@ -5,7 +5,10 @@ cmd_classify() {
   local stale_h=24
   while [ $# -gt 0 ]; do
     case "$1" in
-      --approved-stale-hours) stale_h="$2"; shift 2;;
+      --approved-stale-hours)
+        stale_h="${2:?--approved-stale-hours requer um valor}"
+        [[ "$stale_h" =~ ^[0-9]+$ ]] || { echo "valor invalido para --approved-stale-hours: $stale_h" >&2; exit 2; }
+        shift 2;;
       *) shift;;
     esac
   done
