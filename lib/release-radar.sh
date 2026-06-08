@@ -76,10 +76,11 @@ cmd_diff() {
 }
 
 cmd_format() {
-  local date_str=""
+  local date_str="" backlog_days=60
   while [ $# -gt 0 ]; do
     case "$1" in
       --date) date_str="${2:-}"; shift 2;;
+      --backlog-days) backlog_days="${2:-60}"; shift 2;;
       *) shift;;
     esac
   done
@@ -105,10 +106,15 @@ cmd_format() {
 
   if [ "$nyellow" -gt 0 ]; then
     printf '\n🟡 %s precisam de você\n' "$nyellow"
-    echo "$yellows" | jq -r '.[] |
-      if .reason == "review_requested" then "• [review] \(.repo | sub("px-center/";"")) #\(.number) \"\(.title)\" — \(.age_days)d, te aguarda"
+    local backlog_count; backlog_count=$(echo "$yellows" | jq --argjson bd "$backlog_days" '[.[] | select(.reason=="review_requested" and .age_days > $bd)] | length')
+    echo "$yellows" | jq -r --argjson bd "$backlog_days" '.[] |
+      if .reason == "review_requested" and .age_days > $bd then empty
+      elif .reason == "review_requested" then "• [review] \(.repo | sub("px-center/";"")) #\(.number) \"\(.title)\" — \(.age_days)d, te aguarda"
       elif .reason == "your_pr_stuck" then "• [seu PR] \(.repo | sub("px-center/";"")) #\(.number) \"\(.title)\" — travado \(.age_days)d"
       else "• [envelhecendo] \(.repo | sub("px-center/";"")) #\(.number) \"\(.title)\" — \(.age_days)d (\(.author))" end'
+    if [ "$backlog_count" -gt 0 ]; then
+      printf '• +%s reviews antigos (>%sd) no backlog\n' "$backlog_count" "$backlog_days"
+    fi
   fi
 
   printf '\n(silêncio nos demais repos = ok)\n'
@@ -351,7 +357,7 @@ cmd_collect() {
 }
 
 cmd_run() {
-  local user="" org="px-center" critical="" snapshot="" date_str="" stale_h=24
+  local user="" org="px-center" critical="" snapshot="" date_str="" stale_h=24 backlog_days=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --user) user="${2:-}"; shift 2;;
@@ -360,6 +366,7 @@ cmd_run() {
       --snapshot) snapshot="${2:-}"; shift 2;;
       --date) date_str="${2:-}"; shift 2;;
       --approved-stale-hours) stale_h="${2:-}"; shift 2;;
+      --backlog-days) backlog_days="${2:-}"; shift 2;;
       *) shift;;
     esac
   done
@@ -376,8 +383,11 @@ cmd_run() {
     jq -n --argjson items "$current" --arg at "${NOW:-}" '{generated_at:$at, items:$items}' > "$snapshot"
   fi
 
+  local fmt_args=("--date" "$date_str")
+  [ -n "$backlog_days" ] && fmt_args+=("--backlog-days" "$backlog_days")
+
   local text
-  text=$(echo "$changes" | cmd_format --date "$date_str")
+  text=$(echo "$changes" | cmd_format "${fmt_args[@]}")
   [ -n "$text" ] || return 0
 
   if [ "${RR_DRY_RUN:-0}" = "1" ]; then

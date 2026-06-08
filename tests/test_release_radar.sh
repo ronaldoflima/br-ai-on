@@ -127,6 +127,52 @@ assert_eq "run silencia sem mudancas" "" "$text2"
 rm -rf "$RUN_TMP"
 unset GH_BIN
 
+# --- format backlog ---
+echo "--- Test: format backlog ---"
+fmt_bl='[
+  {"repo":"px-center/px-a","number":1,"reason":"review_requested","severity":"yellow","title":"recente","age_days":3,"author":"x"},
+  {"repo":"px-center/px-b","number":2,"reason":"review_requested","severity":"yellow","title":"antigo1","age_days":120,"author":"y"},
+  {"repo":"px-center/px-c","number":3,"reason":"review_requested","severity":"yellow","title":"antigo2","age_days":140,"author":"z"}
+]'
+bl=$(echo "$fmt_bl" | bash "$RR" format --date "08/06 09:00" --backlog-days 60)
+assert_eq "header conta todos os 3"   "true" "$(echo "$bl" | grep -q '🟡 3 precisam de você' && echo true || echo false)"
+assert_eq "lista o review recente"    "true" "$(echo "$bl" | grep -q '#1' && echo true || echo false)"
+assert_eq "NAO lista review antigo"   "false" "$(echo "$bl" | grep -q '#2' && echo true || echo false)"
+assert_eq "tem linha de backlog"      "true" "$(echo "$bl" | grep -q '+2 reviews antigos' && echo true || echo false)"
+
+# backlog com default 60: items antigos (age_days=120,140) devem sumir individualmente
+assert_eq "backlog default: linha resumo com >60d" "true" "$(echo "$bl" | grep -q '>60d' && echo true || echo false)"
+
+# sem --backlog-days: comportamento default igual a --backlog-days 60 (nao lista antigos)
+bl_default=$(echo "$fmt_bl" | bash "$RR" format --date "08/06 09:00")
+assert_eq "default backlog-days funciona" "true" "$(echo "$bl_default" | grep -q '+2 reviews antigos' && echo true || echo false)"
+
+# reviews com age_days <= backlog_days sao listados normalmente
+fmt_bl2='[
+  {"repo":"px-center/px-x","number":99,"reason":"review_requested","severity":"yellow","title":"bordeline","age_days":60,"author":"a"}
+]'
+bl2=$(echo "$fmt_bl2" | bash "$RR" format --date "08/06 09:00" --backlog-days 60)
+assert_eq "age_days==backlog_days listado normalmente" "true" "$(echo "$bl2" | grep -q '#99' && echo true || echo false)"
+
+# quando nao ha reviews antigos, nao deve aparecer linha de backlog
+fmt_bl3='[
+  {"repo":"px-center/px-x","number":10,"reason":"review_requested","severity":"yellow","title":"novo","age_days":5,"author":"a"}
+]'
+bl3=$(echo "$fmt_bl3" | bash "$RR" format --date "08/06 09:00" --backlog-days 60)
+assert_eq "sem antigos: nao aparece linha backlog" "false" "$(echo "$bl3" | grep -q 'reviews antigos' && echo true || echo false)"
+
+# run aceita --backlog-days e repassa ao format
+echo "--- Test: run --backlog-days ---"
+export GH_BIN="$PROJECT_ROOT/tests/fixtures/gh-fake.sh"
+RUN_TMP2=$(mktemp -d)
+snap2="$RUN_TMP2/last_digest2.json"
+text_bl=$(RR_DRY_RUN=1 NOW="2026-06-08T09:00:00Z" bash "$RR" run \
+  --user me --org px-center --critical-repos px-center/px-torre-core \
+  --snapshot "$snap2" --date "08/06 09:00" --backlog-days 1)
+assert_eq "run com --backlog-days gera texto" "true" "$(echo "$text_bl" | grep -q 'Release Radar' && echo true || echo false)"
+rm -rf "$RUN_TMP2"
+unset GH_BIN
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1
