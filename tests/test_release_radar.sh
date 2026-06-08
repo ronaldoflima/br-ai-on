@@ -72,6 +72,18 @@ assert_eq "cita PR review"       "true" "$(echo "$text" | grep -q '#482' && echo
 empty=$(echo '[]' | bash "$RR" format --date "08/06 09:00")
 assert_eq "vazio => silencio" "" "$empty"
 
+# --- collect (com gh fake) ---
+echo "--- Test: collect ---"
+export GH_BIN="$PROJECT_ROOT/tests/fixtures/gh-fake.sh"
+chmod +x "$GH_BIN"
+collected=$(NOW="2026-06-08T09:00:00Z" bash "$RR" collect --user me --org px-center --critical-repos px-center/px-torre-core)
+assert_eq "collect retorna JSON array" "true" "$(echo "$collected" | jq -e 'type=="array"' >/dev/null 2>&1 && echo true || echo false)"
+assert_eq "collect acha review_requested" "true" "$(echo "$collected" | jq 'any(.[]; .reason=="review_requested" and .number==482)')"
+assert_eq "collect acha your_pr_stuck"    "true" "$(echo "$collected" | jq 'any(.[]; .reason=="your_pr_stuck" and .number==91)')"
+assert_eq "collect acha ci_red_main"      "true" "$(echo "$collected" | jq 'any(.[]; .reason=="ci_red_main" and .repo=="px-center/px-torre-core")')"
+assert_eq "review tem age_days calc"      "2"    "$(echo "$collected" | jq '[.[] | select(.number==482)][0].age_days')"
+unset GH_BIN
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

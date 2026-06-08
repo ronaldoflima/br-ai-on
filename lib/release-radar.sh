@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GH() { "${GH_BIN:-gh}" "$@"; }
+
+# dias inteiros entre uma data ISO e NOW (default: agora)
+_age_days() {
+  local iso="$1"
+  local now="${NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  local t0 t1
+  t0=$(date -u -d "$iso" +%s 2>/dev/null || echo 0)
+  t1=$(date -u -d "$now" +%s 2>/dev/null || echo 0)
+  echo $(( (t1 - t0) / 86400 ))
+}
+
 cmd_classify() {
   local stale_h=24
   while [ $# -gt 0 ]; do
@@ -79,9 +91,60 @@ cmd_format() {
   printf '\n(silêncio nos demais repos = ok)\n'
 }
 
+cmd_collect() {
+  local user="" org="px-center" critical=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --user) user="${2:-}"; shift 2;;
+      --org) org="${2:-}"; shift 2;;
+      --critical-repos) critical="${2:-}"; shift 2;;
+      *) shift;;
+    esac
+  done
+
+  local out='[]'
+  local map_pr='{repo: .repository.nameWithOwner, number: .number, branch: null, title: .title, url: .url, author: .author.login, created: .createdAt, updated: .updatedAt}'
+
+  local rr
+  rr=$(GH search prs --review-requested="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
+  rr=$(echo "$rr" | jq "map($map_pr + {reason:\"review_requested\", approved:false, ci:\"none\", mergeable:true, stale_hours:0})")
+
+  local mine
+  mine=$(GH search prs --author="$user" --state=open --owner="$org" --json repository,number,title,url,author,createdAt,updatedAt 2>/dev/null || echo '[]')
+  mine=$(echo "$mine" | jq "map($map_pr + {reason:\"your_pr_stuck\", approved:true, ci:\"passing\", mergeable:true, stale_hours:0})")
+
+  out=$(jq -n --argjson a "$rr" --argjson b "$mine" '$a + $b')
+
+  local IFS=','
+  local repo
+  for repo in $critical; do
+    [ -n "$repo" ] || continue
+    local checks failed
+    checks=$(GH api "repos/$repo/commits/main/check-runs" 2>/dev/null || echo '{"check_runs":[]}')
+    failed=$(echo "$checks" | jq '[.check_runs[]? | select(.conclusion=="failure")] | length')
+    if [ "${failed:-0}" -gt 0 ]; then
+      local item
+      item=$(jq -n --arg repo "$repo" '{repo:$repo, number:null, branch:"main", title:"build main", url:("https://github.com/"+$repo), author:"-", reason:"ci_red_main", approved:false, ci:"failing", mergeable:true, stale_hours:0, commit:"main", age_days:0}')
+      out=$(jq -n --argjson o "$out" --argjson i "$item" '$o + [$i]')
+    fi
+  done
+
+  echo "$out" | jq -c '.[]' | while read -r line; do
+    local created age
+    created=$(echo "$line" | jq -r '.created // empty')
+    if [ -n "$created" ]; then
+      age=$(_age_days "$created")
+      echo "$line" | jq --argjson age "$age" '. + {age_days:$age}'
+    else
+      echo "$line"
+    fi
+  done | jq -s '.'
+}
+
 main() {
   local sub="${1:-}"; shift || true
   case "$sub" in
+    collect) cmd_collect "$@";;
     classify) cmd_classify "$@";;
     diff) cmd_diff "$@";;
     format) cmd_format "$@";;
