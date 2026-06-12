@@ -78,7 +78,9 @@ export function spawnPsqlStdin(
   sql: string,
   vars: Record<string, string>,
 ): Promise<string> {
-  const args = ["-X", "-tA", "-v", "ON_ERROR_STOP=1"];
+  // -q: com -f, o psql imprime command tags ("INSERT 0 1") mesmo com -t;
+  // quiet suprime, deixando só o RETURNING.
+  const args = ["-X", "-q", "-tA", "-v", "ON_ERROR_STOP=1"];
   for (const [k, v] of Object.entries(vars)) args.push("-v", `${k}=${v}`);
   args.push("-f", "-");
   return runPsql(args, sql);

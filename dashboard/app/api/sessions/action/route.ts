@@ -32,7 +32,13 @@ export async function POST(req: Request) {
         text: v.value.text,
       })
     ).trim();
-    return NextResponse.json({ id: Number(out) });
+    // Primeira linha = valor do RETURNING (defensivo caso algum psql ainda
+    // emita command tag).
+    const id = Number(out.split("\n")[0]);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ error: `retorno inesperado do psql: ${out}` }, { status: 502 });
+    }
+    return NextResponse.json({ id });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 502 });
   }
