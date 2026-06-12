@@ -158,6 +158,7 @@ Comandos:
 • /clear — limpar contexto
 • /reset — reiniciar sessão
 • /status — estado da sessão
+• /fila — fila de prioridades
 • /pause — pausar agentes
 • /unpause — retomar agentes
 • /deploy — deploy da branch main
@@ -197,6 +198,17 @@ handle_status() {
     tg_send "✅ Sessão \`$session\` ativa e aguardando (backend: $CLI_BACKEND)." "$chat_id"
   else
     tg_send "⏳ Sessão \`$session\` processando (backend: $CLI_BACKEND)..." "$chat_id"
+  fi
+}
+
+handle_fila() {
+  local chat_id="$1"
+  local out
+  if out=$(bash "$BRAION/scripts/tg-fila.sh" "$chat_id" 2>&1); then
+    tg_send "$out" "$chat_id"
+  else
+    log "ERRO tg-fila: $out"
+    tg_send "❌ fila indisponível" "$chat_id"
   fi
 }
 
@@ -401,11 +413,12 @@ main() {
         /clear)       handle_clear   "$chat_id" "$session" ;;
         /reset)       handle_reset   "$chat_id" "$session" ;;
         /status)      handle_status  "$chat_id" "$session" ;;
+        /fila)        handle_fila    "$chat_id" ;;
         /pause)       handle_pause   "$chat_id" ;;
         /unpause)     handle_unpause "$chat_id" ;;
         /deploy)      handle_deploy  "$chat_id" "main" ;;
         /deploy\ *)   handle_deploy  "$chat_id" "${text#/deploy }" ;;
-        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
+        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /fila, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
         *)            handle_message "$chat_id" "$session" "$text" ;;
       esac
 
