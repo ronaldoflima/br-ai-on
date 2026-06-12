@@ -51,8 +51,9 @@ function pgVarsFromDotEnv(): Record<string, string> {
   const vars: Record<string, string> = {};
   try {
     for (const line of readFileSync(envPath, "utf-8").split("\n")) {
-      const match = line.match(/^\s*(PG[A-Z]+)\s*=\s*(.*)\s*$/);
-      if (match) vars[match[1]] = match[2].replace(/^["']|["']$/g, "");
+      // [^#]* evita capturar comentários inline (PGHOST=x # comment).
+      const match = line.match(/^\s*(PG[A-Z]+)\s*=\s*([^#]*)/);
+      if (match) vars[match[1]] = match[2].trim().replace(/^["']|["']$/g, "");
     }
   } catch {
     // ignore read errors
@@ -71,6 +72,8 @@ function pgEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+const PSQL_TIMEOUT_MS = 10_000;
+
 function spawnPsql(sql: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("psql", ["-X", "-tA", "-v", "ON_ERROR_STOP=1", "-c", sql], {
@@ -78,10 +81,20 @@ function spawnPsql(sql: string): Promise<string> {
     });
     let out = "";
     let err = "";
+    // Timeout: PG inacessível pode deixar o psql pendurado; mata o processo e
+    // rejeita — a rejeição cai na degradação graciosa do GET (200 + error).
+    const timer = setTimeout(() => {
+      proc.kill("SIGTERM");
+      reject(new Error("psql timeout"));
+    }, PSQL_TIMEOUT_MS);
     proc.stdout.on("data", (d) => { out += d; });
     proc.stderr.on("data", (d) => { err += d; });
-    proc.on("error", (e) => reject(e)); // psql ausente (ENOENT) etc.
+    proc.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e); // psql ausente (ENOENT) etc.
+    });
     proc.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) reject(new Error(err.trim() || `psql exit ${code}`));
       else resolve(out);
     });

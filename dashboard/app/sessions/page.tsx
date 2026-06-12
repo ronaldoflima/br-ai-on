@@ -56,20 +56,32 @@ export default function SessionsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    let controller: AbortController | null = null;
     const fetchSessions = () => {
-      fetch("/api/sessions")
+      // Aborta o fetch anterior ainda em andamento antes de iniciar outro.
+      controller?.abort();
+      controller = new AbortController();
+      fetch("/api/sessions", { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
           setSessions(data.sessions || []);
           setHosts(data.hosts || []);
           setError(data.error || "");
+          setLoading(false);
         })
-        .catch(() => setError("Erro de conexão com a API"))
-        .finally(() => setLoading(false));
+        .catch((err) => {
+          // Abort não é erro: ou o intervalo disparou de novo, ou desmontou.
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          setError("Erro de conexão com a API");
+          setLoading(false);
+        });
     };
     fetchSessions();
     const interval = setInterval(fetchSessions, POLL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      controller?.abort();
+    };
   }, []);
 
   const hostList = useMemo(() => {
