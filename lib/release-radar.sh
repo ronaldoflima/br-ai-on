@@ -378,22 +378,26 @@ cmd_run() {
   local changes
   changes=$(echo "$current" | cmd_diff "$snapshot")
 
-  if [ -n "$snapshot" ]; then
-    mkdir -p "$(dirname "$snapshot")"
-    jq -n --argjson items "$current" --arg at "${NOW:-}" '{generated_at:$at, items:$items}' > "$snapshot"
-  fi
-
   local fmt_args=("--date" "$date_str")
   [ -n "$backlog_days" ] && fmt_args+=("--backlog-days" "$backlog_days")
 
   local text
   text=$(echo "$changes" | cmd_format "${fmt_args[@]}")
+
+  if [ -n "$snapshot" ]; then
+    mkdir -p "$(dirname "$snapshot")"
+    if [ -z "$text" ] || [ "${RR_DRY_RUN:-0}" = "1" ]; then
+      jq -n --argjson items "$current" --arg at "${NOW:-}" '{generated_at:$at, items:$items}' > "$snapshot"
+    fi
+  fi
+
   [ -n "$text" ] || return 0
 
   if [ "${RR_DRY_RUN:-0}" = "1" ]; then
     printf '%s\n' "$text"
   else
-    bash "$(dirname "${BASH_SOURCE[0]}")/telegram.sh" send "$text"
+    bash "$(dirname "${BASH_SOURCE[0]}")/telegram.sh" send "$text" \
+      && { [ -n "$snapshot" ] && jq -n --argjson items "$current" --arg at "${NOW:-}" '{generated_at:$at, items:$items}' > "$snapshot"; }
   fi
 }
 
