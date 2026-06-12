@@ -18,6 +18,30 @@ interface TmuxPane {
   attached: boolean;
   state_since: string;
   last_seen: string;
+  hook_state?: string | null;
+  hook_detail?: string | null;
+  hook_event?: string | null;
+  hook_event_at?: string | null;
+}
+
+// Visão efetiva do pane: o hook (preciso, evento de ciclo de vida do Claude
+// Code) ganha da heurística quando é mais recente que a última transição
+// observada pelo coletor; senão a heurística segue como rede de segurança.
+interface PaneView {
+  state: string;
+  since: string;
+  detail: string | null;
+  source: "hook" | "heurística";
+}
+
+function effectiveView(p: TmuxPane): PaneView {
+  const hookWins =
+    p.hook_state &&
+    p.hook_event_at &&
+    new Date(p.hook_event_at).getTime() >= new Date(p.state_since).getTime();
+  return hookWins
+    ? { state: p.hook_state!, since: p.hook_event_at!, detail: p.hook_detail ?? null, source: "hook" }
+    : { state: p.state, since: p.state_since, detail: p.state_detail, source: "heurística" };
 }
 
 interface HostStatus {
@@ -41,11 +65,19 @@ function paneKey(p: TmuxPane): string {
   return `${p.host}:${p.session}:${p.window_index}.${p.pane_index}`;
 }
 
-function isWaitingTooLong(p: TmuxPane): boolean {
+function isWaitingTooLong(view: PaneView): boolean {
   return (
-    p.state === "claude_waiting_input" &&
-    Date.now() - new Date(p.state_since).getTime() > WAITING_ALERT_MS
+    view.state === "claude_waiting_input" &&
+    Date.now() - new Date(view.since).getTime() > WAITING_ALERT_MS
   );
+}
+
+function waitingSinceLabel(view: PaneView): string {
+  const time = new Date(view.since).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return view.detail ? `esperando desde ${time} — ${view.detail}` : `esperando desde ${time}`;
 }
 
 export default function SessionsPage() {
@@ -173,8 +205,11 @@ export default function SessionsPage() {
 
                         {sessionPanes.map((pane) => {
                           const key = paneKey(pane);
-                          const meta = STATE_META[pane.state] || STATE_META.shell;
-                          const alert = isWaitingTooLong(pane);
+                          const view = effectiveView(pane);
+                          const meta = STATE_META[view.state] || STATE_META.shell;
+                          const alert = isWaitingTooLong(view);
+                          const hookWaiting =
+                            view.source === "hook" && view.state === "claude_waiting_input";
                           return (
                             <div
                               key={key}
@@ -190,14 +225,25 @@ export default function SessionsPage() {
                                   {meta.label}
                                 </span>
                                 <span className={styles.stateTime}>
-                                  {relativeTime(pane.state_since)}
+                                  {relativeTime(view.since)}
                                 </span>
+                                {view.source === "hook" && (
+                                  <span className={cn(styles.badge, styles.badgeHook)}>
+                                    via hook
+                                  </span>
+                                )}
                                 {pane.command && (
                                   <span className="mono-sm">{pane.command}</span>
                                 )}
                               </div>
-                              {pane.state_detail && (
-                                <span className="text-muted-xs">{pane.state_detail}</span>
+                              {hookWaiting ? (
+                                <span className={styles.waitingSince}>
+                                  {waitingSinceLabel(view)}
+                                </span>
+                              ) : (
+                                view.detail && (
+                                  <span className="text-muted-xs">{view.detail}</span>
+                                )
                               )}
                               {pane.cwd && <span className={styles.paneCwd}>{pane.cwd}</span>}
                               {pane.last_output && (

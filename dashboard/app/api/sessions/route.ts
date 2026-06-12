@@ -34,6 +34,13 @@ interface TmuxPane {
   attached: boolean;
   state_since: string;
   last_seen: string;
+  // Colunas hook_* (migration 0005): a QUERY agrega a linha inteira via
+  // json_agg(t), então elas fluem automaticamente quando existem — e ficam
+  // ausentes do JSON (undefined) enquanto a migration não foi aplicada.
+  hook_state?: string | null;
+  hook_detail?: string | null;
+  hook_event?: string | null;
+  hook_event_at?: string | null;
 }
 
 interface HeartbeatRow {
