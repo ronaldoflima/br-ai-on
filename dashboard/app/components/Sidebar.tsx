@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { href: "/wizard", label: "Wizard", icon: IconWizard },
   { href: "/terminal", label: "Terminais", icon: IconTerminal },
   { href: "/sessions", label: "Sessions", icon: IconSessions },
+  { href: "/queue", label: "Queue", icon: IconHandoffs },
   { href: "/integrations", label: "Integrações", icon: IconIntegrations },
   { href: "/knowledge", label: "Knowledge", icon: IconKnowledge },
 ];
