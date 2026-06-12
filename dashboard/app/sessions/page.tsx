@@ -3,46 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SkeletonCards } from "../components/Skeleton";
 import { relativeTime, cn } from "../lib/utils";
 import styles from "./sessions.module.css";
-
-interface TmuxPane {
-  host: string;
-  session: string;
-  window_index: number;
-  pane_index: number;
-  window_name: string | null;
-  command: string | null;
-  cwd: string | null;
-  state: string;
-  state_detail: string | null;
-  last_output: string | null;
-  attached: boolean;
-  state_since: string;
-  last_seen: string;
-  hook_state?: string | null;
-  hook_detail?: string | null;
-  hook_event?: string | null;
-  hook_event_at?: string | null;
-}
-
-// Visão efetiva do pane: o hook (preciso, evento de ciclo de vida do Claude
-// Code) ganha da heurística quando é mais recente que a última transição
-// observada pelo coletor; senão a heurística segue como rede de segurança.
-interface PaneView {
-  state: string;
-  since: string;
-  detail: string | null;
-  source: "hook" | "heurística";
-}
-
-function effectiveView(p: TmuxPane): PaneView {
-  const hookWins =
-    p.hook_state &&
-    p.hook_event_at &&
-    new Date(p.hook_event_at).getTime() >= new Date(p.state_since).getTime();
-  return hookWins
-    ? { state: p.hook_state!, since: p.hook_event_at!, detail: p.hook_detail ?? null, source: "hook" }
-    : { state: p.state, since: p.state_since, detail: p.state_detail, source: "heurística" };
-}
+import { effectiveView, type TmuxPane, type PaneView } from "./lib";
 
 interface HostStatus {
   host: string;
