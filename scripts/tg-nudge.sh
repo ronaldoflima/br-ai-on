@@ -42,14 +42,18 @@ PSQL=(psql -X -q -w -tA -v ON_ERROR_STOP=1)
 export PGHOST="${PGHOST:-127.0.0.1}" PGPORT="${PGPORT:-5432}"
 export PGDATABASE="${PGDATABASE:-braion}" PGUSER="${PGUSER:-braion}"
 
+# psql só interpola variáveis -v em scripts (-f/stdin), NUNCA em -c.
 # Duplicata: já existe ação pendente para este pane → recusa com aviso (rc=0).
 pending=$("${PSQL[@]}" \
     -v host="$host" -v session="$session" \
     -v window_index="$window_index" -v pane_index="$pane_index" \
-    -c "SELECT count(*) FROM braion.tmux_actions
-         WHERE host = :'host' AND session = :'session'
-           AND window_index = :'window_index'::int
-           AND pane_index = :'pane_index'::int AND status = 'pending'")
+    -f - <<'SQL'
+SELECT count(*) FROM braion.tmux_actions
+ WHERE host = :'host' AND session = :'session'
+   AND window_index = :'window_index'::int
+   AND pane_index = :'pane_index'::int AND status = 'pending';
+SQL
+)
 if [ "$pending" != "0" ]; then
     echo "⚠️ já existe ação pendente para $host $session $pane_ref — aguarde o coletor executar"
     exit 0
@@ -59,9 +63,11 @@ fi
     -v host="$host" -v session="$session" \
     -v window_index="$window_index" -v pane_index="$pane_index" \
     -v action_text="$USER_TEXT" -v requested_by="telegram:$CHAT_ID" \
-    -c "INSERT INTO braion.tmux_actions
-          (host, session, window_index, pane_index, action_text, requested_by)
-        VALUES (:'host', :'session', :'window_index'::int, :'pane_index'::int,
-                :'action_text', :'requested_by')" >/dev/null
+    -f - >/dev/null <<'SQL'
+INSERT INTO braion.tmux_actions
+  (host, session, window_index, pane_index, action_text, requested_by)
+VALUES (:'host', :'session', :'window_index'::int, :'pane_index'::int,
+        :'action_text', :'requested_by');
+SQL
 
 echo "✓ na fila para $host $session $pane_ref (executa no próximo ciclo do coletor)"
