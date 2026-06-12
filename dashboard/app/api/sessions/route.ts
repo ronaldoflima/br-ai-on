@@ -14,6 +14,12 @@ const QUERY = `SELECT json_build_object(
   'hosts', (
     SELECT coalesce(json_agg(h ORDER BY h.host), '[]'::json)
     FROM braion.collector_heartbeats h
+  ),
+  'actions', (
+    SELECT coalesce(json_agg(a ORDER BY a.created_at DESC), '[]'::json)
+    FROM braion.tmux_actions a
+    WHERE a.created_at > now() - interval '30 minutes'
+      AND a.requested_by = 'dashboard'
   )
 )`;
 
@@ -57,8 +63,10 @@ export async function GET() {
       last_run: h.last_run,
       online: Date.now() - new Date(h.last_run).getTime() <= STALE_MS,
     }));
-    return NextResponse.json({ sessions, hosts });
+    // Filtro requested_by='dashboard' é intencional: nudges via Telegram para
+    // o mesmo pane não aparecem aqui — cada canal vê só as próprias actions.
+    return NextResponse.json({ sessions, hosts, actions: data.actions || [] });
   } catch (err) {
-    return NextResponse.json({ sessions: [], hosts: [], error: String(err) });
+    return NextResponse.json({ sessions: [], hosts: [], actions: [], error: String(err) });
   }
 }
