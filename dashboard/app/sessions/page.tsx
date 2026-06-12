@@ -3,7 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import { SkeletonCards } from "../components/Skeleton";
 import { relativeTime, cn } from "../lib/utils";
 import styles from "./sessions.module.css";
-import { effectiveView, type TmuxPane, type PaneView } from "./lib";
+import SendBox from "./SendBox";
+import {
+  effectiveView,
+  cleanOutput,
+  projectName,
+  stateRank,
+  latestActionFor,
+  type TmuxPane,
+  type TmuxAction,
+  type PaneView,
+} from "./lib";
 
 interface HostStatus {
   host: string;
@@ -14,6 +24,10 @@ interface HostStatus {
 const KNOWN_HOSTS = ["mac", "vps-mcpgw", "vps-pessoal"];
 const POLL_MS = 15000;
 const WAITING_ALERT_MS = 10 * 60 * 1000;
+// Estados em que o gate do coletor aceita send-keys (cortesia de UI; o gate
+// autoritativo é o do coletor, por ciclo — pode divergir brevemente).
+const SENDABLE_STATES = ["claude_waiting_input", "claude_idle"];
+const GATE_HINT = "gate do coletor só aceita waiting/idle";
 
 const STATE_META: Record<string, { label: string; badge: string; pulse?: boolean }> = {
   claude_working: { label: "working", badge: styles.badgeWorking, pulse: true },
@@ -41,9 +55,16 @@ function waitingSinceLabel(view: PaneView): string {
   return view.detail ? `esperando desde ${time} — ${view.detail}` : `esperando desde ${time}`;
 }
 
+function paneTitle(p: TmuxPane): string {
+  const proj = projectName(p.cwd);
+  const id = `${p.window_index}.${p.pane_index}${p.window_name ? ` ${p.window_name}` : ""}`;
+  return proj ? `${proj} · ${id}` : id;
+}
+
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<TmuxPane[]>([]);
   const [hosts, setHosts] = useState<HostStatus[]>([]);
+  const [actions, setActions] = useState<TmuxAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -59,6 +80,7 @@ export default function SessionsPage() {
         .then((data) => {
           setSessions(data.sessions || []);
           setHosts(data.hosts || []);
+          setActions(data.actions || []);
           setError(data.error || "");
           setLoading(false);
         })
@@ -92,8 +114,33 @@ export default function SessionsPage() {
       if (!hostSessions.has(pane.session)) hostSessions.set(pane.session, []);
       hostSessions.get(pane.session)!.push(pane);
     }
+    // Dentro de cada sessão: working → waiting → idle → shell; empate pela
+    // transição mais recente.
+    for (const hostSessions of map.values()) {
+      for (const panes of hostSessions.values()) {
+        panes.sort((a, b) => {
+          const va = effectiveView(a);
+          const vb = effectiveView(b);
+          const rank = stateRank(va.state) - stateRank(vb.state);
+          if (rank !== 0) return rank;
+          return new Date(vb.since).getTime() - new Date(va.since).getTime();
+        });
+      }
+    }
     return map;
   }, [sessions]);
+
+  // Triagem: panes esperando input, espera mais longa primeiro.
+  const waitingPanes = useMemo(
+    () =>
+      sessions
+        .map((p) => ({ pane: p, view: effectiveView(p) }))
+        .filter(({ view }) => view.state === "claude_waiting_input")
+        .sort(
+          (a, b) => new Date(a.view.since).getTime() - new Date(b.view.since).getTime(),
+        ),
+    [sessions],
+  );
 
   const hostStatus = useMemo(
     () => new Map(hosts.map((h) => [h.host, h])),
@@ -122,6 +169,56 @@ export default function SessionsPage() {
         <SkeletonCards count={6} />
       ) : (
         <div className={styles.wrapper}>
+          <section className={styles.needsYou}>
+            <h2 className={styles.needsYouTitle}>Precisa de você</h2>
+            {waitingPanes.length === 0 ? (
+              <div className={styles.allClear}>Nenhum agente precisa de você ✓</div>
+            ) : (
+              waitingPanes.map(({ pane, view }) => {
+                const key = paneKey(pane);
+                const previewKey = `needs:${key}`;
+                const isOpen = expanded.has(previewKey);
+                const lines = cleanOutput(pane.last_output, isOpen ? 40 : 6);
+                return (
+                  <div key={key} className={styles.needsYouCard}>
+                    <div className={styles.paneMeta}>
+                      {projectName(pane.cwd) && (
+                        <span className={styles.projTag}>{projectName(pane.cwd)}</span>
+                      )}
+                      <span className={styles.paneId}>
+                        {pane.session} {pane.window_index}.{pane.pane_index}
+                        {pane.window_name ? ` ${pane.window_name}` : ""}
+                      </span>
+                      <span className={cn(styles.badge, styles.badgeShell)}>{pane.host}</span>
+                      <span
+                        className={cn(
+                          styles.waitingSince,
+                          isWaitingTooLong(view) && styles.waitingLong,
+                        )}
+                      >
+                        {waitingSinceLabel(view)}
+                      </span>
+                    </div>
+                    {lines.length > 0 && (
+                      <div
+                        className={cn(styles.preview, isOpen && styles.previewExpanded)}
+                        onClick={() => togglePreview(previewKey)}
+                        title={isOpen ? "Clique para recolher" : "Clique para expandir"}
+                      >
+                        {lines.join("\n")}
+                      </div>
+                    )}
+                    <SendBox
+                      pane={pane}
+                      enabled
+                      lastAction={latestActionFor(pane, actions)}
+                    />
+                  </div>
+                );
+              })
+            )}
+          </section>
+
           {hostList.map((host) => {
             const hostSessions = byHost.get(host);
             const status = hostStatus.get(host);
@@ -168,55 +265,49 @@ export default function SessionsPage() {
                           const key = paneKey(pane);
                           const view = effectiveView(pane);
                           const meta = STATE_META[view.state] || STATE_META.shell;
-                          const alert = isWaitingTooLong(view);
-                          const hookWaiting =
-                            view.source === "hook" && view.state === "claude_waiting_input";
+                          const isOpen = expanded.has(key);
+                          const sendable = SENDABLE_STATES.includes(view.state);
+                          const detailLines = isOpen ? cleanOutput(pane.last_output, 40) : [];
                           return (
-                            <div
-                              key={key}
-                              className={cn(styles.paneRow, alert && styles.waitingAlert)}
-                            >
-                              <div className={styles.paneMeta}>
-                                <span className={styles.paneId}>
-                                  {pane.window_index}.{pane.pane_index}
-                                  {pane.window_name ? ` ${pane.window_name}` : ""}
-                                </span>
-                                <span className={cn(styles.badge, meta.badge)}>
+                            <div key={key} className={styles.paneItem}>
+                              <div
+                                className={cn(
+                                  styles.paneLine,
+                                  view.state === "claude_waiting_input" && styles.paneLineWaiting,
+                                )}
+                                onClick={() => togglePreview(key)}
+                                title={isOpen ? "Clique para recolher" : "Clique para detalhes"}
+                              >
+                                <span className={styles.paneLineName}>{paneTitle(pane)}</span>
+                                <span
+                                  className={cn(styles.badge, meta.badge)}
+                                  title={`fonte: ${view.source}`}
+                                >
                                   <span className={cn(styles.dot, meta.pulse && styles.dotPulse)} />
                                   {meta.label}
                                 </span>
-                                <span className={styles.stateTime}>
-                                  {relativeTime(view.since)}
-                                </span>
-                                {view.source === "hook" && (
-                                  <span className={cn(styles.badge, styles.badgeHook)}>
-                                    via hook
-                                  </span>
-                                )}
-                                {pane.command && (
-                                  <span className="mono-sm">{pane.command}</span>
-                                )}
+                                <span className={styles.stateTime}>{relativeTime(view.since)}</span>
                               </div>
-                              {hookWaiting ? (
-                                <span className={styles.waitingSince}>
-                                  {waitingSinceLabel(view)}
-                                </span>
-                              ) : (
-                                view.detail && (
-                                  <span className="text-muted-xs">{view.detail}</span>
-                                )
-                              )}
-                              {pane.cwd && <span className={styles.paneCwd}>{pane.cwd}</span>}
-                              {pane.last_output && (
-                                <div
-                                  className={cn(
-                                    styles.preview,
-                                    expanded.has(key) && styles.previewExpanded,
+                              {isOpen && (
+                                <div className={styles.paneDetail}>
+                                  {pane.cwd && <span className={styles.paneCwd}>{pane.cwd}</span>}
+                                  {pane.command && <span className="mono-sm">{pane.command}</span>}
+                                  {view.detail && (
+                                    <span className="text-muted-xs">{view.detail}</span>
                                   )}
-                                  onClick={() => togglePreview(key)}
-                                  title={expanded.has(key) ? "Clique para recolher" : "Clique para expandir"}
-                                >
-                                  {pane.last_output}
+                                  {detailLines.length > 0 && (
+                                    <div className={cn(styles.preview, styles.previewExpanded)}>
+                                      {detailLines.join("\n")}
+                                    </div>
+                                  )}
+                                  <SendBox
+                                    pane={pane}
+                                    enabled={sendable}
+                                    disabledReason={
+                                      sendable ? undefined : `agente está ${meta.label} — ${GATE_HINT}`
+                                    }
+                                    lastAction={latestActionFor(pane, actions)}
+                                  />
                                 </div>
                               )}
                             </div>
