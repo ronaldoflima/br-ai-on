@@ -203,6 +203,73 @@
   background: rgba(239, 68, 68, 0.08);
 }
 
+/* ---- SendBox ---- */
+
+.sendBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sendRow {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.sendInput {
+  flex: 1;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 30px;
+}
+
+.sendInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sendInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendBtn {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sendBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendStatus {
+  font-size: 11px;
+}
+
+.sendStatusPending { color: var(--text-muted); }
+.sendStatusOk { color: #34d399; }
+.sendStatusError { color: var(--error); }
+
 @media (max-width: 768px) {
   .sessionGrid {
     grid-template-columns: 1fr;
