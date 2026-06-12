@@ -377,6 +377,23 @@ main() {
         continue
       fi
 
+      # Nudge (tmux-agents-orchestrator): reply a notificação com marcador NÃO
+      # vai para a sessão Claude do braion (nem respeita .paused — intencional,
+      # não toca na fila do braion); vira ação em braion.tmux_actions, que o
+      # coletor do host alvo executa com gate de estado.
+      local reply_text
+      reply_text=$(echo "$update" | jq -r '.message.reply_to_message.text // empty' 2>/dev/null)
+      if [ -n "$reply_text" ] && printf '%s' "$reply_text" | grep -q '⟦nudge '; then
+        local nudge_msg
+        if nudge_msg=$(bash "$BRAION/scripts/tg-nudge.sh" "$reply_text" "$text" "$chat_id" 2>&1); then
+          tg_send "$nudge_msg" "$chat_id" || log "WARN tg_send da confirmação de nudge falhou"
+        else
+          log "ERRO tg-nudge: $nudge_msg"
+          tg_send "❌ falha ao enfileirar nudge" "$chat_id" || true
+        fi
+        continue
+      fi
+
       local session="${SESSION_PREFIX}" #TODO futuramente colocar com chat_id para isolar sessões por usuário, mas por enquanto só tem uma sessão global
 
       case "$text" in
