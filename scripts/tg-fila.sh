@@ -73,7 +73,7 @@ render_message() {
     return
   fi
   printf '📋 *Fila* (sync %s)\n\n%s' "$sync_time" "$body"
-  [ -n "$footer" ] && printf '\n%s' "$footer"
+  [ -n "$footer" ] && printf '\n\n%s' "$footer"
 }
 
 # ── Sync em background (desacoplado do bridge) ───────────────────────────────
