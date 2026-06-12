@@ -1,0 +1,217 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import { SkeletonCards } from "../components/Skeleton";
+import { relativeTime, cn } from "../lib/utils";
+import styles from "./sessions.module.css";
+
+interface TmuxPane {
+  host: string;
+  session: string;
+  window_index: number;
+  pane_index: number;
+  window_name: string | null;
+  command: string | null;
+  cwd: string | null;
+  state: string;
+  state_detail: string | null;
+  last_output: string | null;
+  attached: boolean;
+  state_since: string;
+  last_seen: string;
+}
+
+interface HostStatus {
+  host: string;
+  last_run: string;
+  online: boolean;
+}
+
+const KNOWN_HOSTS = ["mac", "vps-mcpgw", "vps-pessoal"];
+const POLL_MS = 15000;
+const WAITING_ALERT_MS = 10 * 60 * 1000;
+
+const STATE_META: Record<string, { label: string; badge: string; pulse?: boolean }> = {
+  claude_working: { label: "working", badge: styles.badgeWorking, pulse: true },
+  claude_waiting_input: { label: "waiting input", badge: styles.badgeWaiting },
+  claude_idle: { label: "idle", badge: styles.badgeIdle },
+  shell: { label: "shell", badge: styles.badgeShell },
+};
+
+function paneKey(p: TmuxPane): string {
+  return `${p.host}:${p.session}:${p.window_index}.${p.pane_index}`;
+}
+
+function isWaitingTooLong(p: TmuxPane): boolean {
+  return (
+    p.state === "claude_waiting_input" &&
+    Date.now() - new Date(p.state_since).getTime() > WAITING_ALERT_MS
+  );
+}
+
+export default function SessionsPage() {
+  const [sessions, setSessions] = useState<TmuxPane[]>([]);
+  const [hosts, setHosts] = useState<HostStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchSessions = () => {
+      fetch("/api/sessions")
+        .then((r) => r.json())
+        .then((data) => {
+          setSessions(data.sessions || []);
+          setHosts(data.hosts || []);
+          setError(data.error || "");
+        })
+        .catch(() => setError("Erro de conexão com a API"))
+        .finally(() => setLoading(false));
+    };
+    fetchSessions();
+    const interval = setInterval(fetchSessions, POLL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
+  const hostList = useMemo(() => {
+    const extra = [...new Set([...sessions.map((p) => p.host), ...hosts.map((h) => h.host)])]
+      .filter((h) => !KNOWN_HOSTS.includes(h))
+      .sort();
+    return [...KNOWN_HOSTS, ...extra];
+  }, [sessions, hosts]);
+
+  const byHost = useMemo(() => {
+    const map = new Map<string, Map<string, TmuxPane[]>>();
+    for (const pane of sessions) {
+      if (!map.has(pane.host)) map.set(pane.host, new Map());
+      const hostSessions = map.get(pane.host)!;
+      if (!hostSessions.has(pane.session)) hostSessions.set(pane.session, []);
+      hostSessions.get(pane.session)!.push(pane);
+    }
+    return map;
+  }, [sessions]);
+
+  const hostStatus = useMemo(
+    () => new Map(hosts.map((h) => [h.host, h])),
+    [hosts],
+  );
+
+  const togglePreview = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Sessões tmux</h1>
+        <span className="text-muted-xs">atualiza a cada 15s</span>
+      </div>
+
+      {error && <div className={cn(styles.errorBox, "mb-md")}>{error}</div>}
+
+      {loading ? (
+        <SkeletonCards count={6} />
+      ) : (
+        <div className={styles.wrapper}>
+          {hostList.map((host) => {
+            const hostSessions = byHost.get(host);
+            const status = hostStatus.get(host);
+            const offline = !status || !status.online;
+            return (
+              <section
+                key={host}
+                className={cn(styles.hostSection, offline && styles.hostOffline)}
+              >
+                <div className={styles.hostHeader}>
+                  <span className={styles.hostName}>{host}</span>
+                  {offline ? (
+                    <span className={cn(styles.badge, styles.badgeWaiting)}>offline</span>
+                  ) : (
+                    <span className={cn(styles.badge, styles.badgeWorking)}>
+                      <span className={styles.dot} />online
+                    </span>
+                  )}
+                  {status && (
+                    <span className={styles.hostMeta}>
+                      coletor rodou {relativeTime(status.last_run)}
+                    </span>
+                  )}
+                </div>
+
+                {!hostSessions || hostSessions.size === 0 ? (
+                  <div className={styles.emptyHost}>
+                    {offline
+                      ? "Host offline — sem dados do coletor."
+                      : "Sem sessões tmux neste host."}
+                  </div>
+                ) : (
+                  <div className={styles.sessionGrid}>
+                    {[...hostSessions.entries()].map(([session, sessionPanes]) => (
+                      <div key={session} className={styles.sessionCard}>
+                        <div className={styles.sessionHeader}>
+                          <span className={styles.sessionName}>{session}</span>
+                          {sessionPanes.some((p) => p.attached) && (
+                            <span className={cn(styles.badge, styles.badgeShell)}>attached</span>
+                          )}
+                        </div>
+
+                        {sessionPanes.map((pane) => {
+                          const key = paneKey(pane);
+                          const meta = STATE_META[pane.state] || STATE_META.shell;
+                          const alert = isWaitingTooLong(pane);
+                          return (
+                            <div
+                              key={key}
+                              className={cn(styles.paneRow, alert && styles.waitingAlert)}
+                            >
+                              <div className={styles.paneMeta}>
+                                <span className={styles.paneId}>
+                                  {pane.window_index}.{pane.pane_index}
+                                  {pane.window_name ? ` ${pane.window_name}` : ""}
+                                </span>
+                                <span className={cn(styles.badge, meta.badge)}>
+                                  <span className={cn(styles.dot, meta.pulse && styles.dotPulse)} />
+                                  {meta.label}
+                                </span>
+                                <span className={styles.stateTime}>
+                                  {relativeTime(pane.state_since)}
+                                </span>
+                                {pane.command && (
+                                  <span className="mono-sm">{pane.command}</span>
+                                )}
+                              </div>
+                              {pane.state_detail && (
+                                <span className="text-muted-xs">{pane.state_detail}</span>
+                              )}
+                              {pane.cwd && <span className={styles.paneCwd}>{pane.cwd}</span>}
+                              {pane.last_output && (
+                                <div
+                                  className={cn(
+                                    styles.preview,
+                                    expanded.has(key) && styles.previewExpanded,
+                                  )}
+                                  onClick={() => togglePreview(key)}
+                                  title={expanded.has(key) ? "Clique para recolher" : "Clique para expandir"}
+                                >
+                                  {pane.last_output}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
