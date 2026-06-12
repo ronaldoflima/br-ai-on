@@ -76,6 +76,31 @@ render_message() {
   [ -n "$footer" ] && printf '\n%s' "$footer"
 }
 
-# ── Render imediato ──────────────────────────────────────────────────────────
+# ── Sync em background (desacoplado do bridge) ───────────────────────────────
+# Captura o corpo ANTES de disparar o sync (baseline para o anti-ruído),
+# roda queue-sync.sh, re-renderiza e só notifica se as TASKS mudarem.
+sync_background() {
+  local baseline_hash="$1"
+  {
+    if ! bash "$QUEUE_SYNC" >/dev/null 2>&1; then
+      bash "$BRAION/lib/telegram.sh" send \
+        "⚠️ sync da fila falhou — mostrei o estado do último sync" \
+        --chat-id "$CHAT_ID" >/dev/null 2>&1 || true
+      exit 0
+    fi
+    local new_body new_hash
+    new_body=$(fila_body | render_body)
+    new_hash=$(printf '%s' "$new_body" | sha256sum | cut -d' ' -f1)
+    if [ "$new_hash" != "$baseline_hash" ]; then
+      bash "$BRAION/lib/telegram.sh" send \
+        "$(render_message "$new_body" "")" --chat-id "$CHAT_ID" >/dev/null 2>&1 || true
+    fi
+  } &
+  disown 2>/dev/null || true
+}
+
+# ── Render imediato + dispara sync ───────────────────────────────────────────
 body=$(fila_body | render_body)
+baseline=$(printf '%s' "$body" | sha256sum | cut -d' ' -f1)
+sync_background "$baseline"
 render_message "$body" "⏳ atualizando em background…"
