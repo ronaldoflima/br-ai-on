@@ -64,6 +64,7 @@ export default function QueuePage() {
 
   const ativas = tasks.filter((t) => t.rank !== null);
   const done = tasks.filter((t) => t.rank === null);
+  const teamsCount = ativas.filter((t) => t.origem === "teams").length;
 
   return (
     <div>
@@ -71,6 +72,7 @@ export default function QueuePage() {
         <h1 className="page-title">Fila de prioridades</h1>
         <span className="text-muted-xs">
           fonte: vault Obsidian (geral/br-ai-on) — atualize com /fila
+          {teamsCount > 0 && ` · ${teamsCount} do Teams`}
         </span>
       </div>
 
@@ -92,6 +94,7 @@ export default function QueuePage() {
               <th>Status</th>
               <th>Prioridade</th>
               <th>Score</th>
+              <th>Origem</th>
               <th>Projeto</th>
               <th>Due</th>
               <th>Atualizada</th>
@@ -112,6 +115,13 @@ export default function QueuePage() {
                   </span>
                 </td>
                 <td className={styles.score}>{t.score}</td>
+                <td>
+                  {t.origem === "teams" ? (
+                    <span className={cn(styles.badge, styles.origemTeams)}>Teams</span>
+                  ) : (
+                    <span className={styles.origemMuted}>{t.origem || "—"}</span>
+                  )}
+                </td>
                 <td>{t.projeto || "—"}</td>
                 <td>{t.due ? (dueVencido(t.due) ? `⚠️ ${t.due}` : t.due) : "—"}</td>
                 <td className={styles.updated}>{relativeTime(t.updated_at)}</td>

@@ -80,6 +80,9 @@
 .prioBaixa { background: rgba(102, 102, 102, 0.13); color: var(--text-muted); }
 .prioNone { background: var(--bg-hover); color: var(--text-muted); }
 
+.origemTeams { background: rgba(91, 95, 199, 0.16); color: #8b8ff0; }
+.origemMuted { color: var(--text-muted); font-size: 12px; }
+
 .doneNote {
   margin-top: 12px;
   font-size: 12px;
