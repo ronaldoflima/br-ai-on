@@ -43,20 +43,23 @@ export PGHOST="${PGHOST:-127.0.0.1}" PGPORT="${PGPORT:-5432}"
 export PGDATABASE="${PGDATABASE:-braion}" PGUSER="${PGUSER:-braion}"
 
 # psql só interpola variáveis -v em scripts (-f/stdin), NUNCA em -c.
-# Duplicata: já existe ação pendente para este pane → recusa com aviso (rc=0).
-pending=$("${PSQL[@]}" \
-    -v host="$host" -v session="$session" \
-    -v window_index="$window_index" -v pane_index="$pane_index" \
-    -f - <<'SQL'
+# "?" = captura read-only (ver a tela): NÃO checa duplicata (sempre permitido).
+# Texto normal = nudge (send-keys): recusa se já há ação pendente para o pane.
+if [ "$USER_TEXT" != "?" ]; then
+    pending=$("${PSQL[@]}" \
+        -v host="$host" -v session="$session" \
+        -v window_index="$window_index" -v pane_index="$pane_index" \
+        -f - <<'SQL'
 SELECT count(*) FROM braion.tmux_actions
  WHERE host = :'host' AND session = :'session'
    AND window_index = :'window_index'::int
    AND pane_index = :'pane_index'::int AND status = 'pending';
 SQL
 )
-if [ "$pending" != "0" ]; then
-    echo "⚠️ já existe ação pendente para $host $session $pane_ref — aguarde o coletor executar"
-    exit 0
+    if [ "$pending" != "0" ]; then
+        echo "⚠️ já existe ação pendente para $host $session $pane_ref — aguarde o coletor executar"
+        exit 0
+    fi
 fi
 
 "${PSQL[@]}" \
@@ -70,4 +73,8 @@ VALUES (:'host', :'session', :'window_index'::int, :'pane_index'::int,
         :'action_text', :'requested_by');
 SQL
 
-echo "✓ na fila para $host $session $pane_ref (executa no próximo ciclo do coletor)"
+if [ "$USER_TEXT" = "?" ]; then
+    echo "👀 capturando a tela de $host $session $pane_ref — te mando o snapshot em instantes"
+else
+    echo "✓ na fila para $host $session $pane_ref (executa no próximo ciclo do coletor)"
+fi
