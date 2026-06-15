@@ -3,8 +3,11 @@
 #
 # Extraído de lib/agent-cron.sh para ser REUTILIZÁVEL standalone (ex.: feature
 # task-warmup). Por isso este arquivo:
-#   - NÃO usa `set -euo pipefail` no topo: é uma lib sourceável e não deve abortar
-#     o shell importador (o agent-cron já tem seu próprio set -e).
+#   - NÃO usa `set -euo pipefail` no PRÓPRIO topo (é uma lib sourceável e não impõe
+#     errexit por conta própria). ATENÇÃO: ela dá source em lib/state.sh, que roda
+#     `set -euo pipefail` no top-level — então sourcear o launcher REATIVA
+#     errexit/nounset/pipefail transitivamente no shell importador. Não assuma que
+#     errexit fica desligado após o source (o agent-cron já roda sob set -e).
 #   - É auto-suficiente quando sourceado sozinho: define os wrappers finos
 #     (log/session_running/session_clear_idle/_hb_get) e sourceia cli.sh/state.sh,
 #     que trazem as deps cli_*/state_*. Quando sourceado pelo agent-cron, as
