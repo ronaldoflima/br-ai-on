@@ -95,7 +95,11 @@ sync_background() {
       bash "$BRAION/lib/telegram.sh" send \
         "$(render_message "$new_body" "")" --chat-id "$CHAT_ID" >/dev/null 2>&1 || true
     fi
-  } &
+  } >/dev/null 2>&1 &
+  # Redireciona stdout/stderr do bloco para que o subshell NÃO herde o pipe da
+  # substituição de comando do handle_fila ($(...)). Sem isso, o `out=$(...)`
+  # do bridge bloqueia até o queue_sync terminar (~60-120s), atrasando a
+  # mensagem "imediata" da fila. disown só tira do job control, não fecha fds.
   disown 2>/dev/null || true
 }
 
