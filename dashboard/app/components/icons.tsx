@@ -157,3 +157,13 @@ export function IconKnowledge() {
     </svg>
   );
 }
+
+export function IconSessions() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+      <line x1="12" y1="12" x2="21" y2="12" />
+    </svg>
+  );
+}

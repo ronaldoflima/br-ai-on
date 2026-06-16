@@ -158,6 +158,7 @@ Comandos:
 • /clear — limpar contexto
 • /reset — reiniciar sessão
 • /status — estado da sessão
+• /fila — fila de prioridades
 • /pause — pausar agentes
 • /unpause — retomar agentes
 • /deploy — deploy da branch main
@@ -197,6 +198,17 @@ handle_status() {
     tg_send "✅ Sessão \`$session\` ativa e aguardando (backend: $CLI_BACKEND)." "$chat_id"
   else
     tg_send "⏳ Sessão \`$session\` processando (backend: $CLI_BACKEND)..." "$chat_id"
+  fi
+}
+
+handle_fila() {
+  local chat_id="$1"
+  local out
+  if out=$(bash "$BRAION/scripts/tg-fila.sh" "$chat_id" 2>&1); then
+    tg_send "$out" "$chat_id"
+  else
+    log "ERRO tg-fila: $out"
+    tg_send "❌ fila indisponível" "$chat_id"
   fi
 }
 
@@ -377,6 +389,23 @@ main() {
         continue
       fi
 
+      # Nudge (tmux-agents-orchestrator): reply a notificação com marcador NÃO
+      # vai para a sessão Claude do braion (nem respeita .paused — intencional,
+      # não toca na fila do braion); vira ação em braion.tmux_actions, que o
+      # coletor do host alvo executa com gate de estado.
+      local reply_text
+      reply_text=$(echo "$update" | jq -r '.message.reply_to_message.text // empty' 2>/dev/null)
+      if [ -n "$reply_text" ] && printf '%s' "$reply_text" | grep -q '⟦nudge '; then
+        local nudge_msg
+        if nudge_msg=$(bash "$BRAION/scripts/tg-nudge.sh" "$reply_text" "$text" "$chat_id" 2>&1); then
+          tg_send "$nudge_msg" "$chat_id" || log "WARN tg_send da confirmação de nudge falhou"
+        else
+          log "ERRO tg-nudge: $nudge_msg"
+          tg_send "❌ falha ao enfileirar nudge" "$chat_id" || true
+        fi
+        continue
+      fi
+
       local session="${SESSION_PREFIX}" #TODO futuramente colocar com chat_id para isolar sessões por usuário, mas por enquanto só tem uma sessão global
 
       case "$text" in
@@ -384,11 +413,12 @@ main() {
         /clear)       handle_clear   "$chat_id" "$session" ;;
         /reset)       handle_reset   "$chat_id" "$session" ;;
         /status)      handle_status  "$chat_id" "$session" ;;
+        /fila)        handle_fila    "$chat_id" ;;
         /pause)       handle_pause   "$chat_id" ;;
         /unpause)     handle_unpause "$chat_id" ;;
         /deploy)      handle_deploy  "$chat_id" "main" ;;
         /deploy\ *)   handle_deploy  "$chat_id" "${text#/deploy }" ;;
-        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
+        /*)           tg_send "Comando desconhecido. Use /start, /clear, /reset, /status, /fila, /pause, /unpause ou /deploy [branch]." "$chat_id" ;;
         *)            handle_message "$chat_id" "$session" "$text" ;;
       esac
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./Sidebar.module.css";
-import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub, IconChevronLeft, IconChevronRight, IconKnowledge } from "./icons";
+import { IconDashboard, IconLogs, IconHandoffs, IconAgents, IconMemories, IconTerminal, IconWizard, IconIntegrations, IconCron, IconMenu, IconClose, IconGithub, IconChevronLeft, IconChevronRight, IconKnowledge, IconSessions } from "./icons";
 import { backendLabel } from "../lib/cli-backend-client";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType; children?: NavItem[] };
@@ -22,6 +22,8 @@ const NAV: NavItem[] = [
   { href: "/agents", label: "Agents", icon: IconAgents },
   { href: "/wizard", label: "Wizard", icon: IconWizard },
   { href: "/terminal", label: "Terminais", icon: IconTerminal },
+  { href: "/sessions", label: "Sessions", icon: IconSessions },
+  { href: "/queue", label: "Queue", icon: IconHandoffs },
   { href: "/integrations", label: "Integrações", icon: IconIntegrations },
   { href: "/knowledge", label: "Knowledge", icon: IconKnowledge },
 ];
