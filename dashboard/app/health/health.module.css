@@ -1,0 +1,193 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ---- Banner / rollup ---- */
+
+.banner {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bannerMain {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bannerMeta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.bannerWarn {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.bannerOk {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.08);
+}
+.bannerOk .bannerMain {
+  color: #34d399;
+}
+
+.bannerDegraded {
+  border-color: var(--warning);
+  background: rgba(245, 158, 11, 0.08);
+}
+.bannerDegraded .bannerMain {
+  color: var(--warning);
+}
+
+.bannerDown {
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+}
+.bannerDown .bannerMain {
+  color: var(--error);
+}
+
+.bannerError {
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+}
+.bannerError .bannerMain {
+  color: var(--error);
+}
+
+/* ---- Grupos ---- */
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.cardGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* ---- Card por componente ---- */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardOk {
+  border-left-color: #10b981;
+}
+.cardDegraded {
+  border-left-color: var(--warning);
+}
+.cardDown {
+  border-left-color: var(--error);
+}
+.cardUnknown {
+  border-left-color: var(--text-muted);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.componentName {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkedAt {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailLine {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.detailKey {
+  color: var(--text-secondary);
+}
+
+/* ---- Status dots ---- */
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotOk {
+  background: #10b981;
+}
+.dotDegraded {
+  background: var(--warning);
+}
+.dotDown {
+  background: var(--error);
+}
+.dotUnknown {
+  background: var(--text-muted);
+}
+
+.empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}
