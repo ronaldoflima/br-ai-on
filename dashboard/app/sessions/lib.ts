@@ -94,3 +94,24 @@ export function latestActionFor(
     )
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 }
+
+const ACTIVE_STATES = ["claude_working", "claude_waiting_input"];
+
+export function isActiveState(state: string): boolean {
+  return ACTIVE_STATES.includes(state);
+}
+
+export function matchesQuery(p: TmuxPane, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [p.host, p.session, p.window_name ?? "", projectName(p.cwd) ?? ""]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+export function whatsHappening(p: TmuxPane): string | null {
+  const view = effectiveView(p);
+  if (view.detail) return view.detail;
+  return cleanOutput(p.last_output, 1)[0] ?? null;
+}

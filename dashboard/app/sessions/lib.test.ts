@@ -6,6 +6,9 @@ import {
   stateRank,
   effectiveView,
   latestActionFor,
+  isActiveState,
+  matchesQuery,
+  whatsHappening,
   type TmuxPane,
   type TmuxAction,
 } from "./lib.ts";
@@ -78,4 +81,30 @@ test("latestActionFor casa pane por chave e pega a mais recente", () => {
   ];
   assert.equal(latestActionFor(pane(), actions)?.id, 2);
   assert.equal(latestActionFor(pane({ session: "nada" }), actions), undefined);
+});
+
+test("isActiveState: só working e waiting são ativos", () => {
+  assert.equal(isActiveState("claude_working"), true);
+  assert.equal(isActiveState("claude_waiting_input"), true);
+  assert.equal(isActiveState("claude_idle"), false);
+  assert.equal(isActiveState("shell"), false);
+});
+
+test("matchesQuery: vazio casa tudo; busca em host/session/window_name/projeto", () => {
+  const p = pane({ host: "vps-mcpgw", session: "braion", window_name: "logs", cwd: "/home/x/br-ai-on" });
+  assert.equal(matchesQuery(p, ""), true);
+  assert.equal(matchesQuery(p, "  "), true);
+  assert.equal(matchesQuery(p, "BRAION"), true);
+  assert.equal(matchesQuery(p, "br-ai-on"), true);
+  assert.equal(matchesQuery(p, "logs"), true);
+  assert.equal(matchesQuery(p, "nada"), false);
+});
+
+test("whatsHappening: prefere detail; cai pra última linha do output; null se nada", () => {
+  const withDetail = pane({ state: "claude_working", state_detail: "rodando testes", last_output: "ruído" });
+  assert.equal(whatsHappening(withDetail), "rodando testes");
+  const noDetail = pane({ state: "shell", state_detail: null, last_output: "linha 1\nlinha final" });
+  assert.equal(whatsHappening(noDetail), "linha final");
+  const empty = pane({ state: "shell", state_detail: null, last_output: null });
+  assert.equal(whatsHappening(empty), null);
 });
