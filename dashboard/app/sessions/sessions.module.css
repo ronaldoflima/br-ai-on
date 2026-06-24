@@ -4,41 +4,105 @@
   gap: 28px;
 }
 
-.hostSection {
-  display: flex;
-  flex-direction: column;
-}
+/* ---- Barra de controle ---- */
 
-.hostOffline {
-  opacity: 0.6;
-}
-
-.hostHeader {
+.controlBar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
-.hostName {
-  font-size: 15px;
-  font-weight: 600;
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+  font-size: 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  color: var(--text-primary);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.hostChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hostChip {
   font-family: monospace;
-}
-
-.hostMeta {
   font-size: 12px;
-  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.sessionGrid {
+.hostChip:hover {
+  border-color: var(--accent);
+}
+
+.hostChipOff {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.hostChipOffline {
+  border-style: dashed;
+}
+
+.focusToggle {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.focusToggle:hover {
+  border-color: var(--accent);
+}
+
+.focusToggleOn {
+  background: rgba(59, 130, 246, 0.13);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---- Seções e grid ---- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 }
 
-.sessionCard {
+/* ---- Card rico ---- */
+
+.card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -48,50 +112,54 @@
   gap: 10px;
 }
 
-.sessionHeader {
+.cardWaiting {
+  border-color: var(--warning);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.cardTop {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cardDoing {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.cardFoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.sessionName {
-  font-family: monospace;
-  font-size: 14px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.stateTime {
+  font-size: 11px;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
-/* ---- Triagem: "Precisa de você" ---- */
+.techId {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
 
-.needsYou {
+.cardExpand {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.needsYouTitle {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.needsYouCard {
-  border: 1px solid var(--warning);
-  background: rgba(245, 158, 11, 0.08);
-  border-radius: var(--radius);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: waiting-pulse 2s ease-in-out infinite;
-}
-
-@keyframes waiting-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
-  50% { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
 }
 
 .allClear {
@@ -115,66 +183,6 @@
 
 .waitingLong {
   font-weight: 600;
-}
-
-/* ---- Lista compacta ---- */
-
-.paneItem {
-  border-top: 1px solid var(--border);
-}
-
-.paneItem:first-of-type {
-  border-top: none;
-}
-
-.paneLine {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 4px;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.paneLine:hover {
-  background: var(--bg-hover);
-}
-
-.paneLineWaiting {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.paneLineName {
-  font-family: monospace;
-  font-size: 12px;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.paneDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 4px 4px 10px;
-}
-
-.paneMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.paneId {
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
 }
 
 .paneCwd {
@@ -204,11 +212,6 @@
 .badgeShell { background: var(--bg-hover); color: var(--text-secondary); }
 .badgeHook { background: rgba(139, 92, 246, 0.13); color: #a78bfa; }
 
-.waitingSince {
-  font-size: 12px;
-  color: var(--warning);
-}
-
 .dot {
   width: 6px;
   height: 6px;
@@ -224,12 +227,6 @@
 @keyframes dot-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
-}
-
-.stateTime {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
 }
 
 .preview {
@@ -255,14 +252,6 @@
 .previewExpanded {
   max-height: 420px;
   overflow-y: auto;
-}
-
-.emptyHost {
-  font-size: 12px;
-  color: var(--text-muted);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
 }
 
 .errorBox {
@@ -342,7 +331,7 @@
 .sendStatusError { color: var(--error); }
 
 @media (max-width: 768px) {
-  .sessionGrid {
+  .grid {
     grid-template-columns: 1fr;
   }
 }
