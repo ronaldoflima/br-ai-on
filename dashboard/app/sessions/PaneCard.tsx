@@ -37,7 +37,7 @@ function waitingSinceLabel(view: PaneView): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-  return view.detail ? `esperando desde ${time} — ${view.detail}` : `esperando desde ${time}`;
+  return `esperando desde ${time}`;
 }
 
 interface PaneCardProps {
