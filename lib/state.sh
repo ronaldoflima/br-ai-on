@@ -61,6 +61,21 @@ _state_file_doc_path() {
   esac
 }
 
+# Poda um doc markdown mantendo o preâmbulo (linhas antes da 1ª seção `## `)
+# e as últimas <max> seções delimitadas por `## `. Opera em stdin→stdout.
+# Backend-agnóstico: só manipula texto, nunca toca no store.
+_state_trim_sections() {
+  local max="$1"
+  if [[ -z "$max" || "$max" -le 0 ]]; then cat; return; fi
+  awk -v max="$max" '
+    /^## / { sec++ }
+    { line[NR]=$0; secof[NR]=sec }
+    END {
+      start = sec - max + 1
+      for (i=1;i<=NR;i++) if (secof[i]==0 || secof[i]>=start) print line[i]
+    }'
+}
+
 # ----------------------------------------------------------------------------
 # Backend: file
 # ----------------------------------------------------------------------------
@@ -858,6 +873,15 @@ state_heartbeat_set()   { _dispatch heartbeat_set   "$@"; }
 state_doc_get()         { _dispatch doc_get         "$@"; }
 state_doc_set()         { _dispatch doc_set         "$@"; }
 state_doc_append()      { _dispatch doc_append      "$@"; }
+# state_doc_append_trim <agent> <doc_type> <max_sections> [date] < chunk_stdin
+# Concatena o chunk ao doc e poda para preâmbulo + últimas <max_sections> seções `## `.
+# Todo o conteúdo trafega só no shell — nada vai pro contexto do modelo.
+state_doc_append_trim() {
+  local agent="$1" doc_type="$2" max="$3" date="${4:-}"
+  local chunk; chunk=$(cat; printf x); chunk="${chunk%x}"
+  local cur; cur=$(state_doc_get "$agent" "$doc_type" "$date" 2>/dev/null || true)
+  printf '%s%s' "$cur" "$chunk" | _state_trim_sections "$max" | state_doc_set "$agent" "$doc_type" "$date"
+}
 state_episodic_append() { _dispatch episodic_append "$@"; }
 state_episodic_search() { _dispatch episodic_search "$@"; }
 state_cache_get()       { _dispatch cache_get       "$@"; }
