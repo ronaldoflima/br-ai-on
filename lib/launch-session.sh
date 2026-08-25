@@ -55,22 +55,42 @@ _hb_get() {
 }
 
 start_session() {
-  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} perm_mode=${5:-$(cli_permission_mode_default)} custom_cmd=${6:-} sp_content=${7:-} extra_dirs_json=${8:-"[]"} no_watcher=${9:-false}
+  local session=$1 working_dir=${2:-$BRAION} prompt=$3 model=${4:-$DEFAULT_MODEL} perm_mode=${5:-$(cli_permission_mode_default)} custom_cmd=${6:-} sp_content=${7:-} extra_dirs_json=${8:-"[]"} no_watcher=${9:-false} attach_mode=${10:-session}
   [ -z "$working_dir" ] && working_dir="$BRAION"
   [ -d "$working_dir" ] || { log "WARN $session — diretório '$working_dir' não existe, usando $BRAION"; working_dir="$BRAION"; }
 
-  if session_running "$session"; then
-    log "SKIP $session — sessão tmux ativa"
-    return 0
+  # attach_mode=window (opt-in, ex.: task-warmup): se o processo que chamou o
+  # launcher já está dentro de uma sessão tmux ($TMUX setado), abre uma NOVA JANELA
+  # nessa mesma sessão em vez de criar uma sessão tmux separada. Default "session"
+  # preserva 100% o comportamento antigo (usado por agent-cron/cron, que nunca tem
+  # $TMUX no env). $target é o -t usado em todo o resto da função; $session continua
+  # sendo só o identificador lógico (nome da janela / dedupe).
+  local target="$session" reuse_session=""
+  if [ "$attach_mode" = "window" ] && [ -n "${TMUX:-}" ]; then
+    reuse_session=$(tmux display-message -p '#S' 2>/dev/null || true)
   fi
 
-  session_clear_idle "$session"
-  tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
-  tmux set-option -t "$session" window-size manual 2>/dev/null || true
+  if [ -n "$reuse_session" ]; then
+    target="${reuse_session}:${session}"
+    if tmux list-windows -t "$reuse_session" -F '#{window_name}' 2>/dev/null | grep -qx "$session"; then
+      log "SKIP $session — janela já existe na sessão atual ($target)"
+      return 0
+    fi
+    tmux new-window -t "$reuse_session" -n "$session" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+    log "START $session — nova janela na sessão atual ($target)"
+  else
+    if session_running "$session"; then
+      log "SKIP $session — sessão tmux ativa"
+      return 0
+    fi
+    session_clear_idle "$session"
+    tmux new-session -d -s "$session" -x "$TMUX_COLS" -y "$TMUX_ROWS" -c "$working_dir" "/bin/zsh || /bin/bash || sh"
+    tmux set-option -t "$session" window-size manual 2>/dev/null || true
+  fi
   sleep 1  # aguarda shell inicializar antes de enviar comandos
 
   if [ -n "$custom_cmd" ]; then
-    cli_send_start_command "$session" "$custom_cmd"
+    cli_send_start_command "$target" "$custom_cmd"
     log "START $session em $working_dir (command=$custom_cmd)"
   else
     local sp_file=""
@@ -85,42 +105,61 @@ start_session() {
     local cmd
     cmd=$(cli_build_start_cmd "$model" "$perm_mode" "$sp_file" "false" "$BRAION" "$HOME/.config/br-ai-on" ${extra_dirs[@]+"${extra_dirs[@]}"})
     log "START $session: \"$cmd\""
-    cli_send_start_command "$session" "$cmd"
+    cli_send_start_command "$target" "$cmd"
   fi
 
-  # Aguarda backend estar pronto — hook flag ou fallback, máximo 120s
-  cli_wait_ready "$session" 120 || true
-  tmux send-keys -t "$session" -l "$prompt"
-  tmux send-keys -t "$session" Enter
+  if [ -n "$reuse_session" ]; then
+    # O flag de idle (IDLE_DIR/$session) é escrito pelo hook_reporter a partir do
+    # nome da SESSÃO tmux — numa janela reaproveitada isso seria a sessão pai, nunca
+    # "$session", então cli_wait_ready nunca veria o flag. Faz polling do glyph do
+    # prompt do backend na janela em vez de esperar o flag (cai para o timeout duro
+    # abaixo se o backend não aparecer, igual ao "|| true" do caminho normal).
+    local glyph waited=0
+    glyph=$(cli_prompt_glyph)
+    while [ "$waited" -lt 60 ]; do
+      if [ -n "$glyph" ] && tmux capture-pane -t "$target" -p 2>/dev/null | grep -qF "$glyph"; then
+        break
+      fi
+      sleep 2
+      waited=$((waited + 2))
+    done
+  else
+    # Aguarda backend estar pronto — hook flag ou fallback, máximo 120s
+    cli_wait_ready "$session" 120 || true
+  fi
+  tmux send-keys -t "$target" -l "$prompt"
+  tmux send-keys -t "$target" Enter
 
   # Verifica se o backend está processando o prompt (tokens > 0 ou pane mudou).
   # cli_wait_ready já consumiu o idle flag, então não podemos usar session_is_idle
   # para detectar início do processamento — usamos conteúdo do pane.
   local submit_waited=0
   local pane_before
-  pane_before=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
+  pane_before=$(tmux capture-pane -t "$target" -p 2>/dev/null | tail -3)
   while [ $submit_waited -lt 10 ]; do
     sleep 2
     submit_waited=$((submit_waited + 2))
     local pane_now
-    pane_now=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
+    pane_now=$(tmux capture-pane -t "$target" -p 2>/dev/null | tail -3)
     if [ "$pane_now" != "$pane_before" ]; then
       break  # pane mudou → Claude está processando
     fi
   done
   # Se pane não mudou após 10s, o Enter não foi aceito — tenta novamente
   local pane_final
-  pane_final=$(tmux capture-pane -t "$session" -p 2>/dev/null | tail -3)
+  pane_final=$(tmux capture-pane -t "$target" -p 2>/dev/null | tail -3)
   if [ "$pane_final" = "$pane_before" ]; then
     log "RETRY $session — pane sem mudança após envio do prompt, reenviando Enter"
-    tmux send-keys -t "$session" Enter
+    tmux send-keys -t "$target" Enter
   fi
 
   # Watcher em background: invoca /braion:agent-wrapup quando backend fica idle.
   # Se o wrapup entrar em modo review (awaiting_review), aguarda interação do
   # usuário ou timeout antes de encerrar.
-  # Pulado quando no_watcher=true (ex.: sessões warm-up que ficam idle de propósito).
-  if [ "$no_watcher" != "true" ]; then
+  # Pulado quando no_watcher=true (ex.: sessões warm-up que ficam idle de propósito)
+  # OU quando reuse_session (attach_mode=window): o flag de idle e o kill-session do
+  # watcher são keyed pelo nome da SESSÃO, não da janela — não fazem sentido aqui.
+  if [ "$no_watcher" != "true" ] && [ -z "$reuse_session" ]; then
     local log_file="$LOG_FILE"
     local _session="$session"
     local _idle_dir="$IDLE_DIR"
